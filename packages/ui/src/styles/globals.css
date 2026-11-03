@@ -107,3 +107,25 @@
     mask: radial-gradient(circle at -12px 50%, transparent 22px, #000 22.5px);
   }
 }
+
+/* StagePipeline chevron segments (signature recruitment design element) */
+.stage-chevron {
+  --tip: 12px;
+  clip-path: polygon(
+    0 0,
+    calc(100% - var(--tip)) 0,
+    100% 50%,
+    calc(100% - var(--tip)) 100%,
+    0 100%,
+    var(--tip) 50%
+  );
+}
+.stage-chevron:first-child {
+  clip-path: polygon(0 0, calc(100% - var(--tip)) 0, 100% 50%, calc(100% - var(--tip)) 100%, 0 100%);
+}
+.stage-chevron:last-child {
+  clip-path: polygon(0 0, 100% 0, 100% 100%, 0 100%, var(--tip) 50%);
+}
+.stage-chevron:only-child {
+  clip-path: none;
+}

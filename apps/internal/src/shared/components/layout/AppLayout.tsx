@@ -3,11 +3,25 @@ import { AppShell } from "./AppShell"
 import type { Crumb } from "./AppShell"
 import { useAppDispatch } from "@/app/store"
 import { logout } from "@/features/auth"
+import { initialRecruitments } from "@/features/recruitments/data/mock"
 
 function getCrumbsForPath(path: string): Crumb[] {
   if (path.startsWith("/dashboard")) {
     return [{ label: "Dashboard" }]
   }
+
+  // Recruitment detail page
+  const recruitmentMatch = path.match(/^\/recruitments\/([^/]+)/)
+  if (recruitmentMatch && recruitmentMatch[1]) {
+    const id = recruitmentMatch[1]
+    const rec = initialRecruitments.find((r) => r.id === id)
+    return [
+      { label: "Dashboard", to: "/dashboard" },
+      { label: "Recruitments", to: "/recruitments" },
+      { label: rec ? rec.name : "Detail" },
+    ]
+  }
+
   if (path.startsWith("/recruitments")) {
     return [{ label: "Dashboard", to: "/dashboard" }, { label: "Recruitments" }]
   }

@@ -476,6 +476,28 @@ export const initialRecruitments: Recruitment[] = [
       ),
     ],
   },
+  {
+    id: "r6",
+    code: "REC-2026-006",
+    batchCode: "REC-2026-006",
+    name: "Mobile App Engineer 2026",
+    departmentId: "d1000000-0000-4000-8000-000000000002",
+    division: "Software Development",
+    location: "Jakarta, APL Tower",
+    quota: 2,
+    openDate: "2026-04-01",
+    startDate: "2026-04-01T00:00:00Z",
+    closeDate: "2026-06-30",
+    endDate: "2026-06-30T23:59:59Z",
+    status: "draft",
+    currentStage: -1,
+    createdBy: "e1000000-0000-4000-8000-000000000001",
+    ownerId: "u1",
+    description: "Develop cross-platform Flutter and native mobile applications for customer banking portals.",
+    createdAt: "2026-03-10T09:00:00Z",
+    updatedAt: null,
+    stages: [],
+  },
 ]
 
 // =====================================================================

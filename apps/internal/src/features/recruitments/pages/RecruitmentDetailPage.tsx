@@ -1,11 +1,30 @@
-import { useMemo } from "react"
+import { useMemo, useState } from "react"
 import { useNavigate } from "@tanstack/react-router"
 import { ArrowLeft } from "lucide-react"
 
 import { Button } from "@workspace/ui/components/button"
-import { PageHeader, Panel, StatusBadge } from "@/shared/components"
-import { formatPeriod } from "@/shared/lib/format"
-import { initialRecruitments, recruitmentStatusMeta } from "../data/mock"
+import { PageHeader } from "@/shared/components"
+import { initialRecruitments, recruitmentPipeline } from "../data/mock"
+import { StagePipeline } from "../components/StagePipeline"
+import {
+  RecruitmentDetailHeader,
+  SummaryTab,
+  StagesTab,
+  CandidatesTab,
+  InterviewsTab,
+  EvaluationsTab,
+  DecisionsTab,
+} from "../components/detail"
+import { candidates, interviews, evaluations } from "@/data/mock"
+import { cn } from "@/shared/lib/utils"
+
+export type TabKey =
+  | "summary"
+  | "stages"
+  | "candidates"
+  | "interviews"
+  | "evaluations"
+  | "decisions"
 
 export interface RecruitmentDetailPageProps {
   id: string
@@ -13,10 +32,36 @@ export interface RecruitmentDetailPageProps {
 
 export function RecruitmentDetailPage({ id }: RecruitmentDetailPageProps) {
   const navigate = useNavigate()
+  const [activeTab, setActiveTab] = useState<TabKey>("summary")
+  const [selectedStage, setSelectedStage] = useState<number | null>(null)
 
   const recruitment = useMemo(() => {
     return initialRecruitments.find((r) => r.id === id) ?? null
   }, [id])
+
+  // Related data counts matching ERD records
+  const recruitmentCandidates = useMemo(() => {
+    return candidates.filter((c) => c.recruitmentId === id)
+  }, [id])
+
+  const recruitmentInterviews = useMemo(() => {
+    return interviews.filter((i) => i.recruitmentId === id)
+  }, [id])
+
+  const recruitmentEvaluations = useMemo(() => {
+    return evaluations.filter((e) =>
+      recruitmentInterviews.some((i) => i.id === e.interviewId)
+    )
+  }, [recruitmentInterviews])
+
+  const pendingDecisions = useMemo(() => {
+    return recruitmentCandidates.filter((c) => c.status === "pending")
+  }, [recruitmentCandidates])
+
+  const pipelineItems = useMemo(() => {
+    if (!recruitment) return []
+    return recruitmentPipeline(recruitment)
+  }, [recruitment])
 
   if (!recruitment) {
     return (
@@ -26,10 +71,10 @@ export function RecruitmentDetailPage({ id }: RecruitmentDetailPageProps) {
           description={`No recruitment exists with ID "${id}".`}
           actions={
             <Button
-              variant="outline"
+              variant="ghost"
               size="sm"
               onClick={() => navigate({ to: "/recruitments" })}
-              className="gap-2"
+              className="gap-2 rounded-full border-0 bg-muted px-4 hover:bg-muted/40 cursor-pointer"
             >
               <ArrowLeft className="size-4" />
               <span>Back to Recruitments</span>
@@ -40,79 +85,111 @@ export function RecruitmentDetailPage({ id }: RecruitmentDetailPageProps) {
     )
   }
 
-  const statusMeta = recruitmentStatusMeta[recruitment.status]
+  const handleStageSelect = (index: number) => {
+    if (activeTab === "candidates" && selectedStage === index) {
+      setSelectedStage(null)
+    } else {
+      setSelectedStage(index)
+      setActiveTab("candidates")
+    }
+  }
+
+  const tabs: { key: TabKey; label: string; count?: number }[] = [
+    { key: "summary", label: "Summary" },
+    { key: "stages", label: "Stages", count: recruitment.stages.length },
+    { key: "candidates", label: "Candidates", count: recruitmentCandidates.length },
+    { key: "interviews", label: "Interviews", count: recruitmentInterviews.length },
+    { key: "evaluations", label: "Evaluations", count: recruitmentEvaluations.length },
+    { key: "decisions", label: "Decisions", count: pendingDecisions.length },
+  ]
 
   return (
     <div className="space-y-6">
-      <PageHeader
-        title={recruitment.name}
-        description={`${recruitment.division}`}
-        badge={
-          <StatusBadge tone={statusMeta.tone}>
-            {statusMeta.label}
-          </StatusBadge>
-        }
-        actions={
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => navigate({ to: "/recruitments" })}
-            className="gap-1.5"
-          >
-            <ArrowLeft className="size-4" />
-            <span>Back</span>
-          </Button>
-        }
-      />
+      {/* Header */}
+      <RecruitmentDetailHeader recruitment={recruitment} />
 
-      <Panel className="p-6 space-y-6">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 border-b border-border pb-6">
-          <div>
-            <span className="text-xs font-medium text-muted-foreground">Recruitment Code</span>
-            <p className="mt-1 font-mono text-sm font-semibold">{recruitment.code}</p>
-          </div>
-          <div>
-            <span className="text-xs font-medium text-muted-foreground">Period</span>
-            <p className="mt-1 text-sm font-medium">
-              {formatPeriod(recruitment.openDate, recruitment.closeDate)}
-            </p>
-          </div>
-          <div>
-            <span className="text-xs font-medium text-muted-foreground">Target Quota</span>
-            <p className="mt-1 text-sm font-medium">{recruitment.quota} candidates</p>
-          </div>
-        </div>
-
-        <div>
-          <h3 className="text-sm font-semibold text-foreground mb-2">Description</h3>
-          <p className="text-sm text-muted-foreground leading-relaxed">
-            {recruitment.description}
+      {/* Signature Stage Pipeline Chevrons */}
+      <section aria-label="Recruitment stages flow">
+        <StagePipeline
+          items={pipelineItems}
+          selected={activeTab === "candidates" ? selectedStage : null}
+          onSelect={handleStageSelect}
+        />
+        {recruitment.status === "draft" && (
+          <p className="mt-2 text-xs text-muted-foreground">
+            This recruitment batch is currently in draft. Stages will commence once opened.
           </p>
-        </div>
+        )}
+      </section>
 
-        <div>
-          <h3 className="text-sm font-semibold text-foreground mb-3">Selection Stages</h3>
-          <ol className="divide-y divide-border rounded-xl border border-border">
-            {recruitment.stages.map((stage, idx) => (
-              <li
-                key={stage.id}
-                className="flex items-center justify-between px-4 py-3 text-sm"
+      {/* Pill Navigation Tabs matching reference UI */}
+      <div className="flex overflow-x-auto pb-1">
+        <div
+          role="tablist"
+          aria-label="Recruitment detail sections"
+          className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card p-1 shadow-card"
+        >
+          {tabs.map((tab) => {
+            const isActive = activeTab === tab.key
+            return (
+              <button
+                key={tab.key}
+                role="tab"
+                type="button"
+                aria-selected={isActive}
+                onClick={() => {
+                  setActiveTab(tab.key)
+                  if (tab.key !== "candidates") {
+                    setSelectedStage(null)
+                  }
+                }}
+                className={cn(
+                  "inline-flex items-center gap-1.5 rounded-full px-4 py-1.5 text-sm font-medium transition-all duration-150 cursor-pointer select-none",
+                  isActive
+                    ? "bg-primary-50 text-primary font-semibold shadow-xs"
+                    : "text-muted-foreground hover:bg-muted/40 hover:text-foreground"
+                )}
               >
-                <div className="flex items-center gap-3">
-                  <span className="flex size-6 items-center justify-center rounded-full bg-muted text-xs font-semibold text-muted-foreground">
-                    {idx + 1}
+                <span>{tab.label}</span>
+                {tab.count !== undefined && (
+                  <span
+                    className={cn(
+                      "rounded-full px-2 py-0.5 text-xs tabular-nums font-semibold",
+                      isActive
+                        ? "bg-primary/10 text-primary"
+                        : "bg-muted text-muted-foreground"
+                    )}
+                  >
+                    {tab.count}
                   </span>
-                  <span className="font-medium text-foreground">{stage.name}</span>
-                </div>
-                <span className="text-xs text-muted-foreground">
-                  Duration: {stage.durationDays} days
-                </span>
-              </li>
-            ))}
-          </ol>
+                )}
+              </button>
+            )
+          })}
         </div>
-      </Panel>
+      </div>
+
+      {/* Active Tab Panel */}
+      <section aria-label={tabs.find((t) => t.key === activeTab)?.label}>
+        {activeTab === "summary" && <SummaryTab recruitment={recruitment} />}
+        {activeTab === "stages" && <StagesTab recruitment={recruitment} />}
+        {activeTab === "candidates" && (
+          <CandidatesTab
+            recruitment={recruitment}
+            selectedStageIndex={selectedStage}
+            onStageChange={setSelectedStage}
+          />
+        )}
+        {activeTab === "interviews" && (
+          <InterviewsTab recruitment={recruitment} />
+        )}
+        {activeTab === "evaluations" && (
+          <EvaluationsTab recruitment={recruitment} />
+        )}
+        {activeTab === "decisions" && (
+          <DecisionsTab recruitment={recruitment} />
+        )}
+      </section>
     </div>
   )
 }
-

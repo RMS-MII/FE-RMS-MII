@@ -225,6 +225,9 @@ export function RecruitmentsListPage() {
   }
 
   const renderCurrentStage = (r: Recruitment) => {
+    if (r.stages.length === 0) {
+      return <span className="text-sm text-muted-foreground">No stages</span>
+    }
     if (r.currentStage < 0 || r.status === "draft") {
       return <span className="text-sm text-muted-foreground">Not started</span>
     }
