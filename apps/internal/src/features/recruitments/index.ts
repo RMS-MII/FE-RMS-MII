@@ -1,5 +1,5 @@
 export * from "./types"
 export * from "./data/mock"
+export * from "./components/CreateRecruitmentDialog"
 export * from "./pages/RecruitmentsListPage"
 export * from "./pages/RecruitmentDetailPage"
-

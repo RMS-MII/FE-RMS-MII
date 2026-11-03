@@ -1,6 +1,33 @@
 import type { Tone } from "@/shared/components"
-import type { Recruitment, RecruitmentStatus, Stage, StageType, PipelineItem } from "../types"
+import type { Recruitment, RecruitmentStatus, Stage, StageType, PipelineItem, Department } from "../types"
 import { candidates } from "@/data/mock"
+
+export const mockDepartments: Department[] = [
+  {
+    id: "dept-1",
+    code: "SD",
+    name: "Software Development",
+    description: "Software engineering, architecture, and development.",
+  },
+  {
+    id: "dept-2",
+    code: "BI",
+    name: "Business Intelligence",
+    description: "Data analysis, data science, and reporting.",
+  },
+  {
+    id: "dept-3",
+    code: "IS",
+    name: "Infrastructure Services",
+    description: "Network, cloud infrastructure, and security operations.",
+  },
+  {
+    id: "dept-4",
+    code: "HR",
+    name: "Human Resources",
+    description: "People operations, talent acquisition, and employee relations.",
+  },
+]
 
 const st = (id: string, name: string, type: StageType, durationDays: number, ownerId: string): Stage =>
   ({ id, name, type, durationDays, ownerId })

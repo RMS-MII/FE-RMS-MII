@@ -49,6 +49,7 @@ import {
   recruitmentStatusMeta,
   activeCandidateCount,
 } from "../data/mock"
+import { CreateRecruitmentDialog } from "../components/CreateRecruitmentDialog"
 
 type SortKey = "code" | "name" | "stage" | "candidates" | "period" | "status"
 
@@ -69,6 +70,7 @@ export function RecruitmentsListPage() {
   const [statusFilter, setStatusFilter] = useState<RecruitmentStatus | "all">("all")
   const [divisionFilter, setDivisionFilter] = useState<string>("all")
   const [page, setPage] = useState(1)
+  const [isCreateOpen, setIsCreateOpen] = useState(false)
 
   // Sorting state
   const [sortKey, setSortKey] = useState<SortKey | null>("code")
@@ -268,7 +270,7 @@ export function RecruitmentsListPage() {
                 }
               }}
             >
-              <SelectTrigger className="h-9 w-40 rounded-full border-border bg-card px-4 text-sm text-foreground transition-colors hover:bg-muted/50 focus-visible:ring-1 focus-visible:ring-primary">
+              <SelectTrigger className="h-10 w-40 rounded-full border-0 bg-muted px-4 text-sm text-foreground transition-all duration-150 hover:bg-muted/40 focus-visible:ring-2 focus-visible:ring-primary shadow-none">
                 <SelectValue placeholder="All Status" />
               </SelectTrigger>
               <SelectContent className="rounded-xl">
@@ -292,7 +294,7 @@ export function RecruitmentsListPage() {
                 }
               }}
             >
-              <SelectTrigger className="h-9 w-44 rounded-full border-border bg-card px-4 text-sm text-foreground transition-colors hover:bg-muted/50 focus-visible:ring-1 focus-visible:ring-primary">
+              <SelectTrigger className="h-10 w-44 rounded-full border-0 bg-muted px-4 text-sm text-foreground transition-all duration-150 hover:bg-muted/40 focus-visible:ring-2 focus-visible:ring-primary shadow-none">
                 <SelectValue placeholder="All Division" />
               </SelectTrigger>
               <SelectContent className="rounded-xl">
@@ -307,7 +309,10 @@ export function RecruitmentsListPage() {
             </Select>
           </div>
 
-          <Button className="h-9 gap-1.5 rounded-full shrink-0">
+          <Button
+            onClick={() => setIsCreateOpen(true)}
+            className="h-10 gap-1.5 rounded-full border-0 bg-primary px-5 text-sm font-medium text-primary-foreground shadow-none hover:bg-primary/90 focus-visible:ring-2 focus-visible:ring-primary cursor-pointer shrink-0"
+          >
             <Plus className="size-4" aria-hidden />
             <span>Create recruitment</span>
           </Button>
@@ -317,7 +322,7 @@ export function RecruitmentsListPage() {
 
         <div className="overflow-x-auto">
           <Table>
-            <TableHeader className="border-b border-border bg-card">
+            <TableHeader className="bg-card">
               <TableRow className="hover:bg-transparent">
                 <TableSortHeader
                   label="Code"
@@ -392,10 +397,10 @@ export function RecruitmentsListPage() {
                       action={
                         search || statusFilter !== "all" || divisionFilter !== "all" ? (
                           <Button
-                            variant="outline"
+                            variant="ghost"
                             size="sm"
                             onClick={handleResetFilters}
-                            className="rounded-full border-none"
+                            className="rounded-full border-0 bg-muted/60 text-foreground hover:bg-muted"
                           >
                             Reset filters
                           </Button>
@@ -510,6 +515,16 @@ export function RecruitmentsListPage() {
           />
         )}
       </Panel>
+
+      {/* Create Recruitment Dialog */}
+      <CreateRecruitmentDialog
+        open={isCreateOpen}
+        onOpenChange={setIsCreateOpen}
+        existingCount={data.length}
+        onSuccess={(newRecruitment) => {
+          setData((prev) => [newRecruitment, ...prev])
+        }}
+      />
     </div>
   )
 }

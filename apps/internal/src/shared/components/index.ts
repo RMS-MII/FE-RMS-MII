@@ -6,4 +6,5 @@ export * from "./StatusBadge"
 export * from "./DataTablePagination"
 export * from "./FilterChips"
 export * from "./EmptyState"
+export * from "./DatePicker"
 

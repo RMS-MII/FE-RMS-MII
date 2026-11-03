@@ -1,8 +1,7 @@
-import { useEffect, useMemo, useState, type ReactNode } from "react"
+import { Fragment, useEffect, useMemo, useState, type ReactNode } from "react"
 import {
   Briefcase,
   ChevronRight,
-  ChevronLeft,
   LayoutDashboard,
   LogOut,
   Menu as MenuIcon,
@@ -204,7 +203,7 @@ function Nav({
                     aria-current={active ? "page" : undefined}
                     aria-label={collapsed ? n.label : undefined}
                     className={cn(
-                      "flex h-10 items-center rounded-lg text-sm font-medium transition-colors duration-150",
+                      "flex h-10 items-center rounded-full text-sm font-medium transition-colors duration-150",
                       collapsed ? "size-10 justify-center" : "gap-3 px-4",
                       active
                         ? "bg-primary-50 text-primary"
@@ -329,7 +328,6 @@ function UserCard({
         sideOffset={10}
         className="w-64 p-2 rounded-xl"
       >
-        {/* Header */}
         <div className="flex items-center gap-2.5 border-b border-border px-2 pt-1.5 pb-2.5">
           <Avatar className="size-8 bg-[#DCE3F0] text-primary">
             <AvatarFallback className="bg-[#DCE3F0] text-primary font-semibold text-xs">
@@ -342,7 +340,6 @@ function UserCard({
           </div>
         </div>
 
-        {/* Section: Sign in as (demo) */}
         <DropdownMenuGroup>
           <DropdownMenuLabel className="px-2 pt-2 pb-1 text-xs font-semibold text-muted-foreground">
             Sign in as (demo)
@@ -361,7 +358,6 @@ function UserCard({
 
         <DropdownMenuSeparator className="my-1.5" />
 
-        {/* Section: Data state preview */}
         <DropdownMenuGroup>
           <DropdownMenuLabel className="px-2 pb-1 text-xs font-semibold text-muted-foreground">
             Data state preview
@@ -380,7 +376,6 @@ function UserCard({
 
         <DropdownMenuSeparator className="my-1.5" />
 
-        {/* Section: Sign out */}
         <DropdownMenuItem
           onClick={onLogout}
           className="flex items-center gap-2 px-2 py-1.5 text-sm rounded-md text-destructive cursor-pointer hover:bg-destructive/10"
@@ -433,7 +428,6 @@ export function AppShell({
     }
   }
 
-  // Ctrl/Cmd + B keyboard shortcut to toggle sidebar
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "b") {
@@ -447,7 +441,6 @@ export function AppShell({
 
   return (
     <div className="flex h-dvh overflow-hidden bg-background">
-      {/* Desktop Sidebar (Floating Card) */}
       <aside
         aria-label="Sidebar"
         className={cn(
@@ -464,7 +457,6 @@ export function AppShell({
           <Brand collapsed={collapsed} />
         </div>
 
-        {/* Circular collapse toggle on the right edge */}
         <button
           type="button"
           onClick={toggle}
@@ -499,7 +491,6 @@ export function AppShell({
         </div>
       </aside>
 
-      {/* Mobile Drawer (using Drawer component from @workspace/ui) */}
       <Drawer
         open={sheetOpen}
         onOpenChange={setSheetOpen}
@@ -518,14 +509,12 @@ export function AppShell({
         </DrawerContent>
       </Drawer>
 
-      {/* Main Content Area */}
       <div
         id="main-scroll"
         className="relative flex min-w-0 flex-1 flex-col overflow-y-auto px-3"
       >
         <header className="sticky top-0 z-30 shrink-0 bg-background pt-3">
           <div className="relative">
-            {/* Concave notch that wraps around the sidebar toggle (desktop only) */}
             <div
               aria-hidden
               className="pointer-events-none absolute inset-y-0 left-0 z-10 hidden w-3 overflow-hidden lg:block"
@@ -544,35 +533,41 @@ export function AppShell({
                 <MenuIcon aria-hidden />
               </Button>
 
-              {/* Breadcrumb using @workspace/ui/components/breadcrumb */}
               <Breadcrumb className="min-w-0 flex-1">
                 <BreadcrumbList className="flex min-w-0 items-center gap-1.5 text-sm">
                   {crumbs.map((c, i) => {
                     const last = i === crumbs.length - 1
                     return (
-                      <BreadcrumbItem
-                        key={i}
-                        className={cn(
-                          "flex min-w-0 items-center gap-1.5",
-                          !last && "hidden sm:flex"
+                      <Fragment key={i}>
+                        {i > 0 && (
+                          <BreadcrumbSeparator
+                            className={cn(!last && "hidden sm:inline-flex")}
+                          />
                         )}
-                      >
-                        {i > 0 && <BreadcrumbSeparator />}
-                        {c.to && !last ? (
-                          <BreadcrumbLink>
-                            <Link
-                              to={c.to}
-                              className="truncate text-muted-foreground transition-colors hover:text-foreground"
+                        <BreadcrumbItem
+                          className={cn(
+                            "flex min-w-0 items-center gap-1.5",
+                            !last && "hidden sm:flex"
+                          )}
+                        >
+                          {c.to && !last ? (
+                            <BreadcrumbLink
+                              render={
+                                <Link
+                                  to={c.to}
+                                  className="truncate text-muted-foreground transition-colors hover:text-foreground"
+                                />
+                              }
                             >
                               {c.label}
-                            </Link>
-                          </BreadcrumbLink>
-                        ) : (
-                          <BreadcrumbPage className="truncate font-medium text-foreground">
-                            {c.label}
-                          </BreadcrumbPage>
-                        )}
-                      </BreadcrumbItem>
+                            </BreadcrumbLink>
+                          ) : (
+                            <BreadcrumbPage className="truncate font-medium text-foreground">
+                              {c.label}
+                            </BreadcrumbPage>
+                          )}
+                        </BreadcrumbItem>
+                      </Fragment>
                     )
                   })}
                 </BreadcrumbList>
