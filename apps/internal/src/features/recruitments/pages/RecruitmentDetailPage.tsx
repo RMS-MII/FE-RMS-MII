@@ -28,12 +28,41 @@ export type TabKey =
 
 export interface RecruitmentDetailPageProps {
   id: string
+  activeTab?: TabKey
+  selectedStage?: number | null
+  onTabChange?: (tab: TabKey) => void
+  onStageChange?: (stageIndex: number | null) => void
 }
 
-export function RecruitmentDetailPage({ id }: RecruitmentDetailPageProps) {
+export function RecruitmentDetailPage({
+  id,
+  activeTab: controlledTab,
+  selectedStage: controlledStage,
+  onTabChange,
+  onStageChange,
+}: RecruitmentDetailPageProps) {
   const navigate = useNavigate()
-  const [activeTab, setActiveTab] = useState<TabKey>("summary")
-  const [selectedStage, setSelectedStage] = useState<number | null>(null)
+  const [internalTab, setInternalTab] = useState<TabKey>("summary")
+  const [internalStage, setInternalStage] = useState<number | null>(null)
+
+  const activeTab = controlledTab ?? internalTab
+  const selectedStage = controlledStage !== undefined ? controlledStage : internalStage
+
+  const handleTabChange = (newTab: TabKey) => {
+    if (onTabChange) {
+      onTabChange(newTab)
+    } else {
+      setInternalTab(newTab)
+    }
+  }
+
+  const handleStageChange = (newStage: number | null) => {
+    if (onStageChange) {
+      onStageChange(newStage)
+    } else {
+      setInternalStage(newStage)
+    }
+  }
 
   const recruitment = useMemo(() => {
     return initialRecruitments.find((r) => r.id === id) ?? null
@@ -87,10 +116,9 @@ export function RecruitmentDetailPage({ id }: RecruitmentDetailPageProps) {
 
   const handleStageSelect = (index: number) => {
     if (activeTab === "candidates" && selectedStage === index) {
-      setSelectedStage(null)
+      handleStageChange(null)
     } else {
-      setSelectedStage(index)
-      setActiveTab("candidates")
+      handleStageChange(index)
     }
   }
 
@@ -134,12 +162,7 @@ export function RecruitmentDetailPage({ id }: RecruitmentDetailPageProps) {
                 role="tab"
                 type="button"
                 aria-selected={isActive}
-                onClick={() => {
-                  setActiveTab(tab.key)
-                  if (tab.key !== "candidates") {
-                    setSelectedStage(null)
-                  }
-                }}
+                onClick={() => handleTabChange(tab.key)}
                 className={cn(
                   "inline-flex items-center gap-1.5 rounded-full px-4 py-1.5 text-sm font-medium transition-all duration-150 cursor-pointer select-none",
                   isActive
@@ -173,7 +196,7 @@ export function RecruitmentDetailPage({ id }: RecruitmentDetailPageProps) {
           <CandidatesTab
             recruitment={recruitment}
             selectedStageIndex={selectedStage}
-            onStageChange={setSelectedStage}
+            onStageChange={handleStageChange}
           />
         )}
         {activeTab === "interviews" && (
