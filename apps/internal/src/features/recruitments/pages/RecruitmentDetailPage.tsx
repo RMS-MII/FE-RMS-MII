@@ -131,6 +131,14 @@ export function RecruitmentDetailPage({
     { key: "decisions", label: "Decisions", count: pendingDecisions.length },
   ]
 
+  const handleCreateStage = () => {
+    // Placeholder: create stage implementation will be handled in upcoming task
+  }
+
+  const handleEditStage = () => {
+    // Placeholder: edit stage implementation will be handled in upcoming task
+  }
+
   return (
     <div className="space-y-6">
       <RecruitmentDetailHeader recruitment={recruitment} />
@@ -140,6 +148,7 @@ export function RecruitmentDetailPage({
           items={pipelineItems}
           selected={activeTab === "candidates" ? selectedStage : null}
           onSelect={handleStageSelect}
+          onCreateStage={handleCreateStage}
         />
         {recruitment.status === "draft" && (
           <p className="mt-2 text-xs text-muted-foreground">
@@ -164,7 +173,7 @@ export function RecruitmentDetailPage({
                 aria-selected={isActive}
                 onClick={() => handleTabChange(tab.key)}
                 className={cn(
-                  "inline-flex items-center gap-1.5 rounded-full px-4 py-1.5 text-sm font-medium transition-all duration-150 cursor-pointer select-none",
+                  "inline-flex h-10 items-center gap-1.5 rounded-full px-4 py-1.5 text-sm font-medium transition-all duration-150 cursor-pointer select-none",
                   isActive
                     ? "bg-primary-50 text-primary font-semibold shadow-xs"
                     : "text-muted-foreground hover:bg-muted/40 hover:text-foreground"
@@ -191,7 +200,13 @@ export function RecruitmentDetailPage({
 
       <section aria-label={tabs.find((t) => t.key === activeTab)?.label}>
         {activeTab === "summary" && <SummaryTab recruitment={recruitment} />}
-        {activeTab === "stages" && <StagesTab recruitment={recruitment} />}
+        {activeTab === "stages" && (
+          <StagesTab
+            recruitment={recruitment}
+            onCreateStage={handleCreateStage}
+            onEditStage={handleEditStage}
+          />
+        )}
         {activeTab === "candidates" && (
           <CandidatesTab
             recruitment={recruitment}

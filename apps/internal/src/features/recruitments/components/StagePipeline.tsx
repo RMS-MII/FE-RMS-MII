@@ -1,4 +1,5 @@
 import { Check, X } from "lucide-react"
+import { CreateButton } from "@/shared/components"
 import { cn } from "@/shared/lib/utils"
 import type { PipelineItem, StageState } from "../types"
 
@@ -23,6 +24,7 @@ export interface StagePipelineProps {
   onSelect?: (index: number) => void
   selected?: number | null
   className?: string
+  onCreateStage?: () => void
 }
 
 function Marker({ state, index }: { state: StageState; index: number }) {
@@ -43,12 +45,13 @@ export function StagePipeline({
   onSelect,
   selected = null,
   className,
+  onCreateStage,
 }: StagePipelineProps) {
   if (items.length === 0) {
     return (
       <div
         className={cn(
-          "flex flex-col sm:flex-row items-center justify-between gap-3 rounded-2xl border border-dashed border-border bg-card/60 px-5 py-4 text-center sm:text-left",
+          "flex flex-col sm:flex-row items-center justify-between gap-4 rounded-2xl border border-dashed border-border bg-card/60 px-5 py-4 text-center sm:text-left",
           className
         )}
       >
@@ -60,9 +63,11 @@ export function StagePipeline({
             Stages define the sequential selection pipeline for candidate progression.
           </p>
         </div>
-        <span className="inline-flex items-center rounded-full bg-muted px-3 py-1 text-xs font-medium text-muted-foreground">
-          Unconfigured Pipeline
-        </span>
+        <div className="flex items-center gap-2">
+          <CreateButton onClick={onCreateStage}>
+            Create Stage
+          </CreateButton>
+        </div>
       </div>
     )
   }

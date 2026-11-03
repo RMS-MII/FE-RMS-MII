@@ -22,10 +22,17 @@ export function SummaryTab({ recruitment }: SummaryTabProps) {
     ) ?? mockEmployees[0]
 
   const rows: [string, React.ReactNode][] = [
+    [
+      "Batch Code",
+      <span
+        key="code"
+        className="font-semibold text-foreground"
+      >
+        {recruitment.batchCode}
+      </span>,
+    ],
     ["Position", recruitment.name],
-    ["Division", recruitment.division],
-    ["Work Location", recruitment.location || "Jakarta, APL Tower"],
-    ["Quota", `${recruitment.quota} candidates`],
+    ["Department", recruitment.division],
     [
       "Period",
       `${formatDate(recruitment.openDate)} to ${formatDate(recruitment.closeDate)}`,

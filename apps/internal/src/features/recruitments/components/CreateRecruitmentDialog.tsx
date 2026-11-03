@@ -77,7 +77,6 @@ export function CreateRecruitmentDialog({
 
     const newRecruitment: Recruitment = {
       id: newRecruitmentId,
-      code: generatedCode,
       batchCode: generatedCode,
       name: name.trim(),
       division: selectedDept?.name ?? "General",

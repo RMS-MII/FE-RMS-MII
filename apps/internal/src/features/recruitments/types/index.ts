@@ -115,27 +115,18 @@ export interface Stage {
  */
 export interface Recruitment {
   id: string
-  /** BatchCode in ERD.sql */
-  code: string
-  batchCode?: string
-  /** Name in ERD.sql */
+  batchCode: string
+  code?: string
   name: string
-  /** DepartmentId foreign key in ERD.sql */
   departmentId?: string
-  /** Department.Name in ERD.sql */
   division: string
   department?: Department
-  /** StartDate in ERD.sql */
   openDate: string
   startDate?: string
-  /** EndDate in ERD.sql */
   closeDate: string
   endDate?: string
-  /** Status in ERD.sql */
   status: RecruitmentStatus
-  /** Description in ERD.sql */
   description: string
-  /** CreatedBy in ERD.sql */
   createdBy?: string
   ownerId: string
   createdAt?: string

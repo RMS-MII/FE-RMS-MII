@@ -108,7 +108,7 @@ export function RecruitmentsListPage() {
       const q = search.trim().toLowerCase()
       const matchesSearch =
         !q ||
-        item.code.toLowerCase().includes(q) ||
+        item.batchCode.toLowerCase().includes(q) ||
         item.name.toLowerCase().includes(q) ||
         item.division.toLowerCase().includes(q)
 
@@ -132,8 +132,8 @@ export function RecruitmentsListPage() {
 
       switch (sortKey) {
         case "code":
-          valA = a.code
-          valB = b.code
+          valA = a.batchCode
+          valB = b.batchCode
           break
         case "name":
           valA = a.name.toLowerCase()
@@ -424,7 +424,7 @@ export function RecruitmentsListPage() {
                     >
                       <TableCell className="pl-5 whitespace-nowrap">
                         <span className="font-mono text-sm font-medium text-muted-foreground">
-                          {recruitment.code}
+                          {recruitment.batchCode}
                         </span>
                       </TableCell>
 
