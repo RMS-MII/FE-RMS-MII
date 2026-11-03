@@ -15,8 +15,8 @@ import { Route as AuthIndexRouteImport } from './routes/_auth/index'
 import { Route as AuthCandidatesRouteImport } from './routes/_auth/candidates'
 import { Route as AuthDashboardRouteImport } from './routes/_auth/dashboard'
 import { Route as AuthEmailLogsRouteImport } from './routes/_auth/email-logs'
-import { Route as AuthRecruitmentsRouteImport } from './routes/_auth/recruitments'
 import { Route as AuthUsersRouteImport } from './routes/_auth/users'
+import { Route as AuthRecruitmentsRecruitmentsRouteImport } from './routes/_auth/_recruitments/recruitments'
 
 const AuthRoute = AuthRouteImport.update({
   id: '/_auth',
@@ -47,16 +47,17 @@ const AuthEmailLogsRoute = AuthEmailLogsRouteImport.update({
   path: '/email-logs',
   getParentRoute: () => AuthRoute,
 } as any)
-const AuthRecruitmentsRoute = AuthRecruitmentsRouteImport.update({
-  id: '/recruitments',
-  path: '/recruitments',
-  getParentRoute: () => AuthRoute,
-} as any)
 const AuthUsersRoute = AuthUsersRouteImport.update({
   id: '/users',
   path: '/users',
   getParentRoute: () => AuthRoute,
 } as any)
+const AuthRecruitmentsRecruitmentsRoute =
+  AuthRecruitmentsRecruitmentsRouteImport.update({
+    id: '/_recruitments/recruitments',
+    path: '/recruitments',
+    getParentRoute: () => AuthRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof AuthIndexRoute
@@ -64,17 +65,17 @@ export interface FileRoutesByFullPath {
   '/candidates': typeof AuthCandidatesRoute
   '/dashboard': typeof AuthDashboardRoute
   '/email-logs': typeof AuthEmailLogsRoute
-  '/recruitments': typeof AuthRecruitmentsRoute
   '/users': typeof AuthUsersRoute
+  '/recruitments': typeof AuthRecruitmentsRecruitmentsRoute
 }
 export interface FileRoutesByTo {
   '/login': typeof LoginRoute
   '/candidates': typeof AuthCandidatesRoute
   '/dashboard': typeof AuthDashboardRoute
   '/email-logs': typeof AuthEmailLogsRoute
-  '/recruitments': typeof AuthRecruitmentsRoute
   '/users': typeof AuthUsersRoute
   '/': typeof AuthIndexRoute
+  '/recruitments': typeof AuthRecruitmentsRecruitmentsRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -83,9 +84,9 @@ export interface FileRoutesById {
   '/_auth/candidates': typeof AuthCandidatesRoute
   '/_auth/dashboard': typeof AuthDashboardRoute
   '/_auth/email-logs': typeof AuthEmailLogsRoute
-  '/_auth/recruitments': typeof AuthRecruitmentsRoute
   '/_auth/users': typeof AuthUsersRoute
   '/_auth/': typeof AuthIndexRoute
+  '/_auth/_recruitments/recruitments': typeof AuthRecruitmentsRecruitmentsRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -95,17 +96,17 @@ export interface FileRouteTypes {
     | '/candidates'
     | '/dashboard'
     | '/email-logs'
-    | '/recruitments'
     | '/users'
+    | '/recruitments'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/login'
     | '/candidates'
     | '/dashboard'
     | '/email-logs'
-    | '/recruitments'
     | '/users'
     | '/'
+    | '/recruitments'
   id:
     | '__root__'
     | '/_auth'
@@ -113,9 +114,9 @@ export interface FileRouteTypes {
     | '/_auth/candidates'
     | '/_auth/dashboard'
     | '/_auth/email-logs'
-    | '/_auth/recruitments'
     | '/_auth/users'
     | '/_auth/'
+    | '/_auth/_recruitments/recruitments'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -167,18 +168,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthEmailLogsRouteImport
       parentRoute: typeof AuthRoute
     }
-    '/_auth/recruitments': {
-      id: '/_auth/recruitments'
-      path: '/recruitments'
-      fullPath: '/recruitments'
-      preLoaderRoute: typeof AuthRecruitmentsRouteImport
-      parentRoute: typeof AuthRoute
-    }
     '/_auth/users': {
       id: '/_auth/users'
       path: '/users'
       fullPath: '/users'
       preLoaderRoute: typeof AuthUsersRouteImport
+      parentRoute: typeof AuthRoute
+    }
+    '/_auth/_recruitments/recruitments': {
+      id: '/_auth/_recruitments/recruitments'
+      path: '/recruitments'
+      fullPath: '/recruitments'
+      preLoaderRoute: typeof AuthRecruitmentsRecruitmentsRouteImport
       parentRoute: typeof AuthRoute
     }
   }
@@ -188,18 +189,18 @@ interface AuthRouteChildren {
   AuthCandidatesRoute: typeof AuthCandidatesRoute
   AuthDashboardRoute: typeof AuthDashboardRoute
   AuthEmailLogsRoute: typeof AuthEmailLogsRoute
-  AuthRecruitmentsRoute: typeof AuthRecruitmentsRoute
   AuthUsersRoute: typeof AuthUsersRoute
   AuthIndexRoute: typeof AuthIndexRoute
+  AuthRecruitmentsRecruitmentsRoute: typeof AuthRecruitmentsRecruitmentsRoute
 }
 
 const AuthRouteChildren: AuthRouteChildren = {
   AuthCandidatesRoute: AuthCandidatesRoute,
   AuthDashboardRoute: AuthDashboardRoute,
   AuthEmailLogsRoute: AuthEmailLogsRoute,
-  AuthRecruitmentsRoute: AuthRecruitmentsRoute,
   AuthUsersRoute: AuthUsersRoute,
   AuthIndexRoute: AuthIndexRoute,
+  AuthRecruitmentsRecruitmentsRoute: AuthRecruitmentsRecruitmentsRoute,
 }
 
 const AuthRouteWithChildren = AuthRoute._addFileChildren(AuthRouteChildren)
