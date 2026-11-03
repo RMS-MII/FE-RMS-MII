@@ -16,7 +16,8 @@ import { Route as AuthCandidatesRouteImport } from './routes/_auth/candidates'
 import { Route as AuthDashboardRouteImport } from './routes/_auth/dashboard'
 import { Route as AuthEmailLogsRouteImport } from './routes/_auth/email-logs'
 import { Route as AuthUsersRouteImport } from './routes/_auth/users'
-import { Route as AuthRecruitmentsRecruitmentsRouteImport } from './routes/_auth/_recruitments/recruitments'
+import { Route as AuthRecruitmentsIndexRouteImport } from './routes/_auth/recruitments/index'
+import { Route as AuthRecruitmentsIdIndexRouteImport } from './routes/_auth/recruitments/$id/index'
 
 const AuthRoute = AuthRouteImport.update({
   id: '/_auth',
@@ -52,12 +53,16 @@ const AuthUsersRoute = AuthUsersRouteImport.update({
   path: '/users',
   getParentRoute: () => AuthRoute,
 } as any)
-const AuthRecruitmentsRecruitmentsRoute =
-  AuthRecruitmentsRecruitmentsRouteImport.update({
-    id: '/_recruitments/recruitments',
-    path: '/recruitments',
-    getParentRoute: () => AuthRoute,
-  } as any)
+const AuthRecruitmentsIndexRoute = AuthRecruitmentsIndexRouteImport.update({
+  id: '/recruitments/',
+  path: '/recruitments/',
+  getParentRoute: () => AuthRoute,
+} as any)
+const AuthRecruitmentsIdIndexRoute = AuthRecruitmentsIdIndexRouteImport.update({
+  id: '/recruitments/$id/',
+  path: '/recruitments/$id/',
+  getParentRoute: () => AuthRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof AuthIndexRoute
@@ -66,7 +71,8 @@ export interface FileRoutesByFullPath {
   '/dashboard': typeof AuthDashboardRoute
   '/email-logs': typeof AuthEmailLogsRoute
   '/users': typeof AuthUsersRoute
-  '/recruitments': typeof AuthRecruitmentsRecruitmentsRoute
+  '/recruitments/': typeof AuthRecruitmentsIndexRoute
+  '/recruitments/$id/': typeof AuthRecruitmentsIdIndexRoute
 }
 export interface FileRoutesByTo {
   '/login': typeof LoginRoute
@@ -75,7 +81,8 @@ export interface FileRoutesByTo {
   '/email-logs': typeof AuthEmailLogsRoute
   '/users': typeof AuthUsersRoute
   '/': typeof AuthIndexRoute
-  '/recruitments': typeof AuthRecruitmentsRecruitmentsRoute
+  '/recruitments': typeof AuthRecruitmentsIndexRoute
+  '/recruitments/$id': typeof AuthRecruitmentsIdIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -86,7 +93,8 @@ export interface FileRoutesById {
   '/_auth/email-logs': typeof AuthEmailLogsRoute
   '/_auth/users': typeof AuthUsersRoute
   '/_auth/': typeof AuthIndexRoute
-  '/_auth/_recruitments/recruitments': typeof AuthRecruitmentsRecruitmentsRoute
+  '/_auth/recruitments/': typeof AuthRecruitmentsIndexRoute
+  '/_auth/recruitments/$id/': typeof AuthRecruitmentsIdIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -97,7 +105,8 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/email-logs'
     | '/users'
-    | '/recruitments'
+    | '/recruitments/'
+    | '/recruitments/$id/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/login'
@@ -107,6 +116,7 @@ export interface FileRouteTypes {
     | '/users'
     | '/'
     | '/recruitments'
+    | '/recruitments/$id'
   id:
     | '__root__'
     | '/_auth'
@@ -116,7 +126,8 @@ export interface FileRouteTypes {
     | '/_auth/email-logs'
     | '/_auth/users'
     | '/_auth/'
-    | '/_auth/_recruitments/recruitments'
+    | '/_auth/recruitments/'
+    | '/_auth/recruitments/$id/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -175,11 +186,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthUsersRouteImport
       parentRoute: typeof AuthRoute
     }
-    '/_auth/_recruitments/recruitments': {
-      id: '/_auth/_recruitments/recruitments'
+    '/_auth/recruitments/': {
+      id: '/_auth/recruitments/'
       path: '/recruitments'
-      fullPath: '/recruitments'
-      preLoaderRoute: typeof AuthRecruitmentsRecruitmentsRouteImport
+      fullPath: '/recruitments/'
+      preLoaderRoute: typeof AuthRecruitmentsIndexRouteImport
+      parentRoute: typeof AuthRoute
+    }
+    '/_auth/recruitments/$id/': {
+      id: '/_auth/recruitments/$id/'
+      path: '/recruitments/$id'
+      fullPath: '/recruitments/$id/'
+      preLoaderRoute: typeof AuthRecruitmentsIdIndexRouteImport
       parentRoute: typeof AuthRoute
     }
   }
@@ -191,7 +209,8 @@ interface AuthRouteChildren {
   AuthEmailLogsRoute: typeof AuthEmailLogsRoute
   AuthUsersRoute: typeof AuthUsersRoute
   AuthIndexRoute: typeof AuthIndexRoute
-  AuthRecruitmentsRecruitmentsRoute: typeof AuthRecruitmentsRecruitmentsRoute
+  AuthRecruitmentsIndexRoute: typeof AuthRecruitmentsIndexRoute
+  AuthRecruitmentsIdIndexRoute: typeof AuthRecruitmentsIdIndexRoute
 }
 
 const AuthRouteChildren: AuthRouteChildren = {
@@ -200,7 +219,8 @@ const AuthRouteChildren: AuthRouteChildren = {
   AuthEmailLogsRoute: AuthEmailLogsRoute,
   AuthUsersRoute: AuthUsersRoute,
   AuthIndexRoute: AuthIndexRoute,
-  AuthRecruitmentsRecruitmentsRoute: AuthRecruitmentsRecruitmentsRoute,
+  AuthRecruitmentsIndexRoute: AuthRecruitmentsIndexRoute,
+  AuthRecruitmentsIdIndexRoute: AuthRecruitmentsIdIndexRoute,
 }
 
 const AuthRouteWithChildren = AuthRoute._addFileChildren(AuthRouteChildren)

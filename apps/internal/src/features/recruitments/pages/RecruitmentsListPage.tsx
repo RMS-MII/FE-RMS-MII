@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react"
-import { createFileRoute } from "@tanstack/react-router"
+import { useNavigate } from "@tanstack/react-router"
 import { Eye, MoreHorizontal, Pencil, Plus, Trash2 } from "lucide-react"
 
 // Primitives from @workspace/ui
@@ -28,28 +28,27 @@ import {
 } from "@workspace/ui/components/select"
 
 // Shared internal components
-import { PageHeader } from "@/components/PageHeader"
-import { Panel } from "@/components/Panel"
-import { SearchInput } from "@/components/SearchInput"
-import { FilterChips, type Chip } from "@/components/FilterChips"
-import { TableSortHeader, type SortDirection } from "@/components/TableSortHeader"
-import { StatusBadge } from "@/components/StatusBadge"
-import { DataTablePagination } from "@/components/DataTablePagination"
-import { EmptyState } from "@/components/EmptyState"
-
-// Data & domain helpers
 import {
-  recruitments as initialRecruitments,
-  candidates,
-  type Recruitment,
-  type RecruitmentStatus,
-} from "@/data/mock"
-import { activeCount, recruitmentStatusMeta } from "@/data/domain"
-import { formatPeriod } from "@/data/format"
+  PageHeader,
+  Panel,
+  SearchInput,
+  FilterChips,
+  type Chip,
+  TableSortHeader,
+  type SortDirection,
+  StatusBadge,
+  DataTablePagination,
+  EmptyState,
+} from "@/shared/components"
+import { formatPeriod } from "@/shared/lib/format"
 
-export const Route = createFileRoute("/_auth/_recruitments/recruitments")({
-  component: RecruitmentsPage,
-})
+// Feature-owned data & types
+import type { Recruitment, RecruitmentStatus } from "../types"
+import {
+  initialRecruitments,
+  recruitmentStatusMeta,
+  activeCandidateCount,
+} from "../data/mock"
 
 type SortKey = "code" | "name" | "stage" | "candidates" | "period" | "status"
 
@@ -63,7 +62,8 @@ const statusItems: { label: string; value: RecruitmentStatus | "all" }[] = [
   { label: "Closed", value: "closed" },
 ]
 
-function RecruitmentsPage() {
+export function RecruitmentsListPage() {
+  const navigate = useNavigate()
   const [data, setData] = useState<Recruitment[]>(initialRecruitments)
   const [search, setSearch] = useState("")
   const [statusFilter, setStatusFilter] = useState<RecruitmentStatus | "all">("all")
@@ -142,8 +142,8 @@ function RecruitmentsPage() {
           valB = b.currentStage
           break
         case "candidates":
-          valA = activeCount(a, candidates)
-          valB = activeCount(b, candidates)
+          valA = activeCandidateCount(a)
+          valB = activeCandidateCount(b)
           break
         case "period":
           valA = a.openDate
@@ -215,6 +215,13 @@ function RecruitmentsPage() {
     setData((prev) => prev.filter((r) => r.id !== id))
   }
 
+  const handleViewDetail = (id: string) => {
+    navigate({
+      to: "/recruitments/$id",
+      params: { id },
+    })
+  }
+
   const renderCurrentStage = (r: Recruitment) => {
     if (r.currentStage < 0 || r.status === "draft") {
       return <span className="text-sm text-muted-foreground">Not started</span>
@@ -225,9 +232,6 @@ function RecruitmentsPage() {
     const current = r.stages[r.currentStage]
     return (
       <div className="flex items-baseline gap-1.5 whitespace-nowrap text-sm">
-        <span className="tabular-nums text-muted-foreground">
-          {r.currentStage + 1}/{r.stages.length}
-        </span>
         <span className="font-normal text-foreground">
           {current?.name ?? `Stage ${r.currentStage + 1}`}
         </span>
@@ -251,7 +255,7 @@ function RecruitmentsPage() {
                 setSearch(val)
                 setPage(1)
               }}
-              placeholder="Search recruitment name or division"
+              placeholder="Search by name or position"
             />
 
             <Select
@@ -329,6 +333,7 @@ function RecruitmentsPage() {
                   currentSortKey={sortKey}
                   currentDirection={sortDirection}
                   onSort={handleSort}
+                  align="left"
                   className="min-w-64"
                 />
                 <TableSortHeader
@@ -402,7 +407,7 @@ function RecruitmentsPage() {
               ) : (
                 paginatedData.map((recruitment) => {
                   const statusMeta = recruitmentStatusMeta[recruitment.status]
-                  const activeCandidateCount = activeCount(recruitment, candidates)
+                  const activeCountNumber = activeCandidateCount(recruitment)
 
                   return (
                     <TableRow
@@ -417,9 +422,13 @@ function RecruitmentsPage() {
 
                       <TableCell className="py-3.5">
                         <div className="flex flex-col">
-                          <span className="text-sm font-semibold text-foreground transition-colors hover:text-primary hover:underline cursor-pointer">
+                          <button
+                            type="button"
+                            onClick={() => handleViewDetail(recruitment.id)}
+                            className="text-left text-sm font-semibold text-foreground transition-colors hover:text-primary hover:underline cursor-pointer"
+                          >
                             {recruitment.name}
-                          </span>
+                          </button>
                           <span className="text-xs text-muted-foreground mt-0.5">
                             {recruitment.division}
                           </span>
@@ -431,7 +440,7 @@ function RecruitmentsPage() {
                       </TableCell>
 
                       <TableCell className="text-center tabular-nums text-sm font-normal text-foreground">
-                        {activeCandidateCount}
+                        {activeCountNumber}
                       </TableCell>
 
                       <TableCell className="whitespace-nowrap text-sm tabular-nums text-muted-foreground">
@@ -460,6 +469,7 @@ function RecruitmentsPage() {
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end" className="w-36 rounded-xl">
                             <DropdownMenuItem
+                              onClick={() => handleViewDetail(recruitment.id)}
                               className="cursor-pointer gap-2 text-xs"
                             >
                               <Eye className="size-3.5" aria-hidden />
@@ -490,6 +500,7 @@ function RecruitmentsPage() {
           </Table>
         </div>
 
+        {/* Pagination */}
         {sortedData.length > 0 && (
           <DataTablePagination
             page={page}
@@ -502,3 +513,4 @@ function RecruitmentsPage() {
     </div>
   )
 }
+

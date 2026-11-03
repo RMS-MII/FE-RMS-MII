@@ -32,3 +32,4 @@ export function StatusBadge({ tone, children, icon, className }: StatusBadgeProp
     </span>
   )
 }
+

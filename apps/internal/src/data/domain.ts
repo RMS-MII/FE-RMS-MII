@@ -1,4 +1,4 @@
-import type { Tone } from "@/components/StatusBadge"
+import type { Tone } from "@/shared/components"
 import type {
   Candidate,
   CandidateStatus,

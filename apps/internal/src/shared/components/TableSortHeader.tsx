@@ -30,7 +30,7 @@ export function TableSortHeader({
   return (
     <TableHead
       className={cn(
-        "h-11 font-medium text-muted-foreground select-none whitespace-nowrap",
+        "h-11 text-xs font-medium text-muted-foreground select-none whitespace-nowrap",
         align === "right" && "text-right",
         align === "center" && "text-center",
         className
@@ -64,3 +64,4 @@ export function TableSortHeader({
     </TableHead>
   )
 }
+
