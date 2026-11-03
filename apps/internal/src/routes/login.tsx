@@ -4,8 +4,8 @@ import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
 
 const loginSchema = z.object({
-  email: z.string().min(1, "Email wajib diisi").email("Format email tidak valid"),
-  password: z.string().min(6, "Kata sandi minimal 6 karakter"),
+  email: z.string().min(1, "Email is required").email("Invalid email format"),
+  password: z.string().min(6, "Password must be at least 6 characters"),
 })
 
 type LoginFormValues = z.infer<typeof loginSchema>
@@ -30,18 +30,18 @@ function LoginPage() {
   })
 
   const onSubmit = () => {
-    // Mode UI preview: navigasi langsung tanpa memanggil backend API
-    navigate({ to: "/dashboard" })
+    // UI preview mode: navigate directly to dashboard
+    navigate({ to: "/" })
   }
 
   return (
     <div className="min-h-screen bg-background flex flex-col justify-center py-12 px-4 sm:px-6 lg:px-8">
       <div className="sm:mx-auto sm:w-full sm:max-w-md">
         <h1 className="text-center text-2xl font-semibold tracking-tight text-foreground">
-          Sistem Manajemen Rekrutmen
+          Recruitment Management System
         </h1>
         <p className="mt-2 text-center text-sm text-muted-foreground">
-          Portal internal untuk HR dan Interviewer Metrodata
+          Internal portal for Metrodata HR and Interviewers
         </p>
       </div>
 
@@ -78,7 +78,7 @@ function LoginPage() {
                 htmlFor="password"
                 className="block text-sm font-medium text-foreground"
               >
-                Kata sandi
+                Password
               </label>
               <div className="mt-1">
                 <input
@@ -103,17 +103,17 @@ function LoginPage() {
                 type="submit"
                 className="w-full h-9 px-4 rounded-md bg-primary text-primary-foreground text-sm font-medium hover:bg-primary-600 focus:outline-none focus:ring-2 focus:ring-ring transition-colors"
               >
-                Masuk
+                Sign in
               </button>
             </div>
           </form>
 
           <div className="mt-6 text-center">
             <Link
-              to="/dashboard"
+              to="/"
               className="text-xs text-primary hover:underline font-medium"
             >
-              Lewati dan langsung ke Dashboard &rarr;
+              Skip and proceed to Dashboard &rarr;
             </Link>
           </div>
         </div>

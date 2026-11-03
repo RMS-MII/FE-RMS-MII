@@ -1,4 +1,5 @@
 export type UserRole = "HR" | "Interviewer"
+export type DataMode = "normal" | "loading" | "empty" | "error"
 
 export interface AuthUser {
   id: string
@@ -12,6 +13,7 @@ export interface AuthState {
   accessToken: string | null
   isAuthenticated: boolean
   isInitializing: boolean
+  dataMode: DataMode
 }
 
 export interface LoginRequest {
@@ -23,4 +25,3 @@ export interface LoginResponse {
   accessToken: string
   user: AuthUser
 }
-

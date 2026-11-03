@@ -1,18 +1,19 @@
 import { createSlice } from "@reduxjs/toolkit"
 import type { PayloadAction } from "@reduxjs/toolkit"
-import type { AuthState, AuthUser, UserRole } from "../types"
+import type { AuthState, AuthUser, DataMode, UserRole } from "../types"
 
 // Default mock sesi agar frontend bisa langsung diakses tanpa login
 const initialState: AuthState = {
   user: {
     id: "usr-dev-1",
-    name: "Budi Santoso",
-    email: "hr@metrodata.co.id",
+    name: "Fajar Mahendra",
+    email: "fajar.mahendra@metrodata.co.id",
     role: "HR",
   },
   accessToken: "mock-dev-token",
   isAuthenticated: true,
   isInitializing: false,
+  dataMode: "normal",
 }
 
 export const authSlice = createSlice({
@@ -33,6 +34,9 @@ export const authSlice = createSlice({
         state.user.role = action.payload
       }
     },
+    setDataMode: (state, action: PayloadAction<DataMode>) => {
+      state.dataMode = action.payload
+    },
     setAccessToken: (state, action: PayloadAction<string>) => {
       state.accessToken = action.payload
       state.isAuthenticated = true
@@ -46,5 +50,5 @@ export const authSlice = createSlice({
   },
 })
 
-export const { setCredentials, setRole, setAccessToken, logout } =
+export const { setCredentials, setRole, setDataMode, setAccessToken, logout } =
   authSlice.actions

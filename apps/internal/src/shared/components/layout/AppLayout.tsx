@@ -1,18 +1,45 @@
-import { Outlet } from "@tanstack/react-router"
-import { AppSidebar } from "./AppSidebar"
-import { AppHeader } from "./AppHeader"
+import { Outlet, useRouterState, useNavigate } from "@tanstack/react-router"
+import { AppShell } from "./AppShell"
+import type { Crumb } from "./AppShell"
+import { useAppDispatch } from "@/app/store"
+import { logout } from "@/features/auth"
 
-export function AppLayout() {
-  return (
-    <div className="flex min-h-screen bg-background">
-      <AppSidebar />
-      <div className="flex-1 flex flex-col min-w-0">
-        <AppHeader />
-        <main className="flex-1 p-6 overflow-y-auto">
-          <Outlet />
-        </main>
-      </div>
-    </div>
-  )
+function getCrumbsForPath(path: string): Crumb[] {
+  if (path.startsWith("/dashboard")) {
+    return [{ label: "Dashboard" }]
+  }
+  if (path.startsWith("/recruitments")) {
+    return [{ label: "Dashboard", to: "/dashboard" }, { label: "Recruitments" }]
+  }
+  if (path.startsWith("/candidates")) {
+    return [{ label: "Dashboard", to: "/dashboard" }, { label: "Candidates" }]
+  }
+  if (path.startsWith("/email-logs")) {
+    return [{ label: "Dashboard", to: "/dashboard" }, { label: "Email Logs" }]
+  }
+  if (path.startsWith("/users")) {
+    return [{ label: "Dashboard", to: "/dashboard" }, { label: "Users" }]
+  }
+  const cleanPath = path.replace("/", "")
+  const capitalized = cleanPath.charAt(0).toUpperCase() + cleanPath.slice(1)
+  return [{ label: "Dashboard", to: "/dashboard" }, { label: capitalized }]
 }
 
+export function AppLayout() {
+  const routerState = useRouterState()
+  const navigate = useNavigate()
+  const dispatch = useAppDispatch()
+  const path = routerState.location.pathname
+  const crumbs = getCrumbsForPath(path)
+
+  const handleLogout = () => {
+    dispatch(logout())
+    navigate({ to: "/login" })
+  }
+
+  return (
+    <AppShell path={path} crumbs={crumbs} onLogout={handleLogout}>
+      <Outlet />
+    </AppShell>
+  )
+}

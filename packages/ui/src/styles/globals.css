@@ -11,7 +11,9 @@
   --font-heading: var(--font-sans);
   
   --color-primary: var(--primary);
+  --color-primary-50: var(--primary-50);
   --color-primary-foreground: var(--primary-foreground);
+  --color-attention: var(--attention);
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
@@ -46,6 +48,11 @@
   --color-neutral-soft: var(--neutral-soft);
 }
 
+@theme {
+  --shadow-float: 0 8px 24px -8px rgb(17 53 118 / 0.18);
+  --shadow-card: 0 8px 24px -14px rgb(17 53 118 / 0.16);
+}
+
 :root {
   --radius: 0.5rem;
 
@@ -57,7 +64,9 @@
   --popover-foreground: #1B2437;
 
   --primary: #17479D;
+  --primary-50: #EFF2F8;
   --primary-foreground: #FFFFFF;
+  --attention: #EA580C;
   --secondary: #EFF2F8;
   --secondary-foreground: #113576;
   --accent: #EFF2F8;
@@ -86,4 +95,13 @@
   --neutral: #475069;  --neutral-soft: #EEF0F5;
 
   --shadow-float: 0 8px 24px -8px rgb(17 53 118 / 0.18);
+  --shadow-card: 0 8px 24px -14px rgb(17 53 118 / 0.16);
+}
+
+/* Header card curves inward around the sidebar toggle, whose centre sits 12px left of the card. */
+@media (min-width: 1024px) {
+  .header-notch {
+    -webkit-mask: radial-gradient(circle at -12px 50%, transparent 22px, #000 22.5px);
+    mask: radial-gradient(circle at -12px 50%, transparent 22px, #000 22.5px);
+  }
 }
