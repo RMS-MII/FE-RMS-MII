@@ -72,27 +72,45 @@ export function CreateRecruitmentDialog({
 
     const selectedDept = mockDepartments.find((d) => d.id === departmentId)
 
+    const newRecruitmentId = `r-${Date.now()}`
+    const newStageId = `s-${Date.now()}-1`
+
     const newRecruitment: Recruitment = {
-      id: `r-${Date.now()}`,
+      id: newRecruitmentId,
       code: generatedCode,
+      batchCode: generatedCode,
       name: name.trim(),
       division: selectedDept?.name ?? "General",
-      departmentId: selectedDept?.id,
+      departmentId: selectedDept?.id ?? "",
+      department: selectedDept,
       location: "Jakarta, APL Tower",
       quota: 1,
       openDate,
+      startDate: openDate,
       closeDate,
+      endDate: closeDate,
       status: "draft",
       currentStage: -1,
+      createdBy: "e1000000-0000-4000-8000-000000000001",
       ownerId: "u1",
       description: description.trim(),
+      createdAt: new Date().toISOString(),
+      updatedAt: null,
       stages: [
         {
-          id: `s-${Date.now()}-1`,
+          id: newStageId,
+          batchStageId: `bs-${newStageId}`,
+          recruitmentBatchId: newRecruitmentId,
+          stageTypeId: "st-10000000-0000-4000-8000-000000000001",
           name: "Document Screening",
           type: "screening",
           durationDays: 7,
+          passingScore: 70,
           ownerId: "u1",
+          startDate: openDate,
+          endDate: closeDate,
+          nextStageId: null,
+          isActive: true,
         },
       ],
     }
