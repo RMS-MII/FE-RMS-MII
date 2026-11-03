@@ -24,7 +24,7 @@ export function RecruitmentDetailHeader({
         onClick={() => navigate({ to: "/recruitments" })}
         aria-label="Back to recruitments list"
         title="Back to recruitments list"
-        className="mt-0.5 size-10 shrink-0 rounded-full border-0 bg-muted text-foreground transition-all duration-150 hover:bg-muted/40 hover:text-primary cursor-pointer shadow-none focus-visible:ring-2 focus-visible:ring-primary outline-none"
+        className="mt-0.5 size-10 shrink-0 rounded-full border-0 bg-gray-200 text-foreground transition-all duration-150 hover:bg-muted hover:text-primary cursor-pointer shadow-none focus-visible:ring-2 focus-visible:ring-primary outline-none"
       >
         <ArrowLeft className="size-4.5" strokeWidth={2} aria-hidden />
       </Button>

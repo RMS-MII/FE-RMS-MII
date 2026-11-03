@@ -105,10 +105,8 @@ export function RecruitmentDetailPage({ id }: RecruitmentDetailPageProps) {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
       <RecruitmentDetailHeader recruitment={recruitment} />
 
-      {/* Signature Stage Pipeline Chevrons */}
       <section aria-label="Recruitment stages flow">
         <StagePipeline
           items={pipelineItems}
@@ -122,8 +120,7 @@ export function RecruitmentDetailPage({ id }: RecruitmentDetailPageProps) {
         )}
       </section>
 
-      {/* Pill Navigation Tabs matching reference UI */}
-      <div className="flex overflow-x-auto pb-1">
+      <div>
         <div
           role="tablist"
           aria-label="Recruitment detail sections"
@@ -169,7 +166,6 @@ export function RecruitmentDetailPage({ id }: RecruitmentDetailPageProps) {
         </div>
       </div>
 
-      {/* Active Tab Panel */}
       <section aria-label={tabs.find((t) => t.key === activeTab)?.label}>
         {activeTab === "summary" && <SummaryTab recruitment={recruitment} />}
         {activeTab === "stages" && <StagesTab recruitment={recruitment} />}

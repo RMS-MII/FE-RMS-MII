@@ -128,7 +128,6 @@ export function DatePicker({
               if (max && date > max) return true
               return false
             }}
-            initialFocus
           />
         </PopoverContent>
       </Popover>

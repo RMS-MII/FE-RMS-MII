@@ -35,10 +35,7 @@ function Marker({ state, index }: { state: StageState; index: number }) {
   return <span className="shrink-0 tabular-nums opacity-85 font-semibold">{index + 1}</span>
 }
 
-/**
- * Signature recruitment element: stages displayed as joined chevrons.
- * Horizontal row on desktop; structured list on mobile.
- */
+
 export function StagePipeline({
   items,
   label = "Recruitment stages",
@@ -121,7 +118,6 @@ export function StagePipeline({
 
   return (
     <div className={cn("w-full", className)}>
-      {/* Desktop chevron flow */}
       <ol
         aria-label={label}
         className="hidden overflow-hidden rounded-xl md:flex select-none"
@@ -159,7 +155,6 @@ export function StagePipeline({
         ))}
       </ol>
 
-      {/* Mobile stacked list */}
       <ol
         aria-label={label}
         className="divide-y divide-border overflow-hidden rounded-xl border border-border md:hidden bg-card"
