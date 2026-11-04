@@ -241,7 +241,7 @@ export function InterviewsTab({
     <Panel className="p-4 sm:p-6 space-y-6 bg-card border-border">
       {/* Top Pending Reschedule Banner Alert (if any) */}
       {pendingReschedules.length > 0 && !isFilterPendingReschedule && (
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 rounded-2xl border border-amber-200 bg-amber-50/90 px-4 py-3 text-xs text-amber-950 dark:border-amber-800/80 dark:bg-amber-950/40 dark:text-amber-200">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 rounded-2xl bg-amber-50 px-4 py-3 text-xs text-amber-950 ">
           <div className="flex items-center gap-2.5">
             <AlertTriangle className="size-4 text-amber-600 dark:text-amber-400 shrink-0" />
             <div>
@@ -258,7 +258,7 @@ export function InterviewsTab({
             <button
               type="button"
               onClick={handleTogglePendingReschedule}
-              className="shrink-0 rounded-full bg-amber-100 text-amber-900 border border-amber-300 px-3 py-1.5 text-xs font-semibold hover:bg-amber-200 transition-colors cursor-pointer"
+              className="shrink-0 rounded-full border-none bg-amber-200/40 text-amber-900 border border-amber-300 px-3 py-1.5 text-xs font-semibold hover:bg-amber-200 transition-colors cursor-pointer"
             >
               Filter in Table
             </button>

@@ -357,7 +357,11 @@ export function CandidatesTab({
             />
 
             {/* Stage Filter */}
-            <Select value={stageFilter} onValueChange={handleStageChange}>
+            <Select
+              items={stageItems}
+              value={stageFilter}
+              onValueChange={handleStageChange}
+            >
               <SelectTrigger className="h-10 w-48 rounded-full border-0 bg-muted px-4 text-sm text-foreground transition-all duration-150 hover:bg-muted/40 focus-visible:ring-2 focus-visible:ring-primary shadow-none">
                 <SelectValue placeholder="All Stages" />
               </SelectTrigger>
@@ -373,7 +377,11 @@ export function CandidatesTab({
             </Select>
 
             {/* Status Filter */}
-            <Select value={statusFilter} onValueChange={handleStatusChange}>
+            <Select
+              items={statusItems}
+              value={statusFilter}
+              onValueChange={handleStatusChange}
+            >
               <SelectTrigger className="h-10 w-40 rounded-full border-0 bg-muted px-4 text-sm text-foreground transition-all duration-150 hover:bg-muted/40 focus-visible:ring-2 focus-visible:ring-primary shadow-none">
                 <SelectValue placeholder="All Status" />
               </SelectTrigger>
