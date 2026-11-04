@@ -1,5 +1,5 @@
-import { useMemo, useState } from "react"
-import { useNavigate } from "@tanstack/react-router"
+import { useEffect, useMemo, useState } from "react"
+import { useNavigate, useSearch } from "@tanstack/react-router"
 import { Eye, MoreHorizontal, Pencil, Plus, Trash2 } from "lucide-react"
 
 // Primitives from @workspace/ui
@@ -65,16 +65,43 @@ const statusItems: { label: string; value: RecruitmentStatus | "all" }[] = [
 
 export function RecruitmentsListPage() {
   const navigate = useNavigate()
+  const searchParams = useSearch({ from: "/_auth/recruitments/" })
+
   const [data, setData] = useState<Recruitment[]>(initialRecruitments)
-  const [search, setSearch] = useState("")
-  const [statusFilter, setStatusFilter] = useState<RecruitmentStatus | "all">("all")
-  const [divisionFilter, setDivisionFilter] = useState<string>("all")
-  const [page, setPage] = useState(1)
   const [isCreateOpen, setIsCreateOpen] = useState(false)
 
-  // Sorting state
-  const [sortKey, setSortKey] = useState<SortKey | null>("code")
-  const [sortDirection, setSortDirection] = useState<SortDirection>("asc")
+  // Derived from search params
+  const search = searchParams.search ?? ""
+  const statusFilter = (searchParams.status as RecruitmentStatus | undefined) ?? "all"
+  const divisionFilter = searchParams.division ?? "all"
+  const sortKey = (searchParams.sortBy as SortKey | undefined) ?? "code"
+  const sortDirection = (searchParams.order as SortDirection | undefined) ?? "asc"
+  const page = searchParams.page ? Number(searchParams.page) : 1
+
+  // Local state for smooth typing in SearchInput
+  const [searchTerm, setSearchTerm] = useState(search)
+
+  useEffect(() => {
+    setSearchTerm(search)
+  }, [search])
+
+  useEffect(() => {
+    if (searchTerm === search) return
+
+    const timer = setTimeout(() => {
+      navigate({
+        to: "/recruitments",
+        search: (prev) => ({
+          ...prev,
+          search: searchTerm.trim() ? searchTerm.trim() : undefined,
+          page: undefined,
+        }),
+        replace: true,
+      })
+    }, 300)
+
+    return () => clearTimeout(timer)
+  }, [searchTerm, search, navigate])
 
   // Divisions list
   const divisions = useMemo(() => {
@@ -88,18 +115,79 @@ export function RecruitmentsListPage() {
     ]
   }, [divisions])
 
+  const handleClearSearch = () => {
+    setSearchTerm("")
+    navigate({
+      to: "/recruitments",
+      search: (prev) => ({
+        ...prev,
+        search: undefined,
+        page: undefined,
+      }),
+      replace: true,
+    })
+  }
+
+  const handleStatusChange = (val: string | null) => {
+    if (!val) return
+    navigate({
+      to: "/recruitments",
+      search: (prev) => ({
+        ...prev,
+        status: val === "all" ? undefined : (val as RecruitmentStatus),
+        page: undefined,
+      }),
+      replace: true,
+    })
+  }
+
+  const handleDivisionChange = (val: string | null) => {
+    if (!val) return
+    navigate({
+      to: "/recruitments",
+      search: (prev) => ({
+        ...prev,
+        division: val === "all" ? undefined : val,
+        page: undefined,
+      }),
+      replace: true,
+    })
+  }
+
   const handleSort = (key: string) => {
     const k = key as SortKey
+    let nextSortKey: SortKey | undefined = k
+    let nextOrder: SortDirection | undefined = "asc"
+
     if (sortKey === k) {
-      if (sortDirection === "asc") setSortDirection("desc")
-      else if (sortDirection === "desc") {
-        setSortKey(null)
-        setSortDirection(null)
+      if (sortDirection === "asc") {
+        nextOrder = "desc"
+      } else if (sortDirection === "desc") {
+        nextSortKey = undefined
+        nextOrder = undefined
       }
-    } else {
-      setSortKey(k)
-      setSortDirection("asc")
     }
+
+    navigate({
+      to: "/recruitments",
+      search: (prev) => ({
+        ...prev,
+        sortBy: nextSortKey,
+        order: nextOrder,
+      }),
+      replace: true,
+    })
+  }
+
+  const handlePageChange = (newPage: number) => {
+    navigate({
+      to: "/recruitments",
+      search: (prev) => ({
+        ...prev,
+        page: newPage === 1 ? undefined : newPage,
+      }),
+      replace: true,
+    })
   }
 
   // Filter & Search
@@ -165,10 +253,12 @@ export function RecruitmentsListPage() {
 
   // Pagination
   const totalItems = sortedData.length
+  const totalPages = Math.max(1, Math.ceil(totalItems / PAGE_SIZE))
+  const safePage = Math.min(page, totalPages)
   const paginatedData = useMemo(() => {
-    const start = (page - 1) * PAGE_SIZE
+    const start = (safePage - 1) * PAGE_SIZE
     return sortedData.slice(start, start + PAGE_SIZE)
-  }, [sortedData, page])
+  }, [sortedData, safePage])
 
   // Filter chips
   const activeChips: Chip[] = useMemo(() => {
@@ -177,10 +267,7 @@ export function RecruitmentsListPage() {
       chips.push({
         key: "search",
         label: `Search: "${search}"`,
-        onRemove: () => {
-          setSearch("")
-          setPage(1)
-        },
+        onRemove: handleClearSearch,
       })
     }
     if (statusFilter !== "all") {
@@ -188,8 +275,15 @@ export function RecruitmentsListPage() {
         key: "status",
         label: `Status: ${recruitmentStatusMeta[statusFilter]?.label ?? statusFilter}`,
         onRemove: () => {
-          setStatusFilter("all")
-          setPage(1)
+          navigate({
+            to: "/recruitments",
+            search: (prev) => ({
+              ...prev,
+              status: undefined,
+              page: undefined,
+            }),
+            replace: true,
+          })
         },
       })
     }
@@ -198,19 +292,31 @@ export function RecruitmentsListPage() {
         key: "division",
         label: `Division: ${divisionFilter}`,
         onRemove: () => {
-          setDivisionFilter("all")
-          setPage(1)
+          navigate({
+            to: "/recruitments",
+            search: (prev) => ({
+              ...prev,
+              division: undefined,
+              page: undefined,
+            }),
+            replace: true,
+          })
         },
       })
     }
     return chips
-  }, [search, statusFilter, divisionFilter])
+  }, [search, statusFilter, divisionFilter, navigate])
 
   const handleResetFilters = () => {
-    setSearch("")
-    setStatusFilter("all")
-    setDivisionFilter("all")
-    setPage(1)
+    setSearchTerm("")
+    navigate({
+      to: "/recruitments",
+      search: (prev) => ({
+        sortBy: prev.sortBy,
+        order: prev.order,
+      }),
+      replace: true,
+    })
   }
 
   const handleDelete = (id: string) => {
@@ -255,23 +361,15 @@ export function RecruitmentsListPage() {
         <div className="flex flex-col gap-3 border-b border-border px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex flex-1 flex-wrap items-center gap-2.5">
             <SearchInput
-              value={search}
-              onChange={(val) => {
-                setSearch(val)
-                setPage(1)
-              }}
+              value={searchTerm}
+              onChange={setSearchTerm}
               placeholder="Search by name or position"
             />
 
             <Select
               items={statusItems}
               value={statusFilter}
-              onValueChange={(val) => {
-                if (val) {
-                  setStatusFilter(val as RecruitmentStatus | "all")
-                  setPage(1)
-                }
-              }}
+              onValueChange={handleStatusChange}
             >
               <SelectTrigger className="h-10 w-40 rounded-full border-0 bg-muted px-4 text-sm text-foreground transition-all duration-150 hover:bg-muted/40 focus-visible:ring-2 focus-visible:ring-primary shadow-none">
                 <SelectValue placeholder="All Status" />
@@ -290,12 +388,7 @@ export function RecruitmentsListPage() {
             <Select
               items={divisionItems}
               value={divisionFilter}
-              onValueChange={(val) => {
-                if (val) {
-                  setDivisionFilter(val)
-                  setPage(1)
-                }
-              }}
+              onValueChange={handleDivisionChange}
             >
               <SelectTrigger className="h-10 w-44 rounded-full border-0 bg-muted px-4 text-sm text-foreground transition-all duration-150 hover:bg-muted/40 focus-visible:ring-2 focus-visible:ring-primary shadow-none">
                 <SelectValue placeholder="All Division" />
@@ -511,10 +604,10 @@ export function RecruitmentsListPage() {
         {/* Pagination */}
         {sortedData.length > 0 && (
           <DataTablePagination
-            page={page}
+            page={safePage}
             pageSize={PAGE_SIZE}
             totalItems={totalItems}
-            onPageChange={setPage}
+            onPageChange={handlePageChange}
           />
         )}
       </Panel>

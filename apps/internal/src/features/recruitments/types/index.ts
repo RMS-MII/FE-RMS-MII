@@ -161,3 +161,16 @@ export interface RecruitmentStatusMeta {
   label: string
   tone: Tone
 }
+
+export type RecruitmentSortKey = "code" | "name" | "stage" | "candidates" | "period" | "status"
+export type SortOrder = "asc" | "desc"
+
+export interface RecruitmentListSearchParams {
+  search?: string
+  status?: RecruitmentStatus
+  division?: string
+  sortBy?: RecruitmentSortKey
+  order?: SortOrder
+  page?: number
+}
+
