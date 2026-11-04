@@ -250,7 +250,7 @@ export function CreateRecruitmentDialog({
           </div>
         </form>
 
-        <DialogFooter className="mt-4 gap-2 sm:gap-2">
+        <DialogFooter className="mt-4 gap-2 sm:gap-2 bg-white">
           <CancelButton onClick={() => onOpenChange(false)} />
           <SaveButton type="submit" form={formId}>
             Save

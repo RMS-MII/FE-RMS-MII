@@ -1,4 +1,4 @@
-import type { LegacyStageType } from "../../types"
+import type { LegacyStageType, StageInterviewerAssignment } from "../../types"
 
 export interface EditableStage {
   tempId: string
@@ -7,7 +7,9 @@ export interface EditableStage {
   name: string
   type: LegacyStageType
   durationDays: number
-  ownerId: string
+  ownerId?: string
+  interviewerIds: string[]
+  assignedInterviewers?: StageInterviewerAssignment[]
   passingScore: number | null
   startDate: string
   endDate: string

@@ -225,22 +225,38 @@ const createStage = (
   nextStageId: string | null = null,
   passingScore: number | null = null,
   startDate: string | null = null,
-  endDate: string | null = null
-): Stage => ({
-  id,
-  name,
-  type,
-  durationDays,
-  ownerId,
-  batchStageId: `bs-${id}`,
-  recruitmentBatchId: batchId,
-  stageTypeId,
-  nextStageId,
-  passingScore,
-  startDate,
-  endDate,
-  isActive: true,
-})
+  endDate: string | null = null,
+  interviewerIds: string[] = [],
+  assignedInterviewers?: import("../types").StageInterviewerAssignment[]
+): Stage => {
+  const ids =
+    interviewerIds.length > 0 ? interviewerIds : ownerId ? [ownerId] : []
+  const assignments =
+    assignedInterviewers && assignedInterviewers.length > 0
+      ? assignedInterviewers
+      : ids.map((empId, idx) => ({
+          employeeId: empId,
+          status: idx === 0 ? ("accepted" as const) : ("pending" as const),
+        }))
+
+  return {
+    id,
+    name,
+    type,
+    durationDays,
+    ownerId,
+    interviewerIds: ids,
+    assignedInterviewers: assignments,
+    batchStageId: `bs-${id}`,
+    recruitmentBatchId: batchId,
+    stageTypeId,
+    nextStageId,
+    passingScore,
+    startDate,
+    endDate,
+    isActive: true,
+  }
+}
 
 // =====================================================================
 // 4. RecruitmentBatch Table (ERD.sql) + Stage Sequence (BatchStage)
@@ -279,8 +295,13 @@ export const initialRecruitments: Recruitment[] = [
       ),
       createStage(
         "s1-3", "r1", "st-10000000-0000-4000-8000-000000000003",
-        "HR Interview", "interview", 10, "u4",
-        "s1-4", 75, "2026-01-26", "2026-02-05"
+        "HR Interview", "interview", 10, "e1000000-0000-4000-8000-000000000001",
+        "s1-4", 75, "2026-01-26", "2026-02-05",
+        ["e1000000-0000-4000-8000-000000000001", "e1000000-0000-4000-8000-000000000002"],
+        [
+          { employeeId: "e1000000-0000-4000-8000-000000000001", status: "accepted" },
+          { employeeId: "e1000000-0000-4000-8000-000000000002", status: "pending" },
+        ]
       ),
       createStage(
         "s1-4", "r1", "st-10000000-0000-4000-8000-000000000004",

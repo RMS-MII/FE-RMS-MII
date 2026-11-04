@@ -11,9 +11,10 @@ import {
   SelectValue,
 } from "@workspace/ui/components/select"
 import { Panel, PanelHeader, DatePicker } from "@/shared/components"
-import { mockEmployees, mockStageTypes } from "../../data/mock"
+import { mockStageTypes } from "../../data/mock"
 import type { EditableStage } from "./types"
-import type { LegacyStageType } from "../../types"
+import type { LegacyStageType, StageEmployeeStatus, StageInterviewerAssignment } from "../../types"
+import { InterviewerAssignSection } from "../InterviewerAssignSection"
 
 export interface StageConfigFormProps {
   selectedStage: EditableStage | null
@@ -34,16 +35,6 @@ export function StageConfigForm({
   onFieldChange,
   onRemoveStage,
 }: StageConfigFormProps) {
-  const employeeOptions = useMemo(() => {
-    return [
-      { label: "Unassigned (assign later)", value: "unassigned" },
-      ...mockEmployees.map((e) => ({
-        label: `${e.fullName} (${e.jobTitle || "Employee"})`,
-        value: e.id,
-      })),
-    ]
-  }, [])
-
   if (!selectedStage) {
     return (
       <Panel className="sticky top-20 p-8 text-center text-muted-foreground">
@@ -57,6 +48,28 @@ export function StageConfigForm({
     )
   }
 
+  const stageAssignments = useMemo<StageInterviewerAssignment[]>(() => {
+    if (selectedStage.assignedInterviewers && selectedStage.assignedInterviewers.length > 0) {
+      return selectedStage.assignedInterviewers
+    }
+    const fallback =
+      selectedStage.interviewerIds && selectedStage.interviewerIds.length > 0
+        ? selectedStage.interviewerIds
+        : selectedStage.ownerId
+        ? [selectedStage.ownerId]
+        : []
+    return fallback.map((id) => ({
+      employeeId: id,
+      status: "pending" as StageEmployeeStatus,
+    }))
+  }, [selectedStage.assignedInterviewers, selectedStage.interviewerIds, selectedStage.ownerId])
+
+  const handleInterviewerAssignmentsChange = (assignments: StageInterviewerAssignment[]) => {
+    const ids = assignments.map((a) => a.employeeId)
+    onFieldChange("assignedInterviewers", assignments)
+    onFieldChange("interviewerIds", ids)
+    onFieldChange("ownerId", ids[0] || "")
+  }
 
   const handleStageTypeChange = (stageTypeId: string) => {
     const selectedType = mockStageTypes.find((st) => st.id === stageTypeId)
@@ -177,35 +190,14 @@ export function StageConfigForm({
           </div>
         </div>
 
-        {/* Assigned Evaluator / PIC (Optional) */}
-        <div className="space-y-1.5">
-          <label className="text-xs font-semibold text-foreground">
-            Assigned Evaluator / PIC <span className="text-muted-foreground font-normal">(Optional)</span>
-          </label>
-          <Select
-            items={employeeOptions}
-            value={selectedStage.ownerId || "unassigned"}
-            onValueChange={(val) => {
-              onFieldChange("ownerId", val === "unassigned" ? "" : val || "")
-            }}
-          >
-            <SelectTrigger className="h-10 w-full rounded-full border-0 bg-muted px-4 text-sm text-foreground transition-all duration-150 hover:bg-muted/40 focus-visible:ring-2 focus-visible:ring-primary shadow-none">
-              <SelectValue placeholder="Assign PIC / Evaluator" />
-            </SelectTrigger>
-            <SelectContent className="rounded-xl">
-              <SelectGroup>
-                {employeeOptions.map((opt) => (
-                  <SelectItem key={opt.value} value={opt.value}>
-                    {opt.label}
-                  </SelectItem>
-                ))}
-              </SelectGroup>
-            </SelectContent>
-          </Select>
-          <p className="text-[11px] text-muted-foreground">
-            Can be assigned later during interview session scheduling.
-          </p>
-        </div>
+        {/* Unified Interviewer Assignment Section */}
+        <InterviewerAssignSection
+          id="stage-config-interviewers"
+          label="Assigned Interviewers"
+          optional
+          assignments={stageAssignments}
+          onChange={handleInterviewerAssignmentsChange}
+        />
 
         {/* Delete Stage */}
         <div className="border-t border-border pt-4">
@@ -224,4 +216,3 @@ export function StageConfigForm({
     </Panel>
   )
 }
-

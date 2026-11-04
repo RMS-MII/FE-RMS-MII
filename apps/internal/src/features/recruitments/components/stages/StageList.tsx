@@ -156,6 +156,14 @@ export function StageList({
                           </span>
                         </>
                       )}
+                      {stage.interviewerIds && stage.interviewerIds.length > 0 && (
+                        <>
+                          <span>•</span>
+                          <span className="truncate">
+                            {stage.interviewerIds.length} interviewer{stage.interviewerIds.length > 1 ? "s" : ""}
+                          </span>
+                        </>
+                      )}
                     </div>
                   </div>
 

@@ -12,4 +12,6 @@ export * from "./EditButton"
 export * from "./BackButton"
 export * from "./CancelButton"
 export * from "./SaveButton"
+export * from "./SearchCombobox"
+
 
