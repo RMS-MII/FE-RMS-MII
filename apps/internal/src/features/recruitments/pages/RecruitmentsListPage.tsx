@@ -41,6 +41,7 @@ import {
   EmptyState,
 } from "@/shared/components"
 import { formatPeriod } from "@/shared/lib/format"
+import { cn } from "@/shared/lib/utils"
 
 // Feature-owned data & types
 import type { Recruitment, RecruitmentStatus } from "../types"
@@ -50,6 +51,7 @@ import {
   activeCandidateCount,
 } from "../data/mock"
 import { CreateRecruitmentDialog } from "../components/CreateRecruitmentDialog"
+import { formatCurrentStageText } from "../utils"
 
 type SortKey = "code" | "name" | "stage" | "candidates" | "period" | "status"
 
@@ -331,22 +333,18 @@ export function RecruitmentsListPage() {
   }
 
   const renderCurrentStage = (r: Recruitment) => {
-    if (r.stages.length === 0) {
-      return <span className="text-sm text-muted-foreground">No stages</span>
-    }
-    if (r.currentStage < 0 || r.status === "draft") {
-      return <span className="text-sm text-muted-foreground">Not started</span>
-    }
-    if (r.currentStage >= r.stages.length || r.status === "completed") {
-      return <span className="text-sm text-muted-foreground">All stages completed</span>
-    }
-    const current = r.stages[r.currentStage]
+    const text = formatCurrentStageText(r)
+    const isMuted =
+      r.stages.length === 0 ||
+      r.currentStage < 0 ||
+      r.status === "draft" ||
+      r.currentStage >= r.stages.length ||
+      r.status === "completed"
+
     return (
-      <div className="flex items-baseline gap-1.5 whitespace-nowrap text-sm">
-        <span className="font-normal text-foreground">
-          {current?.name ?? `Stage ${r.currentStage + 1}`}
-        </span>
-      </div>
+      <span className={cn("text-sm", isMuted ? "text-muted-foreground" : "font-normal text-foreground")}>
+        {text}
+      </span>
     )
   }
 

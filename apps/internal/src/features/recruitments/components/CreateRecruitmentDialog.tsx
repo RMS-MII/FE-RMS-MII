@@ -7,7 +7,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@workspace/ui/components/dialog"
-import { Button } from "@workspace/ui/components/button"
 import { Input } from "@workspace/ui/components/input"
 import { Textarea } from "@workspace/ui/components/textarea"
 import { Label } from "@workspace/ui/components/label"
@@ -20,9 +19,12 @@ import {
   SelectValue,
 } from "@workspace/ui/components/select"
 import { DatePicker } from "@/shared/components"
+import { SaveButton } from "@/shared/components"
+import { CancelButton } from "@/shared/components"
 
 import type { Recruitment } from "../types"
 import { mockDepartments } from "../data/mock"
+import { generateBatchCode, validateRecruitmentFormData } from "../utils"
 
 export interface CreateRecruitmentDialogProps {
   open: boolean
@@ -38,8 +40,7 @@ export function CreateRecruitmentDialog({
   existingCount = 5,
 }: CreateRecruitmentDialogProps) {
   const formId = useId()
-  const currentYear = new Date().getFullYear()
-  const generatedCode = `REC-${currentYear}-00${existingCount + 1}`
+  const generatedCode = generateBatchCode(existingCount)
 
   const [name, setName] = useState("")
   const [departmentId, setDepartmentId] = useState("")
@@ -54,14 +55,12 @@ export function CreateRecruitmentDialog({
   }))
 
   const validate = () => {
-    const errs: Record<string, string> = {}
-    if (!name.trim()) errs.name = "Recruitment name is required"
-    if (!departmentId) errs.departmentId = "Department is required"
-    if (!openDate) errs.openDate = "Start date is required"
-    if (!closeDate) errs.closeDate = "End date is required"
-    if (openDate && closeDate && closeDate < openDate) {
-      errs.closeDate = "End date cannot be earlier than start date"
-    }
+    const errs = validateRecruitmentFormData({
+      name,
+      departmentId,
+      openDate,
+      closeDate,
+    })
     setErrors(errs)
     return Object.keys(errs).length === 0
   }
@@ -251,22 +250,11 @@ export function CreateRecruitmentDialog({
           </div>
         </form>
 
-        <DialogFooter className="mt-4 gap-2 sm:gap-2 bg-accent">
-          <Button
-            type="button"
-            variant="ghost"
-            onClick={() => onOpenChange(false)}
-            className="h-10 rounded-full border-0 bg-muted px-5 text-sm font-medium text-foreground transition-colors hover:bg-gray-300 hover:text-foreground cursor-pointer shadow-none"
-          >
-            Cancel
-          </Button>
-          <Button
-            type="submit"
-            form={formId}
-            className="h-10 rounded-full border-0 bg-primary px-6 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 cursor-pointer shadow-none focus-visible:ring-2 focus-visible:ring-primary"
-          >
-            Create Recruitment
-          </Button>
+        <DialogFooter className="mt-4 gap-2 sm:gap-2">
+          <CancelButton onClick={() => onOpenChange(false)} />
+          <SaveButton type="submit" form={formId}>
+            Save
+          </SaveButton>
         </DialogFooter>
       </DialogContent>
     </Dialog>

@@ -15,7 +15,7 @@ import {
   CreateButton,
   EditButton,
 } from "@/shared/components"
-import { formatDate } from "@/shared/lib/format"
+import { safeFormatDate } from "@/shared/lib/format"
 import { mockEmployees, mockStageTypes } from "../../data/mock"
 import type { Recruitment } from "../../types"
 
@@ -116,7 +116,7 @@ export function StagesTab({ recruitment, onCreateStage, onEditStage }: StagesTab
                     {stage.startDate && stage.endDate ? (
                       <div className="text-xs">
                         <span className="font-medium text-foreground">
-                          {formatDate(stage.startDate)} – {formatDate(stage.endDate)}
+                          {safeFormatDate(stage.startDate)} – {safeFormatDate(stage.endDate)}
                         </span>
                         {stage.durationDays > 0 && (
                           <span className="block text-muted-foreground mt-0.5">
