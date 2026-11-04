@@ -1,5 +1,5 @@
 import * as React from "react"
-import { Search } from "lucide-react"
+import { Search, X } from "lucide-react"
 import { Input } from "@workspace/ui/components/input"
 import { cn } from "@/shared/lib/utils"
 
@@ -21,7 +21,7 @@ export function SearchInput({
   ...props
 }: SearchInputProps) {
   return (
-    <div className={cn("relative flex items-center w-full sm:w-80", containerClassName)}>
+    <div className={cn("relative flex items-center w-full sm:w-72", containerClassName)}>
       <Search
         className="pointer-events-none absolute left-3.5 size-4 text-muted-foreground"
         aria-hidden
@@ -32,11 +32,22 @@ export function SearchInput({
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
         className={cn(
-          "h-9 w-full rounded-full border border-border bg-card pl-10 pr-8 text-sm text-foreground placeholder:text-muted-foreground transition-colors focus-visible:ring-1 focus-visible:ring-primary focus-visible:border-primary",
+          "h-10 w-full rounded-full border-0 bg-muted pl-10 pr-8 text-sm text-foreground placeholder:text-muted-foreground transition-all duration-150 hover:bg-muted/40 focus-visible:bg-card focus-visible:ring-2 focus-visible:ring-primary shadow-none [&::-webkit-search-cancel-button]:hidden [&::-webkit-search-decoration]:hidden",
           className
         )}
         {...props}
       />
+      {value && (
+        <button
+          type="button"
+          onClick={() => onChange("")}
+          aria-label="Clear search"
+          className="absolute right-3 flex size-4 items-center justify-center rounded-full text-muted-foreground transition-colors hover:text-foreground"
+        >
+          <X className="size-3.5" aria-hidden />
+        </button>
+      )}
     </div>
   )
 }
+

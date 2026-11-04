@@ -1,11 +1,12 @@
-import { useEffect, useMemo, useState, type ReactNode } from "react"
+import { Fragment, useEffect, useMemo, useState, type ReactNode } from "react"
 import {
   Briefcase,
   ChevronRight,
-  ChevronLeft,
   LayoutDashboard,
   LogOut,
   Menu as MenuIcon,
+  PanelLeftClose,
+  PanelLeftOpen,
   UserCog,
   Users,
   Check,
@@ -202,7 +203,7 @@ function Nav({
                     aria-current={active ? "page" : undefined}
                     aria-label={collapsed ? n.label : undefined}
                     className={cn(
-                      "flex h-10 items-center rounded-lg text-sm font-medium transition-colors duration-150",
+                      "flex h-10 items-center rounded-full text-sm font-medium transition-colors duration-150",
                       collapsed ? "size-10 justify-center" : "gap-3 px-4",
                       active
                         ? "bg-primary-50 text-primary"
@@ -211,14 +212,14 @@ function Nav({
                   >
                     <span className="relative shrink-0">
                       <Icon
-                        className="size-[18px]"
+                        className="size-4.5"
                         strokeWidth={1.75}
                         aria-hidden
                       />
                       {count > 0 && (
                         <span
                           aria-hidden
-                          className="absolute -bottom-0.5 -left-0.5 size-[7px] rounded-full bg-attention ring-2 ring-card"
+                          className="absolute -bottom-0.5 -left-0.5 size-1.75 rounded-full bg-attention ring-2 ring-card"
                         />
                       )}
                     </span>
@@ -327,7 +328,6 @@ function UserCard({
         sideOffset={10}
         className="w-64 p-2 rounded-xl"
       >
-        {/* Header */}
         <div className="flex items-center gap-2.5 border-b border-border px-2 pt-1.5 pb-2.5">
           <Avatar className="size-8 bg-[#DCE3F0] text-primary">
             <AvatarFallback className="bg-[#DCE3F0] text-primary font-semibold text-xs">
@@ -340,7 +340,6 @@ function UserCard({
           </div>
         </div>
 
-        {/* Section: Sign in as (demo) */}
         <DropdownMenuGroup>
           <DropdownMenuLabel className="px-2 pt-2 pb-1 text-xs font-semibold text-muted-foreground">
             Sign in as (demo)
@@ -359,7 +358,6 @@ function UserCard({
 
         <DropdownMenuSeparator className="my-1.5" />
 
-        {/* Section: Data state preview */}
         <DropdownMenuGroup>
           <DropdownMenuLabel className="px-2 pb-1 text-xs font-semibold text-muted-foreground">
             Data state preview
@@ -378,7 +376,6 @@ function UserCard({
 
         <DropdownMenuSeparator className="my-1.5" />
 
-        {/* Section: Sign out */}
         <DropdownMenuItem
           onClick={onLogout}
           className="flex items-center gap-2 px-2 py-1.5 text-sm rounded-md text-destructive cursor-pointer hover:bg-destructive/10"
@@ -431,7 +428,6 @@ export function AppShell({
     }
   }
 
-  // Ctrl/Cmd + B keyboard shortcut to toggle sidebar
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "b") {
@@ -445,41 +441,39 @@ export function AppShell({
 
   return (
     <div className="flex h-dvh overflow-hidden bg-background">
-      {/* Desktop Sidebar (Floating Card) */}
       <aside
         aria-label="Sidebar"
         className={cn(
           "relative my-3 ml-3 hidden shrink-0 flex-col rounded-2xl border border-border bg-card shadow-card transition-[width] duration-200 ease-out lg:flex",
-          collapsed ? "w-[68px]" : "w-[248px]"
+          collapsed ? "w-17" : "w-62"
         )}
       >
         <div
           className={cn(
-            "flex h-[76px] shrink-0 items-center",
+            "flex h-19 shrink-0 items-center",
             collapsed ? "justify-center px-3" : "px-5"
           )}
         >
           <Brand collapsed={collapsed} />
         </div>
 
-        {/* Circular collapse toggle on the right edge */}
         <button
           type="button"
           onClick={toggle}
           aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
           title={`${collapsed ? "Expand" : "Collapse"} sidebar (Ctrl+B)`}
-          className="absolute top-3 -right-[18px] z-40 flex size-9 items-center justify-center rounded-full border border-border bg-card text-foreground shadow-card transition-colors duration-150 hover:bg-primary-50 hover:text-primary cursor-pointer"
+          className="absolute top-3 -right-4.5 z-40 flex size-9 items-center justify-center rounded-full border border-border bg-card text-foreground shadow-card transition-colors duration-150 hover:bg-primary-50 hover:text-primary cursor-pointer"
         >
           {collapsed ? (
-            <ChevronRight
-              className="size-[18px]"
-              strokeWidth={2.25}
+            <PanelLeftOpen
+              className="size-4.5"
+              strokeWidth={1.8}
               aria-hidden
             />
           ) : (
-            <ChevronLeft
-              className="size-[18px]"
-              strokeWidth={2.25}
+            <PanelLeftClose
+              className="size-4.5"
+              strokeWidth={1.8}
               aria-hidden
             />
           )}
@@ -497,14 +491,13 @@ export function AppShell({
         </div>
       </aside>
 
-      {/* Mobile Drawer (using Drawer component from @workspace/ui) */}
       <Drawer
         open={sheetOpen}
         onOpenChange={setSheetOpen}
         swipeDirection="left"
       >
         <DrawerContent className="w-72 max-w-[85vw] h-full flex flex-col p-2">
-          <DrawerHeader className="h-[76px] px-5 flex items-center justify-between border-b border-border">
+          <DrawerHeader className="h-19 px-5 flex items-center justify-between border-b border-border">
             <DrawerTitle>
               <Brand />
             </DrawerTitle>
@@ -516,22 +509,20 @@ export function AppShell({
         </DrawerContent>
       </Drawer>
 
-      {/* Main Content Area */}
       <div
         id="main-scroll"
         className="relative flex min-w-0 flex-1 flex-col overflow-y-auto px-3"
       >
         <header className="sticky top-0 z-30 shrink-0 bg-background pt-3">
           <div className="relative">
-            {/* Concave notch that wraps around the sidebar toggle (desktop only) */}
             <div
               aria-hidden
               className="pointer-events-none absolute inset-y-0 left-0 z-10 hidden w-3 overflow-hidden lg:block"
             >
-              <span className="absolute top-1/2 -left-[34px] size-11 -translate-y-1/2 rounded-full border border-border" />
+              <span className="absolute top-1/2 -left-8.5 size-11 -translate-y-1/2 rounded-full border border-border" />
             </div>
 
-            <div className="header-notch flex h-[62px] items-center gap-3 rounded-2xl border border-border bg-card px-4 shadow-card md:px-5 lg:pl-8">
+            <div className="header-notch flex h-15.5 items-center gap-3 rounded-2xl border border-border bg-card px-4 shadow-card md:px-5 lg:pl-8">
               <Button
                 variant="ghost"
                 size="icon-sm"
@@ -542,35 +533,41 @@ export function AppShell({
                 <MenuIcon aria-hidden />
               </Button>
 
-              {/* Breadcrumb using @workspace/ui/components/breadcrumb */}
               <Breadcrumb className="min-w-0 flex-1">
                 <BreadcrumbList className="flex min-w-0 items-center gap-1.5 text-sm">
                   {crumbs.map((c, i) => {
                     const last = i === crumbs.length - 1
                     return (
-                      <BreadcrumbItem
-                        key={i}
-                        className={cn(
-                          "flex min-w-0 items-center gap-1.5",
-                          !last && "hidden sm:flex"
+                      <Fragment key={i}>
+                        {i > 0 && (
+                          <BreadcrumbSeparator
+                            className={cn(!last && "hidden sm:inline-flex")}
+                          />
                         )}
-                      >
-                        {i > 0 && <BreadcrumbSeparator />}
-                        {c.to && !last ? (
-                          <BreadcrumbLink>
-                            <Link
-                              to={c.to}
-                              className="truncate text-muted-foreground transition-colors hover:text-foreground"
+                        <BreadcrumbItem
+                          className={cn(
+                            "flex min-w-0 items-center gap-1.5",
+                            !last && "hidden sm:flex"
+                          )}
+                        >
+                          {c.to && !last ? (
+                            <BreadcrumbLink
+                              render={
+                                <Link
+                                  to={c.to}
+                                  className="truncate text-muted-foreground transition-colors hover:text-foreground"
+                                />
+                              }
                             >
                               {c.label}
-                            </Link>
-                          </BreadcrumbLink>
-                        ) : (
-                          <BreadcrumbPage className="truncate font-medium text-foreground">
-                            {c.label}
-                          </BreadcrumbPage>
-                        )}
-                      </BreadcrumbItem>
+                            </BreadcrumbLink>
+                          ) : (
+                            <BreadcrumbPage className="truncate font-medium text-foreground">
+                              {c.label}
+                            </BreadcrumbPage>
+                          )}
+                        </BreadcrumbItem>
+                      </Fragment>
                     )
                   })}
                 </BreadcrumbList>

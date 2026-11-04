@@ -82,12 +82,14 @@ export function DataTablePagination({
             ) : (
               <PaginationItem key={p}>
                 <Button
-                  variant={p === page ? "default" : "outline"}
+                  variant={p === page ? "default" : "ghost"}
                   size="sm"
                   onClick={() => onPageChange(p)}
                   className={cn(
-                    "size-8 p-0 text-xs",
-                    p === page && "pointer-events-none"
+                    "size-8 rounded-full border-0 p-0 text-xs",
+                    p === page
+                      ? "bg-primary text-primary-foreground pointer-events-none shadow-none"
+                      : "text-muted-foreground hover:bg-muted/60 hover:text-foreground"
                   )}
                 >
                   {p}
@@ -113,3 +115,4 @@ export function DataTablePagination({
     </div>
   )
 }
+

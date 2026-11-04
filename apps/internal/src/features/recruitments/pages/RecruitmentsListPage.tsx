@@ -1,5 +1,5 @@
-import { useMemo, useState } from "react"
-import { createFileRoute } from "@tanstack/react-router"
+import { useEffect, useMemo, useState } from "react"
+import { useNavigate, useSearch } from "@tanstack/react-router"
 import { Eye, MoreHorizontal, Pencil, Plus, Trash2 } from "lucide-react"
 
 // Primitives from @workspace/ui
@@ -28,28 +28,28 @@ import {
 } from "@workspace/ui/components/select"
 
 // Shared internal components
-import { PageHeader } from "@/components/PageHeader"
-import { Panel } from "@/components/Panel"
-import { SearchInput } from "@/components/SearchInput"
-import { FilterChips, type Chip } from "@/components/FilterChips"
-import { TableSortHeader, type SortDirection } from "@/components/TableSortHeader"
-import { StatusBadge } from "@/components/StatusBadge"
-import { DataTablePagination } from "@/components/DataTablePagination"
-import { EmptyState } from "@/components/EmptyState"
-
-// Data & domain helpers
 import {
-  recruitments as initialRecruitments,
-  candidates,
-  type Recruitment,
-  type RecruitmentStatus,
-} from "@/data/mock"
-import { activeCount, recruitmentStatusMeta } from "@/data/domain"
-import { formatPeriod } from "@/data/format"
+  PageHeader,
+  Panel,
+  SearchInput,
+  FilterChips,
+  type Chip,
+  TableSortHeader,
+  type SortDirection,
+  StatusBadge,
+  DataTablePagination,
+  EmptyState,
+} from "@/shared/components"
+import { formatPeriod } from "@/shared/lib/format"
 
-export const Route = createFileRoute("/_auth/_recruitments/recruitments")({
-  component: RecruitmentsPage,
-})
+// Feature-owned data & types
+import type { Recruitment, RecruitmentStatus } from "../types"
+import {
+  initialRecruitments,
+  recruitmentStatusMeta,
+  activeCandidateCount,
+} from "../data/mock"
+import { CreateRecruitmentDialog } from "../components/CreateRecruitmentDialog"
 
 type SortKey = "code" | "name" | "stage" | "candidates" | "period" | "status"
 
@@ -63,16 +63,45 @@ const statusItems: { label: string; value: RecruitmentStatus | "all" }[] = [
   { label: "Closed", value: "closed" },
 ]
 
-function RecruitmentsPage() {
-  const [data, setData] = useState<Recruitment[]>(initialRecruitments)
-  const [search, setSearch] = useState("")
-  const [statusFilter, setStatusFilter] = useState<RecruitmentStatus | "all">("all")
-  const [divisionFilter, setDivisionFilter] = useState<string>("all")
-  const [page, setPage] = useState(1)
+export function RecruitmentsListPage() {
+  const navigate = useNavigate()
+  const searchParams = useSearch({ from: "/_auth/recruitments/" })
 
-  // Sorting state
-  const [sortKey, setSortKey] = useState<SortKey | null>("code")
-  const [sortDirection, setSortDirection] = useState<SortDirection>("asc")
+  const [data, setData] = useState<Recruitment[]>(initialRecruitments)
+  const [isCreateOpen, setIsCreateOpen] = useState(false)
+
+  // Derived from search params
+  const search = searchParams.search ?? ""
+  const statusFilter = (searchParams.status as RecruitmentStatus | undefined) ?? "all"
+  const divisionFilter = searchParams.division ?? "all"
+  const sortKey = (searchParams.sortBy as SortKey | undefined) ?? "code"
+  const sortDirection = (searchParams.order as SortDirection | undefined) ?? "asc"
+  const page = searchParams.page ? Number(searchParams.page) : 1
+
+  // Local state for smooth typing in SearchInput
+  const [searchTerm, setSearchTerm] = useState(search)
+
+  useEffect(() => {
+    setSearchTerm(search)
+  }, [search])
+
+  useEffect(() => {
+    if (searchTerm === search) return
+
+    const timer = setTimeout(() => {
+      navigate({
+        to: "/recruitments",
+        search: (prev) => ({
+          ...prev,
+          search: searchTerm.trim() ? searchTerm.trim() : undefined,
+          page: undefined,
+        }),
+        replace: true,
+      })
+    }, 300)
+
+    return () => clearTimeout(timer)
+  }, [searchTerm, search, navigate])
 
   // Divisions list
   const divisions = useMemo(() => {
@@ -86,18 +115,79 @@ function RecruitmentsPage() {
     ]
   }, [divisions])
 
+  const handleClearSearch = () => {
+    setSearchTerm("")
+    navigate({
+      to: "/recruitments",
+      search: (prev) => ({
+        ...prev,
+        search: undefined,
+        page: undefined,
+      }),
+      replace: true,
+    })
+  }
+
+  const handleStatusChange = (val: string | null) => {
+    if (!val) return
+    navigate({
+      to: "/recruitments",
+      search: (prev) => ({
+        ...prev,
+        status: val === "all" ? undefined : (val as RecruitmentStatus),
+        page: undefined,
+      }),
+      replace: true,
+    })
+  }
+
+  const handleDivisionChange = (val: string | null) => {
+    if (!val) return
+    navigate({
+      to: "/recruitments",
+      search: (prev) => ({
+        ...prev,
+        division: val === "all" ? undefined : val,
+        page: undefined,
+      }),
+      replace: true,
+    })
+  }
+
   const handleSort = (key: string) => {
     const k = key as SortKey
+    let nextSortKey: SortKey | undefined = k
+    let nextOrder: SortDirection | undefined = "asc"
+
     if (sortKey === k) {
-      if (sortDirection === "asc") setSortDirection("desc")
-      else if (sortDirection === "desc") {
-        setSortKey(null)
-        setSortDirection(null)
+      if (sortDirection === "asc") {
+        nextOrder = "desc"
+      } else if (sortDirection === "desc") {
+        nextSortKey = undefined
+        nextOrder = undefined
       }
-    } else {
-      setSortKey(k)
-      setSortDirection("asc")
     }
+
+    navigate({
+      to: "/recruitments",
+      search: (prev) => ({
+        ...prev,
+        sortBy: nextSortKey,
+        order: nextOrder,
+      }),
+      replace: true,
+    })
+  }
+
+  const handlePageChange = (newPage: number) => {
+    navigate({
+      to: "/recruitments",
+      search: (prev) => ({
+        ...prev,
+        page: newPage === 1 ? undefined : newPage,
+      }),
+      replace: true,
+    })
   }
 
   // Filter & Search
@@ -106,7 +196,7 @@ function RecruitmentsPage() {
       const q = search.trim().toLowerCase()
       const matchesSearch =
         !q ||
-        item.code.toLowerCase().includes(q) ||
+        item.batchCode.toLowerCase().includes(q) ||
         item.name.toLowerCase().includes(q) ||
         item.division.toLowerCase().includes(q)
 
@@ -130,8 +220,8 @@ function RecruitmentsPage() {
 
       switch (sortKey) {
         case "code":
-          valA = a.code
-          valB = b.code
+          valA = a.batchCode
+          valB = b.batchCode
           break
         case "name":
           valA = a.name.toLowerCase()
@@ -142,8 +232,8 @@ function RecruitmentsPage() {
           valB = b.currentStage
           break
         case "candidates":
-          valA = activeCount(a, candidates)
-          valB = activeCount(b, candidates)
+          valA = activeCandidateCount(a)
+          valB = activeCandidateCount(b)
           break
         case "period":
           valA = a.openDate
@@ -163,10 +253,12 @@ function RecruitmentsPage() {
 
   // Pagination
   const totalItems = sortedData.length
+  const totalPages = Math.max(1, Math.ceil(totalItems / PAGE_SIZE))
+  const safePage = Math.min(page, totalPages)
   const paginatedData = useMemo(() => {
-    const start = (page - 1) * PAGE_SIZE
+    const start = (safePage - 1) * PAGE_SIZE
     return sortedData.slice(start, start + PAGE_SIZE)
-  }, [sortedData, page])
+  }, [sortedData, safePage])
 
   // Filter chips
   const activeChips: Chip[] = useMemo(() => {
@@ -175,10 +267,7 @@ function RecruitmentsPage() {
       chips.push({
         key: "search",
         label: `Search: "${search}"`,
-        onRemove: () => {
-          setSearch("")
-          setPage(1)
-        },
+        onRemove: handleClearSearch,
       })
     }
     if (statusFilter !== "all") {
@@ -186,8 +275,15 @@ function RecruitmentsPage() {
         key: "status",
         label: `Status: ${recruitmentStatusMeta[statusFilter]?.label ?? statusFilter}`,
         onRemove: () => {
-          setStatusFilter("all")
-          setPage(1)
+          navigate({
+            to: "/recruitments",
+            search: (prev) => ({
+              ...prev,
+              status: undefined,
+              page: undefined,
+            }),
+            replace: true,
+          })
         },
       })
     }
@@ -196,26 +292,48 @@ function RecruitmentsPage() {
         key: "division",
         label: `Division: ${divisionFilter}`,
         onRemove: () => {
-          setDivisionFilter("all")
-          setPage(1)
+          navigate({
+            to: "/recruitments",
+            search: (prev) => ({
+              ...prev,
+              division: undefined,
+              page: undefined,
+            }),
+            replace: true,
+          })
         },
       })
     }
     return chips
-  }, [search, statusFilter, divisionFilter])
+  }, [search, statusFilter, divisionFilter, navigate])
 
   const handleResetFilters = () => {
-    setSearch("")
-    setStatusFilter("all")
-    setDivisionFilter("all")
-    setPage(1)
+    setSearchTerm("")
+    navigate({
+      to: "/recruitments",
+      search: (prev) => ({
+        sortBy: prev.sortBy,
+        order: prev.order,
+      }),
+      replace: true,
+    })
   }
 
   const handleDelete = (id: string) => {
     setData((prev) => prev.filter((r) => r.id !== id))
   }
 
+  const handleViewDetail = (id: string) => {
+    navigate({
+      to: "/recruitments/$id",
+      params: { id },
+    })
+  }
+
   const renderCurrentStage = (r: Recruitment) => {
+    if (r.stages.length === 0) {
+      return <span className="text-sm text-muted-foreground">No stages</span>
+    }
     if (r.currentStage < 0 || r.status === "draft") {
       return <span className="text-sm text-muted-foreground">Not started</span>
     }
@@ -225,9 +343,6 @@ function RecruitmentsPage() {
     const current = r.stages[r.currentStage]
     return (
       <div className="flex items-baseline gap-1.5 whitespace-nowrap text-sm">
-        <span className="tabular-nums text-muted-foreground">
-          {r.currentStage + 1}/{r.stages.length}
-        </span>
         <span className="font-normal text-foreground">
           {current?.name ?? `Stage ${r.currentStage + 1}`}
         </span>
@@ -246,25 +361,17 @@ function RecruitmentsPage() {
         <div className="flex flex-col gap-3 border-b border-border px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex flex-1 flex-wrap items-center gap-2.5">
             <SearchInput
-              value={search}
-              onChange={(val) => {
-                setSearch(val)
-                setPage(1)
-              }}
-              placeholder="Search recruitment name or division"
+              value={searchTerm}
+              onChange={setSearchTerm}
+              placeholder="Search by name or position"
             />
 
             <Select
               items={statusItems}
               value={statusFilter}
-              onValueChange={(val) => {
-                if (val) {
-                  setStatusFilter(val as RecruitmentStatus | "all")
-                  setPage(1)
-                }
-              }}
+              onValueChange={handleStatusChange}
             >
-              <SelectTrigger className="h-9 w-40 rounded-full border-border bg-card px-4 text-sm text-foreground transition-colors hover:bg-muted/50 focus-visible:ring-1 focus-visible:ring-primary">
+              <SelectTrigger className="h-10 w-40 rounded-full border-0 bg-muted px-4 text-sm text-foreground transition-all duration-150 hover:bg-muted/40 focus-visible:ring-2 focus-visible:ring-primary shadow-none">
                 <SelectValue placeholder="All Status" />
               </SelectTrigger>
               <SelectContent className="rounded-xl">
@@ -281,14 +388,9 @@ function RecruitmentsPage() {
             <Select
               items={divisionItems}
               value={divisionFilter}
-              onValueChange={(val) => {
-                if (val) {
-                  setDivisionFilter(val)
-                  setPage(1)
-                }
-              }}
+              onValueChange={handleDivisionChange}
             >
-              <SelectTrigger className="h-9 w-44 rounded-full border-border bg-card px-4 text-sm text-foreground transition-colors hover:bg-muted/50 focus-visible:ring-1 focus-visible:ring-primary">
+              <SelectTrigger className="h-10 w-44 rounded-full border-0 bg-muted px-4 text-sm text-foreground transition-all duration-150 hover:bg-muted/40 focus-visible:ring-2 focus-visible:ring-primary shadow-none">
                 <SelectValue placeholder="All Division" />
               </SelectTrigger>
               <SelectContent className="rounded-xl">
@@ -303,7 +405,10 @@ function RecruitmentsPage() {
             </Select>
           </div>
 
-          <Button className="h-9 gap-1.5 rounded-full shrink-0">
+          <Button
+            onClick={() => setIsCreateOpen(true)}
+            className="h-10 gap-1.5 rounded-full border-0 bg-primary px-5 text-sm font-medium text-primary-foreground shadow-none hover:bg-primary/90 focus-visible:ring-2 focus-visible:ring-primary cursor-pointer shrink-0"
+          >
             <Plus className="size-4" aria-hidden />
             <span>Create recruitment</span>
           </Button>
@@ -313,7 +418,7 @@ function RecruitmentsPage() {
 
         <div className="overflow-x-auto">
           <Table>
-            <TableHeader className="border-b border-border bg-card">
+            <TableHeader className="bg-card">
               <TableRow className="hover:bg-transparent">
                 <TableSortHeader
                   label="Code"
@@ -329,6 +434,7 @@ function RecruitmentsPage() {
                   currentSortKey={sortKey}
                   currentDirection={sortDirection}
                   onSort={handleSort}
+                  align="left"
                   className="min-w-64"
                 />
                 <TableSortHeader
@@ -387,10 +493,10 @@ function RecruitmentsPage() {
                       action={
                         search || statusFilter !== "all" || divisionFilter !== "all" ? (
                           <Button
-                            variant="outline"
+                            variant="ghost"
                             size="sm"
                             onClick={handleResetFilters}
-                            className="rounded-full border-none"
+                            className="rounded-full border-0 bg-muted/60 text-foreground hover:bg-muted"
                           >
                             Reset filters
                           </Button>
@@ -402,7 +508,7 @@ function RecruitmentsPage() {
               ) : (
                 paginatedData.map((recruitment) => {
                   const statusMeta = recruitmentStatusMeta[recruitment.status]
-                  const activeCandidateCount = activeCount(recruitment, candidates)
+                  const activeCountNumber = activeCandidateCount(recruitment)
 
                   return (
                     <TableRow
@@ -411,15 +517,19 @@ function RecruitmentsPage() {
                     >
                       <TableCell className="pl-5 whitespace-nowrap">
                         <span className="font-mono text-sm font-medium text-muted-foreground">
-                          {recruitment.code}
+                          {recruitment.batchCode}
                         </span>
                       </TableCell>
 
                       <TableCell className="py-3.5">
                         <div className="flex flex-col">
-                          <span className="text-sm font-semibold text-foreground transition-colors hover:text-primary hover:underline cursor-pointer">
+                          <button
+                            type="button"
+                            onClick={() => handleViewDetail(recruitment.id)}
+                            className="text-left text-sm font-semibold text-foreground transition-colors hover:text-primary hover:underline cursor-pointer"
+                          >
                             {recruitment.name}
-                          </span>
+                          </button>
                           <span className="text-xs text-muted-foreground mt-0.5">
                             {recruitment.division}
                           </span>
@@ -431,7 +541,7 @@ function RecruitmentsPage() {
                       </TableCell>
 
                       <TableCell className="text-center tabular-nums text-sm font-normal text-foreground">
-                        {activeCandidateCount}
+                        {activeCountNumber}
                       </TableCell>
 
                       <TableCell className="whitespace-nowrap text-sm tabular-nums text-muted-foreground">
@@ -460,6 +570,7 @@ function RecruitmentsPage() {
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end" className="w-36 rounded-xl">
                             <DropdownMenuItem
+                              onClick={() => handleViewDetail(recruitment.id)}
                               className="cursor-pointer gap-2 text-xs"
                             >
                               <Eye className="size-3.5" aria-hidden />
@@ -490,15 +601,27 @@ function RecruitmentsPage() {
           </Table>
         </div>
 
+        {/* Pagination */}
         {sortedData.length > 0 && (
           <DataTablePagination
-            page={page}
+            page={safePage}
             pageSize={PAGE_SIZE}
             totalItems={totalItems}
-            onPageChange={setPage}
+            onPageChange={handlePageChange}
           />
         )}
       </Panel>
+
+      {/* Create Recruitment Dialog */}
+      <CreateRecruitmentDialog
+        open={isCreateOpen}
+        onOpenChange={setIsCreateOpen}
+        existingCount={data.length}
+        onSuccess={(newRecruitment) => {
+          setData((prev) => [newRecruitment, ...prev])
+        }}
+      />
     </div>
   )
 }
+
