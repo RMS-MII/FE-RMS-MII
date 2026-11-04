@@ -390,14 +390,6 @@ export function CandidatesTab({
           </div>
 
           <div className="flex flex-wrap items-center gap-3 self-start sm:self-center shrink-0">
-            <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-              <span>Showing</span>
-              <span className="font-semibold text-foreground tabular-nums">
-                {filteredApplications.length}
-              </span>
-              <span>of {applications.length} candidates</span>
-            </div>
-
             <Button
               type="button"
               onClick={() => setIsAddOpen(true)}
