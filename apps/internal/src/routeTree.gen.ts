@@ -12,10 +12,10 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as AuthRouteImport } from './routes/_auth'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as AuthIndexRouteImport } from './routes/_auth/index'
-import { Route as AuthCandidatesRouteImport } from './routes/_auth/candidates'
 import { Route as AuthDashboardRouteImport } from './routes/_auth/dashboard'
 import { Route as AuthEmailLogsRouteImport } from './routes/_auth/email-logs'
 import { Route as AuthUsersRouteImport } from './routes/_auth/users'
+import { Route as AuthCandidatesIndexRouteImport } from './routes/_auth/candidates/index'
 import { Route as AuthRecruitmentsIndexRouteImport } from './routes/_auth/recruitments/index'
 import { Route as AuthRecruitmentsIdIndexRouteImport } from './routes/_auth/recruitments/$id/index'
 import { Route as AuthRecruitmentsIdStagesRouteImport } from './routes/_auth/recruitments/$id/stages'
@@ -34,11 +34,6 @@ const AuthIndexRoute = AuthIndexRouteImport.update({
   path: '/',
   getParentRoute: () => AuthRoute,
 } as any)
-const AuthCandidatesRoute = AuthCandidatesRouteImport.update({
-  id: '/candidates',
-  path: '/candidates',
-  getParentRoute: () => AuthRoute,
-} as any)
 const AuthDashboardRoute = AuthDashboardRouteImport.update({
   id: '/dashboard',
   path: '/dashboard',
@@ -52,6 +47,11 @@ const AuthEmailLogsRoute = AuthEmailLogsRouteImport.update({
 const AuthUsersRoute = AuthUsersRouteImport.update({
   id: '/users',
   path: '/users',
+  getParentRoute: () => AuthRoute,
+} as any)
+const AuthCandidatesIndexRoute = AuthCandidatesIndexRouteImport.update({
+  id: '/candidates/',
+  path: '/candidates/',
   getParentRoute: () => AuthRoute,
 } as any)
 const AuthRecruitmentsIndexRoute = AuthRecruitmentsIndexRouteImport.update({
@@ -74,21 +74,21 @@ const AuthRecruitmentsIdStagesRoute =
 export interface FileRoutesByFullPath {
   '/': typeof AuthIndexRoute
   '/login': typeof LoginRoute
-  '/candidates': typeof AuthCandidatesRoute
   '/dashboard': typeof AuthDashboardRoute
   '/email-logs': typeof AuthEmailLogsRoute
   '/users': typeof AuthUsersRoute
+  '/candidates/': typeof AuthCandidatesIndexRoute
   '/recruitments/': typeof AuthRecruitmentsIndexRoute
   '/recruitments/$id/stages': typeof AuthRecruitmentsIdStagesRoute
   '/recruitments/$id/': typeof AuthRecruitmentsIdIndexRoute
 }
 export interface FileRoutesByTo {
   '/login': typeof LoginRoute
-  '/candidates': typeof AuthCandidatesRoute
   '/dashboard': typeof AuthDashboardRoute
   '/email-logs': typeof AuthEmailLogsRoute
   '/users': typeof AuthUsersRoute
   '/': typeof AuthIndexRoute
+  '/candidates': typeof AuthCandidatesIndexRoute
   '/recruitments': typeof AuthRecruitmentsIndexRoute
   '/recruitments/$id/stages': typeof AuthRecruitmentsIdStagesRoute
   '/recruitments/$id': typeof AuthRecruitmentsIdIndexRoute
@@ -97,11 +97,11 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/_auth': typeof AuthRouteWithChildren
   '/login': typeof LoginRoute
-  '/_auth/candidates': typeof AuthCandidatesRoute
   '/_auth/dashboard': typeof AuthDashboardRoute
   '/_auth/email-logs': typeof AuthEmailLogsRoute
   '/_auth/users': typeof AuthUsersRoute
   '/_auth/': typeof AuthIndexRoute
+  '/_auth/candidates/': typeof AuthCandidatesIndexRoute
   '/_auth/recruitments/': typeof AuthRecruitmentsIndexRoute
   '/_auth/recruitments/$id/stages': typeof AuthRecruitmentsIdStagesRoute
   '/_auth/recruitments/$id/': typeof AuthRecruitmentsIdIndexRoute
@@ -111,21 +111,21 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/login'
-    | '/candidates'
     | '/dashboard'
     | '/email-logs'
     | '/users'
+    | '/candidates/'
     | '/recruitments/'
     | '/recruitments/$id/stages'
     | '/recruitments/$id/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/login'
-    | '/candidates'
     | '/dashboard'
     | '/email-logs'
     | '/users'
     | '/'
+    | '/candidates'
     | '/recruitments'
     | '/recruitments/$id/stages'
     | '/recruitments/$id'
@@ -133,11 +133,11 @@ export interface FileRouteTypes {
     | '__root__'
     | '/_auth'
     | '/login'
-    | '/_auth/candidates'
     | '/_auth/dashboard'
     | '/_auth/email-logs'
     | '/_auth/users'
     | '/_auth/'
+    | '/_auth/candidates/'
     | '/_auth/recruitments/'
     | '/_auth/recruitments/$id/stages'
     | '/_auth/recruitments/$id/'
@@ -171,13 +171,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthIndexRouteImport
       parentRoute: typeof AuthRoute
     }
-    '/_auth/candidates': {
-      id: '/_auth/candidates'
-      path: '/candidates'
-      fullPath: '/candidates'
-      preLoaderRoute: typeof AuthCandidatesRouteImport
-      parentRoute: typeof AuthRoute
-    }
     '/_auth/dashboard': {
       id: '/_auth/dashboard'
       path: '/dashboard'
@@ -197,6 +190,13 @@ declare module '@tanstack/react-router' {
       path: '/users'
       fullPath: '/users'
       preLoaderRoute: typeof AuthUsersRouteImport
+      parentRoute: typeof AuthRoute
+    }
+    '/_auth/candidates/': {
+      id: '/_auth/candidates/'
+      path: '/candidates'
+      fullPath: '/candidates/'
+      preLoaderRoute: typeof AuthCandidatesIndexRouteImport
       parentRoute: typeof AuthRoute
     }
     '/_auth/recruitments/': {
@@ -224,22 +224,22 @@ declare module '@tanstack/react-router' {
 }
 
 interface AuthRouteChildren {
-  AuthCandidatesRoute: typeof AuthCandidatesRoute
   AuthDashboardRoute: typeof AuthDashboardRoute
   AuthEmailLogsRoute: typeof AuthEmailLogsRoute
   AuthUsersRoute: typeof AuthUsersRoute
   AuthIndexRoute: typeof AuthIndexRoute
+  AuthCandidatesIndexRoute: typeof AuthCandidatesIndexRoute
   AuthRecruitmentsIndexRoute: typeof AuthRecruitmentsIndexRoute
   AuthRecruitmentsIdStagesRoute: typeof AuthRecruitmentsIdStagesRoute
   AuthRecruitmentsIdIndexRoute: typeof AuthRecruitmentsIdIndexRoute
 }
 
 const AuthRouteChildren: AuthRouteChildren = {
-  AuthCandidatesRoute: AuthCandidatesRoute,
   AuthDashboardRoute: AuthDashboardRoute,
   AuthEmailLogsRoute: AuthEmailLogsRoute,
   AuthUsersRoute: AuthUsersRoute,
   AuthIndexRoute: AuthIndexRoute,
+  AuthCandidatesIndexRoute: AuthCandidatesIndexRoute,
   AuthRecruitmentsIndexRoute: AuthRecruitmentsIndexRoute,
   AuthRecruitmentsIdStagesRoute: AuthRecruitmentsIdStagesRoute,
   AuthRecruitmentsIdIndexRoute: AuthRecruitmentsIdIndexRoute,
