@@ -203,7 +203,7 @@ export function ManageStagesPage({ id }: ManageStagesPageProps) {
       {/* Top Header */}
       <div className="flex items-start gap-3.5">
         <BackButton
-          to={`/recruitments/${recruitment.id}`}
+          to={`/recruitments/${recruitment.id}?tab=stages`}
           label="Back to Recruitment Detail"
         />
 
