@@ -532,7 +532,7 @@ export const mockBatchApplications: BatchApplication[] = candidates.map((c, inde
   appliedAt: `${c.appliedAt}T09:00:00Z`,
   finalStatus: c.status === "accepted" ? "Accepted" : c.status === "rejected" ? "Rejected" : "In Progress",
   status: c.status,
-  note: `Application submitted via ${c.source}`,
+  note: "Candidate application submitted",
   fileOfferingLetter: c.status === "accepted" ? "OL-2026-FINAL.pdf" : null,
   offeringLetterStatus: c.status === "accepted" ? "Signed" : null,
   createdAt: `${c.appliedAt}T09:00:00Z`,

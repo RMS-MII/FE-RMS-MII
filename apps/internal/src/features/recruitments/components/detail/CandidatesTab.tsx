@@ -19,6 +19,7 @@ import {
   type CandidateAppSortKey,
 } from "../../utils"
 import { CandidateApplicationDetailDialog } from "./CandidateApplicationDetailDialog"
+import { AddCandidateDialog } from "./AddCandidateDialog"
 import {
   Table,
   TableBody,
@@ -36,7 +37,7 @@ import {
   SelectValue,
 } from "@workspace/ui/components/select"
 import { Button } from "@workspace/ui/components/button"
-import { Eye } from "lucide-react"
+import { Eye, UserPlus } from "lucide-react"
 
 export interface CandidatesTabProps {
   recruitment: Recruitment
@@ -94,10 +95,20 @@ export function CandidatesTab({
   const [page, setPage] = useState(1)
   const pageSize = 5
 
+  // Applications state (allows adding candidates manually)
+  const [applications, setApplications] = useState<CandidateApplicationItem[]>(() =>
+    getRecruitmentCandidateApplications(recruitment)
+  )
+
+  useEffect(() => {
+    setApplications(getRecruitmentCandidateApplications(recruitment))
+  }, [recruitment])
+
   // Selected application for detail modal
   const [selectedApplication, setSelectedApplication] =
     useState<CandidateApplicationItem | null>(null)
   const [isDetailOpen, setIsDetailOpen] = useState(false)
+  const [isAddOpen, setIsAddOpen] = useState(false)
 
   // Sync external stage index with internal dropdown state
   useEffect(() => {
@@ -105,11 +116,6 @@ export function CandidatesTab({
       setStageFilter(String(selectedStageIndex))
     }
   }, [selectedStageIndex])
-
-  // Retrieve CandidateApplicationItems with ERD relations (BatchApplications + ApplicationStage)
-  const allApplications = useMemo(() => {
-    return getRecruitmentCandidateApplications(recruitment)
-  }, [recruitment])
 
   // Build stage dropdown items
   const stageItems = useMemo(() => {
@@ -145,12 +151,12 @@ export function CandidatesTab({
   // Filter applications
   const filteredApplications = useMemo(() => {
     return filterCandidateApplications(
-      allApplications,
+      applications,
       search,
       parsedStageIndex,
       statusFilter
     )
-  }, [allApplications, search, parsedStageIndex, statusFilter])
+  }, [applications, search, parsedStageIndex, statusFilter])
 
   // Sort applications
   const sortedApplications = useMemo(() => {
@@ -191,6 +197,113 @@ export function CandidatesTab({
   const handleOpenDetail = (app: CandidateApplicationItem) => {
     setSelectedApplication(app)
     setIsDetailOpen(true)
+  }
+
+  const handleAddCandidates = (newApps: CandidateApplicationItem[]) => {
+    setApplications((prev) => [...newApps, ...prev])
+  }
+
+  const handleUpdateCandidateStatus = (
+    applicationId: string,
+    action: "advance" | "reject" | "reopen",
+    payload?: { reason?: string; notes?: string }
+  ) => {
+    setApplications((prev) =>
+      prev.map((app) => {
+        if (app.id !== applicationId) return app
+
+        const now = new Date().toISOString()
+        const stages = [...app.applicationStages]
+        const currentIdx = app.currentStageIndex
+        const currentStage = stages[currentIdx]
+
+        if (action === "advance") {
+          // Mark current stage passed
+          if (currentStage) {
+            stages[currentIdx] = {
+              ...currentStage,
+              status: "passed",
+              completedAt: now,
+              feedback: payload?.notes || currentStage.feedback || "Passed by HR evaluation",
+            }
+          }
+
+          const isLastStage = currentIdx >= stages.length - 1
+          if (isLastStage) {
+            const updated: CandidateApplicationItem = {
+              ...app,
+              status: "accepted",
+              finalStatus: "accepted",
+              applicationStages: stages,
+            }
+            if (selectedApplication?.id === applicationId) {
+              setSelectedApplication(updated)
+            }
+            return updated
+          } else {
+            const nextIdx = currentIdx + 1
+            if (stages[nextIdx]) {
+              stages[nextIdx] = {
+                ...stages[nextIdx],
+                status: "in_progress",
+                startedAt: now,
+              }
+            }
+            const updated: CandidateApplicationItem = {
+              ...app,
+              status: "in_progress",
+              currentStageIndex: nextIdx,
+              applicationStages: stages,
+            }
+            if (selectedApplication?.id === applicationId) {
+              setSelectedApplication(updated)
+            }
+            return updated
+          }
+        } else if (action === "reject") {
+          if (currentStage) {
+            stages[currentIdx] = {
+              ...currentStage,
+              status: "failed",
+              completedAt: now,
+              feedback: payload?.notes || payload?.reason || "Disqualified",
+            }
+          }
+          const updated: CandidateApplicationItem = {
+            ...app,
+            status: "rejected",
+            finalStatus: "rejected",
+            rejectReason: payload?.reason,
+            applicationStages: stages,
+          }
+          if (selectedApplication?.id === applicationId) {
+            setSelectedApplication(updated)
+          }
+          return updated
+        } else if (action === "reopen") {
+          if (currentStage) {
+            stages[currentIdx] = {
+              ...currentStage,
+              status: "in_progress",
+              completedAt: null,
+            }
+          }
+          const updated: CandidateApplicationItem = {
+            ...app,
+            status: "in_progress",
+            finalStatus: undefined,
+            rejectReason: undefined,
+            applicationStages: stages,
+          }
+          if (selectedApplication?.id === applicationId) {
+            setSelectedApplication(updated)
+          }
+          return updated
+        }
+
+        return app
+      })
+    )
   }
 
   // Active filter chips
@@ -276,12 +389,23 @@ export function CandidatesTab({
             </Select>
           </div>
 
-          <div className="flex items-center gap-2 text-xs text-muted-foreground self-start sm:self-center shrink-0">
-            <span>Showing</span>
-            <span className="font-semibold text-foreground tabular-nums">
-              {filteredApplications.length}
-            </span>
-            <span>of {allApplications.length} candidates</span>
+          <div className="flex flex-wrap items-center gap-3 self-start sm:self-center shrink-0">
+            <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+              <span>Showing</span>
+              <span className="font-semibold text-foreground tabular-nums">
+                {filteredApplications.length}
+              </span>
+              <span>of {applications.length} candidates</span>
+            </div>
+
+            <Button
+              type="button"
+              onClick={() => setIsAddOpen(true)}
+              className="h-10 gap-1.5 rounded-full border-0 bg-primary px-4 text-sm font-medium text-primary-foreground shadow-none hover:bg-primary/90 focus-visible:ring-2 focus-visible:ring-primary cursor-pointer shrink-0"
+            >
+              <UserPlus className="size-4" aria-hidden />
+              <span>Add candidate</span>
+            </Button>
           </div>
         </div>
 
@@ -371,7 +495,16 @@ export function CandidatesTab({
                           >
                             Reset filters
                           </Button>
-                        ) : undefined
+                        ) : (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setIsAddOpen(true)}
+                            className="rounded-full border-0 bg-muted/60 text-foreground hover:bg-muted cursor-pointer"
+                          >
+                            Add your first candidate
+                          </Button>
+                        )
                       }
                     />
                   </TableCell>
@@ -405,10 +538,12 @@ export function CandidatesTab({
                       className="border-b border-border transition-colors hover:bg-muted/40 cursor-pointer"
                       onClick={() => handleOpenDetail(app)}
                     >
+                      {/* Row number */}
                       <TableCell className="pl-5 py-3.5 text-center font-semibold text-muted-foreground tabular-nums text-xs">
                         {rowNum}
                       </TableCell>
 
+                      {/* Candidate Profile (Name, Email, Education) */}
                       <TableCell className="py-3.5">
                         <div className="flex items-center gap-3">
                           <div className="min-w-0">
@@ -496,6 +631,16 @@ export function CandidatesTab({
         recruitment={recruitment}
         open={isDetailOpen}
         onOpenChange={setIsDetailOpen}
+        onUpdateStatus={handleUpdateCandidateStatus}
+      />
+
+      {/* Add Candidate Manual Dialog (Talent Pool & Direct Register) */}
+      <AddCandidateDialog
+        recruitment={recruitment}
+        open={isAddOpen}
+        onOpenChange={setIsAddOpen}
+        onAddCandidates={handleAddCandidates}
+        existingApplicationCount={applications.length}
       />
     </>
   )
