@@ -51,7 +51,6 @@ export interface Candidate {
   stageIndex: number
   status: CandidateStatus
   testScore: number | null
-  source: string
   appliedAt: string
   education: string
   experienceYears: number
@@ -262,7 +261,7 @@ const rows: Row[] = [
 ]
 
 export const candidates: Candidate[] = rows.map(
-  ([name, rec, stage, status, score, source, applied, edu, exp], i) => {
+  ([name, rec, stage, status, score, _source, applied, edu, exp], i) => {
     const [first, ...rest] = name.toLowerCase().split(" ")
     return {
       id: `c${i + 1}`,
@@ -273,7 +272,6 @@ export const candidates: Candidate[] = rows.map(
       stageIndex: stage,
       status,
       testScore: score,
-      source,
       appliedAt: applied,
       education: edu,
       experienceYears: exp,

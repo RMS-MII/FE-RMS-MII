@@ -7,4 +7,6 @@ export * from "./EvaluationsTab"
 export * from "./AssignInterviewersDialog"
 export * from "./DecisionsTab"
 export * from "./CandidateApplicationDetailDialog"
-
+export * from "./AddCandidateDialog"
+export * from "./AddFromTalentPoolTab"
+export * from "./RegisterNewCandidateTab"
