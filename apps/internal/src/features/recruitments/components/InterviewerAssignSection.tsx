@@ -37,7 +37,6 @@ export function InterviewerAssignSection({
   helperText = "Newly assigned interviewers will have Pending status until confirmed.",
   className,
 }: InterviewerAssignSectionProps) {
-  // Department categories for filter pills
   const departmentCategories = useMemo(() => {
     return mockDepartments.map((d) => ({
       label: d.name,
@@ -45,7 +44,6 @@ export function InterviewerAssignSection({
     }))
   }, [])
 
-  // Employee options for combobox
   const employeeOptions = useMemo<SearchComboboxOption[]>(() => {
     return mockEmployees.map((e) => {
       const dept = mockDepartments.find((d) => d.id === e.departmentId)
@@ -99,7 +97,6 @@ export function InterviewerAssignSection({
 
   return (
     <div className={`space-y-2 ${className || ""}`}>
-      {/* Header Label and Counter */}
       <div className="flex items-center justify-between px-1">
         <Label htmlFor={id} className="text-sm font-medium flex items-center gap-1.5">
           <Users className="size-3.5 text-muted-foreground" />
@@ -115,7 +112,6 @@ export function InterviewerAssignSection({
         )}
       </div>
 
-      {/* Search Combobox with Department Filter */}
       <SearchCombobox
         id={id}
         options={employeeOptions}
@@ -132,7 +128,6 @@ export function InterviewerAssignSection({
         <p className="text-xs text-muted-foreground px-1">{helperText}</p>
       )}
 
-      {/* Assigned Interviewer Cards List */}
       {assignedEmployees.length > 0 && (
         <div className="max-h-52 space-y-1.5 overflow-y-auto pr-1 pt-1">
           {assignedEmployees.map((emp) => (
