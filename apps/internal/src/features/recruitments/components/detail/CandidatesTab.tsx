@@ -1,9 +1,42 @@
-import { useState, useMemo } from "react"
-import type { Recruitment } from "../../types"
-import { Panel, SearchInput, StatusBadge, EmptyState } from "@/shared/components"
-import { formatDate } from "@/shared/lib/format"
-import { candidates, type Candidate, type CandidateStatus } from "@/data/mock"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@workspace/ui/components/table"
+import { useState, useMemo, useEffect } from "react"
+import type { Recruitment, CandidateApplicationItem } from "../../types"
+import {
+  Panel,
+  SearchInput,
+  StatusBadge,
+  EmptyState,
+  FilterChips,
+  TableSortHeader,
+  DataTablePagination,
+  type Chip,
+  type SortDirection,
+} from "@/shared/components"
+import { safeFormatDate } from "@/shared/lib/format"
+import {
+  getRecruitmentCandidateApplications,
+  filterCandidateApplications,
+  sortCandidateApplications,
+  type CandidateAppSortKey,
+} from "../../utils"
+import { CandidateApplicationDetailDialog } from "./CandidateApplicationDetailDialog"
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@workspace/ui/components/table"
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@workspace/ui/components/select"
+import { Button } from "@workspace/ui/components/button"
+import { Eye } from "lucide-react"
 
 export interface CandidatesTabProps {
   recruitment: Recruitment
@@ -11,131 +44,459 @@ export interface CandidatesTabProps {
   onStageChange?: (stageIndex: number | null) => void
 }
 
-const candidateStatusMap: Record<CandidateStatus, { label: string; tone: "info" | "warning" | "success" | "danger" | "neutral" }> = {
-  in_progress: { label: "In Progress", tone: "info" },
-  pending: { label: "Pending", tone: "warning" },
-  accepted: { label: "Accepted", tone: "success" },
-  rejected: { label: "Rejected", tone: "danger" },
-  withdrawn: { label: "Withdrawn", tone: "neutral" },
+const statusToneMap: Record<string, "success" | "warning" | "info" | "danger" | "neutral"> = {
+  passed: "success",
+  accepted: "success",
+  in_progress: "info",
+  pending: "warning",
+  failed: "danger",
+  rejected: "danger",
+  withdrawn: "neutral",
+  upcoming: "neutral",
 }
+
+const statusLabelMap: Record<string, string> = {
+  in_progress: "In Progress",
+  passed: "Passed",
+  failed: "Failed",
+  pending: "Pending",
+  accepted: "Accepted",
+  rejected: "Rejected",
+  withdrawn: "Withdrawn",
+  upcoming: "Upcoming",
+}
+
+const statusItems = [
+  { label: "All Status", value: "all" },
+  { label: "In Progress", value: "in_progress" },
+  { label: "Passed", value: "passed" },
+  { label: "Pending", value: "pending" },
+  { label: "Failed", value: "failed" },
+  { label: "Accepted", value: "accepted" },
+  { label: "Withdrawn", value: "withdrawn" },
+]
 
 export function CandidatesTab({
   recruitment,
   selectedStageIndex = null,
+  onStageChange,
 }: CandidatesTabProps) {
+  // Search and filter states
   const [search, setSearch] = useState("")
+  const [stageFilter, setStageFilter] = useState<string>(
+    selectedStageIndex !== null ? String(selectedStageIndex) : "all"
+  )
+  const [statusFilter, setStatusFilter] = useState("all")
 
-  const recruitmentCandidates = useMemo(() => {
-    return candidates.filter((c) => c.recruitmentId === recruitment.id)
-  }, [recruitment.id])
+  // Sorting and pagination states
+  const [sortKey, setSortKey] = useState<CandidateAppSortKey>("appliedAt")
+  const [sortDirection, setSortDirection] = useState<SortDirection>("desc")
+  const [page, setPage] = useState(1)
+  const pageSize = 5
 
-  const filteredCandidates = useMemo(() => {
-    return recruitmentCandidates.filter((c) => {
-      if (selectedStageIndex !== null && c.stageIndex !== selectedStageIndex) {
-        return false
-      }
-      if (search.trim()) {
-        const q = search.toLowerCase()
-        return (
-          c.name.toLowerCase().includes(q) ||
-          c.email.toLowerCase().includes(q) ||
-          c.education.toLowerCase().includes(q)
-        )
-      }
-      return true
+  // Selected application for detail modal
+  const [selectedApplication, setSelectedApplication] =
+    useState<CandidateApplicationItem | null>(null)
+  const [isDetailOpen, setIsDetailOpen] = useState(false)
+
+  // Sync external stage index with internal dropdown state
+  useEffect(() => {
+    if (selectedStageIndex !== null) {
+      setStageFilter(String(selectedStageIndex))
+    }
+  }, [selectedStageIndex])
+
+  // Retrieve CandidateApplicationItems with ERD relations (BatchApplications + ApplicationStage)
+  const allApplications = useMemo(() => {
+    return getRecruitmentCandidateApplications(recruitment)
+  }, [recruitment])
+
+  // Build stage dropdown items
+  const stageItems = useMemo(() => {
+    const items = [{ label: "All Stages", value: "all" }]
+    ;(recruitment.stages || []).forEach((stg, idx) => {
+      items.push({
+        label: `Stage ${idx + 1}: ${stg.name}`,
+        value: String(idx),
+      })
     })
-  }, [recruitmentCandidates, selectedStageIndex, search])
+    return items
+  }, [recruitment.stages])
+
+  const parsedStageIndex = stageFilter !== "all" ? Number(stageFilter) : null
+
+  // Handle stage filter changes
+  const handleStageChange = (val: string | null) => {
+    if (!val) return
+    setStageFilter(val)
+    setPage(1)
+    if (onStageChange) {
+      onStageChange(val === "all" ? null : Number(val))
+    }
+  }
+
+  // Handle status filter changes
+  const handleStatusChange = (val: string | null) => {
+    if (!val) return
+    setStatusFilter(val)
+    setPage(1)
+  }
+
+  // Filter applications
+  const filteredApplications = useMemo(() => {
+    return filterCandidateApplications(
+      allApplications,
+      search,
+      parsedStageIndex,
+      statusFilter
+    )
+  }, [allApplications, search, parsedStageIndex, statusFilter])
+
+  // Sort applications
+  const sortedApplications = useMemo(() => {
+    return sortCandidateApplications(
+      filteredApplications,
+      sortKey,
+      sortDirection,
+      parsedStageIndex
+    )
+  }, [filteredApplications, sortKey, sortDirection, parsedStageIndex])
+
+  // Paginate applications
+  const paginatedApplications = useMemo(() => {
+    const start = (page - 1) * pageSize
+    return sortedApplications.slice(start, start + pageSize)
+  }, [sortedApplications, page, pageSize])
+
+  const handleSort = (key: string) => {
+    const k = key as CandidateAppSortKey
+    if (sortKey === k) {
+      setSortDirection((prev) => (prev === "asc" ? "desc" : "asc"))
+    } else {
+      setSortKey(k)
+      setSortDirection("asc")
+    }
+  }
+
+  const handleResetFilters = () => {
+    setSearch("")
+    setStageFilter("all")
+    setStatusFilter("all")
+    setPage(1)
+    if (onStageChange) {
+      onStageChange(null)
+    }
+  }
+
+  const handleOpenDetail = (app: CandidateApplicationItem) => {
+    setSelectedApplication(app)
+    setIsDetailOpen(true)
+  }
+
+  // Active filter chips
+  const activeChips: Chip[] = useMemo(() => {
+    const chips: Chip[] = []
+    if (search.trim()) {
+      chips.push({
+        key: "search",
+        label: `Search: "${search}"`,
+        onRemove: () => {
+          setSearch("")
+          setPage(1)
+        },
+      })
+    }
+    if (stageFilter !== "all") {
+      const match = stageItems.find((s) => s.value === stageFilter)
+      chips.push({
+        key: "stage",
+        label: match?.label || `Stage ${Number(stageFilter) + 1}`,
+        onRemove: () => handleStageChange("all"),
+      })
+    }
+    if (statusFilter !== "all") {
+      const match = statusItems.find((s) => s.value === statusFilter)
+      chips.push({
+        key: "status",
+        label: `Status: ${match?.label || statusFilter}`,
+        onRemove: () => handleStatusChange("all"),
+      })
+    }
+    return chips
+  }, [search, stageFilter, statusFilter, stageItems])
+
+  const startIndex = (page - 1) * pageSize
 
   return (
-    <Panel className="space-y-0">
-      <div className="flex flex-col gap-3 border-b border-border px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
-        <div className="text-sm text-muted-foreground">
-          Showing{" "}
-          <span className="font-semibold text-foreground">
-            {filteredCandidates.length}
-          </span>{" "}
-          of {recruitmentCandidates.length} candidates
-          {selectedStageIndex !== null && recruitment.stages[selectedStageIndex] && (
-            <span className="ml-1 text-primary">
-              in Stage {selectedStageIndex + 1}: {recruitment.stages[selectedStageIndex]?.name}
+    <>
+      <Panel className="space-y-0">
+        {/* Top Search & Filter Bar (Matching Recruitments & Candidates List layout) */}
+        <div className="flex flex-col gap-3 border-b border-border px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex flex-1 flex-wrap items-center gap-2.5">
+            <SearchInput
+              value={search}
+              onChange={(val) => {
+                setSearch(val)
+                setPage(1)
+              }}
+              placeholder="Search candidate, email, or application code..."
+              containerClassName="sm:w-80"
+            />
+
+            {/* Stage Filter */}
+            <Select value={stageFilter} onValueChange={handleStageChange}>
+              <SelectTrigger className="h-10 w-48 rounded-full border-0 bg-muted px-4 text-sm text-foreground transition-all duration-150 hover:bg-muted/40 focus-visible:ring-2 focus-visible:ring-primary shadow-none">
+                <SelectValue placeholder="All Stages" />
+              </SelectTrigger>
+              <SelectContent className="rounded-xl">
+                <SelectGroup>
+                  {stageItems.map((item) => (
+                    <SelectItem key={item.value} value={item.value}>
+                      {item.label}
+                    </SelectItem>
+                  ))}
+                </SelectGroup>
+              </SelectContent>
+            </Select>
+
+            {/* Status Filter */}
+            <Select value={statusFilter} onValueChange={handleStatusChange}>
+              <SelectTrigger className="h-10 w-40 rounded-full border-0 bg-muted px-4 text-sm text-foreground transition-all duration-150 hover:bg-muted/40 focus-visible:ring-2 focus-visible:ring-primary shadow-none">
+                <SelectValue placeholder="All Status" />
+              </SelectTrigger>
+              <SelectContent className="rounded-xl">
+                <SelectGroup>
+                  {statusItems.map((item) => (
+                    <SelectItem key={item.value} value={item.value}>
+                      {item.label}
+                    </SelectItem>
+                  ))}
+                </SelectGroup>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="flex items-center gap-2 text-xs text-muted-foreground self-start sm:self-center shrink-0">
+            <span>Showing</span>
+            <span className="font-semibold text-foreground tabular-nums">
+              {filteredApplications.length}
             </span>
-          )}
+            <span>of {allApplications.length} candidates</span>
+          </div>
         </div>
 
-        <SearchInput
-          value={search}
-          onChange={setSearch}
-          placeholder="Search candidate name or education..."
-          containerClassName="sm:w-80"
-        />
-      </div>
+        {/* Removable Active Filter Chips */}
+        <FilterChips chips={activeChips} onReset={handleResetFilters} />
 
-      {filteredCandidates.length === 0 ? (
-        <div className="p-8">
-          <EmptyState
-            title="No candidates found"
-            description="No candidates match the selected stage or search criteria."
-          />
-        </div>
-      ) : (
+        {/* Candidate Application Table */}
         <div className="overflow-x-auto">
           <Table>
             <TableHeader className="bg-card">
               <TableRow className="hover:bg-transparent">
-                <TableHead className="pl-5">Candidate Name</TableHead>
-                <TableHead>Stage</TableHead>
-                <TableHead>Score</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead className="hidden md:table-cell">Applied Date</TableHead>
-                <TableHead className="pr-5 text-right">Source</TableHead>
+                <TableHead className="w-12 pl-5 text-center">#</TableHead>
+
+                <TableSortHeader
+                  label="Candidate Profile"
+                  sortKey="name"
+                  currentSortKey={sortKey}
+                  currentDirection={sortDirection}
+                  onSort={handleSort}
+                />
+
+                <TableSortHeader
+                  label="App Code"
+                  sortKey="code"
+                  currentSortKey={sortKey}
+                  currentDirection={sortDirection}
+                  onSort={handleSort}
+                />
+
+                <TableSortHeader
+                  label={parsedStageIndex !== null ? "Selected Stage" : "Current Stage"}
+                  sortKey="stage"
+                  currentSortKey={sortKey}
+                  currentDirection={sortDirection}
+                  onSort={handleSort}
+                />
+
+                <TableSortHeader
+                  label="Score"
+                  sortKey="score"
+                  currentSortKey={sortKey}
+                  currentDirection={sortDirection}
+                  onSort={handleSort}
+                  align="center"
+                />
+
+                <TableSortHeader
+                  label="Status"
+                  sortKey="status"
+                  currentSortKey={sortKey}
+                  currentDirection={sortDirection}
+                  onSort={handleSort}
+                />
+
+                <TableSortHeader
+                  label="Applied Date"
+                  sortKey="appliedAt"
+                  currentSortKey={sortKey}
+                  currentDirection={sortDirection}
+                  onSort={handleSort}
+                  className="hidden md:table-cell"
+                />
+
+                <TableHead className="w-16 pr-5 text-center whitespace-nowrap">
+                  Action
+                </TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredCandidates.map((c: Candidate) => {
-                const stage = recruitment.stages[c.stageIndex]
-                const statusMeta = candidateStatusMap[c.status]
+              {paginatedApplications.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={8} className="h-64 text-center">
+                    <EmptyState
+                      title="No candidates match"
+                      description={
+                        activeChips.length > 0
+                          ? "Try adjusting your search terms or filters to find candidates."
+                          : "No candidates currently registered in this recruitment batch."
+                      }
+                      action={
+                        activeChips.length > 0 ? (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={handleResetFilters}
+                            className="rounded-full border-0 bg-muted/60 text-foreground hover:bg-muted cursor-pointer"
+                          >
+                            Reset filters
+                          </Button>
+                        ) : undefined
+                      }
+                    />
+                  </TableCell>
+                </TableRow>
+              ) : (
+                paginatedApplications.map((app, idx) => {
+                  const rowNum = startIndex + idx + 1
 
-                return (
-                  <TableRow
-                    key={c.id}
-                    className="border-b border-border transition-colors hover:bg-muted/40"
-                  >
-                    <TableCell className="pl-5 py-3">
-                      <div>
-                        <span className="font-medium text-foreground">{c.name}</span>
-                        <p className="text-xs text-muted-foreground">{c.education}</p>
-                      </div>
-                    </TableCell>
+                  // Determine stage name, score, and status based on whether a specific stage is filtered
+                  const displayStageName =
+                    parsedStageIndex !== null
+                      ? app.applicationStages[parsedStageIndex]?.stageName || app.currentStageName
+                      : app.currentStageName
 
-                    <TableCell className="whitespace-nowrap text-sm text-foreground">
-                      {stage ? stage.name : `Stage ${c.stageIndex + 1}`}
-                    </TableCell>
+                  const displayScore =
+                    parsedStageIndex !== null
+                      ? app.applicationStages[parsedStageIndex]?.totalScore
+                      : app.currentStageScore
 
-                    <TableCell className="tabular-nums text-sm font-medium">
-                      {c.testScore !== null ? `${c.testScore}` : "–"}
-                    </TableCell>
+                  const displayStatus =
+                    parsedStageIndex !== null
+                      ? app.applicationStages[parsedStageIndex]?.status || app.currentStageStatus
+                      : app.currentStageStatus
 
-                    <TableCell className="whitespace-nowrap">
-                      <StatusBadge tone={statusMeta.tone}>
-                        {statusMeta.label}
-                      </StatusBadge>
-                    </TableCell>
+                  const statusTone = statusToneMap[displayStatus] || "neutral"
+                  const statusLabel = statusLabelMap[displayStatus] || displayStatus
 
-                    <TableCell className="hidden md:table-cell text-xs text-muted-foreground whitespace-nowrap">
-                      {formatDate(c.appliedAt)}
-                    </TableCell>
+                  return (
+                    <TableRow
+                      key={app.id}
+                      className="border-b border-border transition-colors hover:bg-muted/40 cursor-pointer"
+                      onClick={() => handleOpenDetail(app)}
+                    >
+                      <TableCell className="pl-5 py-3.5 text-center font-semibold text-muted-foreground tabular-nums text-xs">
+                        {rowNum}
+                      </TableCell>
 
-                    <TableCell className="pr-5 text-right text-xs text-muted-foreground whitespace-nowrap">
-                      {c.source}
-                    </TableCell>
-                  </TableRow>
-                )
-              })}
+                      <TableCell className="py-3.5">
+                        <div className="flex items-center gap-3">
+                          <div className="min-w-0">
+                            <p className="font-semibold text-foreground text-sm truncate">
+                              {app.candidateName}
+                            </p>
+                            <p className="text-xs text-muted-foreground truncate">
+                              {app.candidateEducation || app.candidateEmail}
+                            </p>
+                          </div>
+                        </div>
+                      </TableCell>
+
+                      {/* Application Code (BatchApplications.CodeApplication) */}
+                      <TableCell className="py-3.5 whitespace-nowrap">
+                        <span className="font-mono text-xs font-medium text-muted-foreground rounded bg-muted/50 px-2 py-0.5">
+                          {app.codeApplication}
+                        </span>
+                      </TableCell>
+
+                      {/* Stage Name (BatchStage.StageName) */}
+                      <TableCell className="py-3.5 whitespace-nowrap text-xs font-medium text-foreground">
+                        {displayStageName}
+                      </TableCell>
+
+                      {/* Stage Score (ApplicationStage.TotalScore) */}
+                      <TableCell className="py-3.5 text-center whitespace-nowrap">
+                        {displayScore !== null && displayScore !== undefined ? (
+                          <span className="inline-flex rounded-full bg-primary/10 px-2.5 py-0.5 text-xs font-bold text-primary tabular-nums">
+                            {displayScore}
+                          </span>
+                        ) : (
+                          <span className="text-xs text-muted-foreground font-normal">–</span>
+                        )}
+                      </TableCell>
+
+                      {/* Status Badge (ApplicationStage.Status / BatchApplications.Status) */}
+                      <TableCell className="py-3.5 whitespace-nowrap">
+                        <StatusBadge tone={statusTone}>
+                          {statusLabel}
+                        </StatusBadge>
+                      </TableCell>
+
+                      {/* Applied Date (BatchApplications.AppliedAt) */}
+                      <TableCell className="hidden md:table-cell py-3.5 whitespace-nowrap text-xs text-muted-foreground">
+                        {safeFormatDate(app.appliedAt)}
+                      </TableCell>
+
+                      {/* Action */}
+                      <TableCell
+                        className="pr-5 py-3.5 text-center whitespace-nowrap"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon-xs"
+                          onClick={() => handleOpenDetail(app)}
+                          title="View application details & stages history"
+                          className="size-8 rounded-full border-0 bg-muted hover:bg-muted/60 text-foreground cursor-pointer"
+                        >
+                          <Eye className="size-4" />
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  )
+                })
+              )}
             </TableBody>
           </Table>
         </div>
-      )}
-    </Panel>
+
+        {/* Pagination Footer */}
+        <DataTablePagination
+          page={page}
+          pageSize={pageSize}
+          totalItems={sortedApplications.length}
+          onPageChange={setPage}
+        />
+      </Panel>
+
+      {/* Candidate Application & Stage Journey Detail Dialog */}
+      <CandidateApplicationDetailDialog
+        application={selectedApplication}
+        recruitment={recruitment}
+        open={isDetailOpen}
+        onOpenChange={setIsDetailOpen}
+      />
+    </>
   )
 }
-

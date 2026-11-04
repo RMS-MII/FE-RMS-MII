@@ -43,7 +43,7 @@ export function CandidateDetailDialog({
 
         <div className="space-y-4 py-2">
           {/* Profile Header Box */}
-          <div className="flex items-start gap-3.5 rounded-2xl border border-border bg-muted/40 p-4">
+          <div className="flex items-start gap-3.5 rounded-2xl bg-muted/50 p-4">
             <span className="flex size-12 shrink-0 items-center justify-center rounded-full bg-primary/10 text-base font-bold text-primary">
               {candidate.fullName.charAt(0)}
             </span>
