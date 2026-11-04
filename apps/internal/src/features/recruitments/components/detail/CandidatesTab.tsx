@@ -203,6 +203,109 @@ export function CandidatesTab({
     setApplications((prev) => [...newApps, ...prev])
   }
 
+  const handleUpdateCandidateStatus = (
+    applicationId: string,
+    action: "advance" | "reject" | "reopen",
+    payload?: { reason?: string; notes?: string }
+  ) => {
+    setApplications((prev) =>
+      prev.map((app) => {
+        if (app.id !== applicationId) return app
+
+        const now = new Date().toISOString()
+        const stages = [...app.applicationStages]
+        const currentIdx = app.currentStageIndex
+        const currentStage = stages[currentIdx]
+
+        if (action === "advance") {
+          // Mark current stage passed
+          if (currentStage) {
+            stages[currentIdx] = {
+              ...currentStage,
+              status: "passed",
+              completedAt: now,
+              feedback: payload?.notes || currentStage.feedback || "Passed by HR evaluation",
+            }
+          }
+
+          const isLastStage = currentIdx >= stages.length - 1
+          if (isLastStage) {
+            const updated: CandidateApplicationItem = {
+              ...app,
+              status: "accepted",
+              finalStatus: "accepted",
+              applicationStages: stages,
+            }
+            if (selectedApplication?.id === applicationId) {
+              setSelectedApplication(updated)
+            }
+            return updated
+          } else {
+            const nextIdx = currentIdx + 1
+            if (stages[nextIdx]) {
+              stages[nextIdx] = {
+                ...stages[nextIdx],
+                status: "in_progress",
+                startedAt: now,
+              }
+            }
+            const updated: CandidateApplicationItem = {
+              ...app,
+              status: "in_progress",
+              currentStageIndex: nextIdx,
+              applicationStages: stages,
+            }
+            if (selectedApplication?.id === applicationId) {
+              setSelectedApplication(updated)
+            }
+            return updated
+          }
+        } else if (action === "reject") {
+          if (currentStage) {
+            stages[currentIdx] = {
+              ...currentStage,
+              status: "failed",
+              completedAt: now,
+              feedback: payload?.notes || payload?.reason || "Disqualified",
+            }
+          }
+          const updated: CandidateApplicationItem = {
+            ...app,
+            status: "rejected",
+            finalStatus: "rejected",
+            rejectReason: payload?.reason,
+            applicationStages: stages,
+          }
+          if (selectedApplication?.id === applicationId) {
+            setSelectedApplication(updated)
+          }
+          return updated
+        } else if (action === "reopen") {
+          if (currentStage) {
+            stages[currentIdx] = {
+              ...currentStage,
+              status: "in_progress",
+              completedAt: null,
+            }
+          }
+          const updated: CandidateApplicationItem = {
+            ...app,
+            status: "in_progress",
+            finalStatus: undefined,
+            rejectReason: undefined,
+            applicationStages: stages,
+          }
+          if (selectedApplication?.id === applicationId) {
+            setSelectedApplication(updated)
+          }
+          return updated
+        }
+
+        return app
+      })
+    )
+  }
+
   // Active filter chips
   const activeChips: Chip[] = useMemo(() => {
     const chips: Chip[] = []
@@ -528,6 +631,7 @@ export function CandidatesTab({
         recruitment={recruitment}
         open={isDetailOpen}
         onOpenChange={setIsDetailOpen}
+        onUpdateStatus={handleUpdateCandidateStatus}
       />
 
       {/* Add Candidate Manual Dialog (Talent Pool & Direct Register) */}
