@@ -102,7 +102,6 @@ export function AssignInterviewersDialog({
             </div>
           </div>
 
-          {/* Unified Interviewer Assignment Component */}
           <InterviewerAssignSection
             id="dialog-interviewers"
             assignments={assignments}
@@ -110,7 +109,7 @@ export function AssignInterviewersDialog({
           />
         </div>
 
-        <DialogFooter className="mt-4 gap-2 sm:gap-2">
+        <DialogFooter className="mt-4 gap-2 sm:gap-2 bg-white">
           <CancelButton onClick={() => onOpenChange(false)} />
           <SaveButton onClick={handleSave} isSaved={isSaved}>
             Save

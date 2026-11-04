@@ -91,6 +91,65 @@ export interface BatchApplication {
   updatedAt?: string | null
 }
 
+/** Matches ApplicationStage table in ERD.sql */
+export interface ApplicationStageEntity {
+  id: string
+  batchApplicationId: string
+  batchStageId: string
+  status?: "pending" | "in_progress" | "passed" | "failed" | string | null
+  totalScore?: number | null
+  startedAt?: string | null
+  endedAt?: string | null
+  completedAt?: string | null
+  notes?: string | null
+  isAttempts?: boolean
+  durationTest?: number | null
+  createdAt?: string
+  updatedAt?: string | null
+}
+
+/** Rich view model joining BatchApplications, Candidates, and ApplicationStages */
+export interface CandidateApplicationItem {
+  id: string // BatchApplication.Id
+  candidateId: string
+  recruitmentBatchId: string
+  codeApplication: string // e.g. "APP-2026-001"
+  appliedAt: string
+  status: "in_progress" | "pending" | "accepted" | "rejected" | "withdrawn" | string
+  finalStatus?: "accepted" | "rejected" | "pending" | string | null
+  note?: string | null
+  fileOfferingLetter?: string | null
+  offeringLetterStatus?: string | null
+
+  // Candidate Profile fields (from Candidates table)
+  candidateName: string
+  candidateEmail: string
+  candidatePhone?: string | null
+  candidateEducation?: string | null
+  candidateInstitution?: string | null
+  candidateGpa?: string | null
+  candidateCv?: string | null
+  candidatePortfolio?: string | null
+
+  // Stage progress fields (from ApplicationStage & BatchStage)
+  currentStageIndex: number
+  currentStageName: string
+  currentStageScore?: number | null
+  currentStageStatus: "pending" | "in_progress" | "passed" | "failed" | "accepted" | "rejected" | "withdrawn" | string
+  applicationStages: {
+    stageIndex: number
+    stageId: string
+    stageName: string
+    stageType?: string
+    passingScore?: number | null
+    status: "pending" | "in_progress" | "passed" | "failed" | "upcoming" | "withdrawn" | string
+    totalScore?: number | null
+    startedAt?: string | null
+    completedAt?: string | null
+    notes?: string | null
+  }[]
+}
+
 export type StageEmployeeStatus = "pending" | "accepted" | "declined"
 
 export interface StageInterviewerAssignment {
