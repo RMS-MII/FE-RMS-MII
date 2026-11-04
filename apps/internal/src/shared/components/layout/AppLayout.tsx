@@ -10,6 +10,19 @@ function getCrumbsForPath(path: string): Crumb[] {
     return [{ label: "Dashboard" }]
   }
 
+  // Recruitment manage stages page
+  const stagesMatch = path.match(/^\/recruitments\/([^/]+)\/stages/)
+  if (stagesMatch && stagesMatch[1]) {
+    const id = stagesMatch[1]
+    const rec = initialRecruitments.find((r) => r.id === id)
+    return [
+      { label: "Dashboard", to: "/dashboard" },
+      { label: "Recruitments", to: "/recruitments" },
+      { label: rec ? rec.name : "Detail", to: `/recruitments/${id}` },
+      { label: "Manage Stages" },
+    ]
+  }
+
   // Recruitment detail page
   const recruitmentMatch = path.match(/^\/recruitments\/([^/]+)/)
   if (recruitmentMatch && recruitmentMatch[1]) {

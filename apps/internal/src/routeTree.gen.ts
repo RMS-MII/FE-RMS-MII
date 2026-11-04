@@ -18,6 +18,7 @@ import { Route as AuthEmailLogsRouteImport } from './routes/_auth/email-logs'
 import { Route as AuthUsersRouteImport } from './routes/_auth/users'
 import { Route as AuthRecruitmentsIndexRouteImport } from './routes/_auth/recruitments/index'
 import { Route as AuthRecruitmentsIdIndexRouteImport } from './routes/_auth/recruitments/$id/index'
+import { Route as AuthRecruitmentsIdStagesRouteImport } from './routes/_auth/recruitments/$id/stages'
 
 const AuthRoute = AuthRouteImport.update({
   id: '/_auth',
@@ -63,6 +64,12 @@ const AuthRecruitmentsIdIndexRoute = AuthRecruitmentsIdIndexRouteImport.update({
   path: '/recruitments/$id/',
   getParentRoute: () => AuthRoute,
 } as any)
+const AuthRecruitmentsIdStagesRoute =
+  AuthRecruitmentsIdStagesRouteImport.update({
+    id: '/recruitments/$id/stages',
+    path: '/recruitments/$id/stages',
+    getParentRoute: () => AuthRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof AuthIndexRoute
@@ -72,6 +79,7 @@ export interface FileRoutesByFullPath {
   '/email-logs': typeof AuthEmailLogsRoute
   '/users': typeof AuthUsersRoute
   '/recruitments/': typeof AuthRecruitmentsIndexRoute
+  '/recruitments/$id/stages': typeof AuthRecruitmentsIdStagesRoute
   '/recruitments/$id/': typeof AuthRecruitmentsIdIndexRoute
 }
 export interface FileRoutesByTo {
@@ -82,6 +90,7 @@ export interface FileRoutesByTo {
   '/users': typeof AuthUsersRoute
   '/': typeof AuthIndexRoute
   '/recruitments': typeof AuthRecruitmentsIndexRoute
+  '/recruitments/$id/stages': typeof AuthRecruitmentsIdStagesRoute
   '/recruitments/$id': typeof AuthRecruitmentsIdIndexRoute
 }
 export interface FileRoutesById {
@@ -94,6 +103,7 @@ export interface FileRoutesById {
   '/_auth/users': typeof AuthUsersRoute
   '/_auth/': typeof AuthIndexRoute
   '/_auth/recruitments/': typeof AuthRecruitmentsIndexRoute
+  '/_auth/recruitments/$id/stages': typeof AuthRecruitmentsIdStagesRoute
   '/_auth/recruitments/$id/': typeof AuthRecruitmentsIdIndexRoute
 }
 export interface FileRouteTypes {
@@ -106,6 +116,7 @@ export interface FileRouteTypes {
     | '/email-logs'
     | '/users'
     | '/recruitments/'
+    | '/recruitments/$id/stages'
     | '/recruitments/$id/'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -116,6 +127,7 @@ export interface FileRouteTypes {
     | '/users'
     | '/'
     | '/recruitments'
+    | '/recruitments/$id/stages'
     | '/recruitments/$id'
   id:
     | '__root__'
@@ -127,6 +139,7 @@ export interface FileRouteTypes {
     | '/_auth/users'
     | '/_auth/'
     | '/_auth/recruitments/'
+    | '/_auth/recruitments/$id/stages'
     | '/_auth/recruitments/$id/'
   fileRoutesById: FileRoutesById
 }
@@ -200,6 +213,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthRecruitmentsIdIndexRouteImport
       parentRoute: typeof AuthRoute
     }
+    '/_auth/recruitments/$id/stages': {
+      id: '/_auth/recruitments/$id/stages'
+      path: '/recruitments/$id/stages'
+      fullPath: '/recruitments/$id/stages'
+      preLoaderRoute: typeof AuthRecruitmentsIdStagesRouteImport
+      parentRoute: typeof AuthRoute
+    }
   }
 }
 
@@ -210,6 +230,7 @@ interface AuthRouteChildren {
   AuthUsersRoute: typeof AuthUsersRoute
   AuthIndexRoute: typeof AuthIndexRoute
   AuthRecruitmentsIndexRoute: typeof AuthRecruitmentsIndexRoute
+  AuthRecruitmentsIdStagesRoute: typeof AuthRecruitmentsIdStagesRoute
   AuthRecruitmentsIdIndexRoute: typeof AuthRecruitmentsIdIndexRoute
 }
 
@@ -220,6 +241,7 @@ const AuthRouteChildren: AuthRouteChildren = {
   AuthUsersRoute: AuthUsersRoute,
   AuthIndexRoute: AuthIndexRoute,
   AuthRecruitmentsIndexRoute: AuthRecruitmentsIndexRoute,
+  AuthRecruitmentsIdStagesRoute: AuthRecruitmentsIdStagesRoute,
   AuthRecruitmentsIdIndexRoute: AuthRecruitmentsIdIndexRoute,
 }
 

@@ -132,11 +132,17 @@ export function RecruitmentDetailPage({
   ]
 
   const handleCreateStage = () => {
-    // Placeholder: create stage implementation will be handled in upcoming task
+    navigate({
+      to: "/recruitments/$id/stages",
+      params: { id: recruitment.id },
+    })
   }
 
   const handleEditStage = () => {
-    // Placeholder: edit stage implementation will be handled in upcoming task
+    navigate({
+      to: "/recruitments/$id/stages",
+      params: { id: recruitment.id },
+    })
   }
 
   return (

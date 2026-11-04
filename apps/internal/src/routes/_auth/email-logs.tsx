@@ -6,7 +6,7 @@ export const Route = createFileRoute("/_auth/email-logs")({
 
 function EmailLogsPage() {
   return (
-    <div className="min-h-[400px]">
+    <div className="min-h-100">
       {/* Main content kosong */}
     </div>
   )

@@ -6,7 +6,7 @@ export const Route = createFileRoute("/_auth/users")({
 
 function UsersPage() {
   return (
-    <div className="min-h-[400px]">
+    <div className="min-h-100">
       {/* Content placeholder */}
     </div>
   )

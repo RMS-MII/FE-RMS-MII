@@ -91,13 +91,23 @@ export interface BatchApplication {
   updatedAt?: string | null
 }
 
+export type StageEmployeeStatus = "pending" | "accepted" | "declined"
+
+export interface StageInterviewerAssignment {
+  employeeId: string
+  status: StageEmployeeStatus
+  note?: string
+}
+
 /** UI pipeline stage with ERD BatchStage metadata */
 export interface Stage {
   id: string
   name: string
   type: StageType
   durationDays: number
-  ownerId: string
+  ownerId?: string
+  interviewerIds?: string[]
+  assignedInterviewers?: StageInterviewerAssignment[]
   // ERD fields
   batchStageId?: string
   recruitmentBatchId?: string

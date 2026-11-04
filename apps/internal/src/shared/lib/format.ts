@@ -41,6 +41,32 @@ export function formatPeriod(startIso: string, endIso: string): string {
   return `${formatDate(startIso)} – ${formatDate(endIso)}`
 }
 
+/** Calculate duration in days between two dates. Returns null if invalid or end < start. */
+export function getDurationDays(startDate?: string, endDate?: string): number | null {
+  if (!startDate || !endDate) return null
+  try {
+    const start = new Date(startDate.includes("T") ? startDate : `${startDate}T00:00:00`)
+    const end = new Date(endDate.includes("T") ? endDate : `${endDate}T00:00:00`)
+    if (isNaN(start.getTime()) || isNaN(end.getTime())) return null
+    const diffTime = end.getTime() - start.getTime()
+    const diffDays = Math.round(diffTime / 86_400_000)
+    return diffDays >= 0 ? diffDays : null
+  } catch {
+    return null
+  }
+}
+
+/** Safe date formatter that handles ISO strings with or without timestamp, with fallback. */
+export function safeFormatDate(dateStr?: string): string {
+  if (!dateStr) return "-"
+  try {
+    const clean = dateStr.includes("T") ? dateStr.split("T")[0] : dateStr
+    return formatDate(clean)
+  } catch {
+    return dateStr
+  }
+}
+
 export function relativeDays(iso: string, today: string): string {
   const diff = Math.round((parseDate(today).getTime() - parseDate(iso).getTime()) / 86_400_000)
   if (diff === 0) return "Today"
