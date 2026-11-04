@@ -78,7 +78,7 @@ export interface InterviewerAssignmentItem {
   employeeName: string
   employeeEmail: string
   role?: string
-  status: "assigned" | "accepted" | "declined" | "completed"
+  status: "assigned" | "accepted" | "declined" | "completed" | "pending"
   assessment?: {
     id: string
     score: number

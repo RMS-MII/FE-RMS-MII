@@ -11,7 +11,6 @@ import {
   AlertTriangle,
   CheckCircle2,
   Calendar as CalendarIcon,
-  Eye,
 } from "lucide-react"
 import type { InterviewSessionItem } from "../../types"
 import {
@@ -23,6 +22,23 @@ import {
   TableRow,
 } from "@workspace/ui/components/table"
 import { DataTablePagination } from "@/shared/components"
+import { cn } from "@/shared/lib/utils"
+
+const interviewerStatusColors: Record<string, string> = {
+  pending: "bg-amber-500/15 text-amber-800 dark:text-amber-300",
+  assigned: "bg-amber-500/15 text-amber-800 dark:text-amber-300",
+  accepted: "bg-emerald-500/15 text-emerald-800 dark:text-emerald-300",
+  declined: "bg-rose-500/15 text-rose-800 dark:text-rose-300",
+  completed: "bg-blue-500/15 text-blue-800 dark:text-blue-300",
+}
+
+const interviewerStatusLabels: Record<string, string> = {
+  pending: "Pending (Menunggu Persetujuan)",
+  assigned: "Pending (Menunggu Persetujuan)",
+  accepted: "Accepted (Menyetujui)",
+  declined: "Declined (Menolak)",
+  completed: "Completed (Selesai)",
+}
 
 export interface InterviewSessionTableProps {
   sessions: InterviewSessionItem[]
@@ -30,6 +46,7 @@ export interface InterviewSessionTableProps {
   onClearDateFilter?: () => void
   onViewDetail?: (session: InterviewSessionItem) => void
   onReviewReschedule?: (session: InterviewSessionItem) => void
+  onAdjustSchedule?: (session: InterviewSessionItem) => void
   isFilterPendingReschedule?: boolean
   className?: string
 }
@@ -38,8 +55,8 @@ export function InterviewSessionTable({
   sessions,
   selectedDate,
   onClearDateFilter,
-  onViewDetail,
   onReviewReschedule,
+  onAdjustSchedule,
   isFilterPendingReschedule = false,
   className = "",
 }: InterviewSessionTableProps) {
@@ -254,25 +271,30 @@ export function InterviewSessionTable({
                         </div>
                       </TableCell>
 
-                      {/* Assigned Interviewers (Logistics only, no evaluation/assessment) */}
+                      {/* Assigned Interviewers with Approval Status Badge */}
                       <TableCell className="py-3 text-xs">
                         {session.interviewers.length > 0 ? (
-                          <div className="space-y-1">
-                            {session.interviewers.map((inv) => (
-                              <div
-                                key={inv.id}
-                                className="flex items-center gap-1.5 text-foreground"
-                              >
-                                <span className="font-medium truncate max-w-36">
+                          <div className="flex flex-wrap items-center gap-1.5">
+                            {session.interviewers.map((inv) => {
+                              const statusStyle =
+                                interviewerStatusColors[inv.status] ||
+                                "bg-muted text-muted-foreground border border-border"
+                              const statusDesc =
+                                interviewerStatusLabels[inv.status] || inv.status
+
+                              return (
+                                <span
+                                  key={inv.id}
+                                  title={`${inv.employeeName} • ${statusDesc}`}
+                                  className={cn(
+                                    "inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium transition-colors select-none",
+                                    statusStyle
+                                  )}
+                                >
                                   {inv.employeeName}
                                 </span>
-                                {inv.role && (
-                                  <span className="text-[10px] text-muted-foreground">
-                                    ({inv.role})
-                                  </span>
-                                )}
-                              </div>
-                            ))}
+                              )
+                            })}
                           </div>
                         ) : (
                           <span className="text-muted-foreground italic text-xs">
@@ -378,21 +400,21 @@ export function InterviewSessionTable({
                             <button
                               type="button"
                               onClick={() => onReviewReschedule(session)}
-                              className="rounded-full bg-amber-600 px-2.5 py-1 text-[11px] font-semibold text-white hover:bg-amber-700 transition-colors cursor-pointer"
+                              className="rounded-full bg-amber-600 px-3 py-1 text-xs font-semibold text-white hover:bg-amber-700 transition-colors cursor-pointer shadow-xs"
                             >
-                              Review
+                              Review Reschedule
                             </button>
-                          ) : onViewDetail ? (
+                          ) : (session.status === "rescheduled" || session.rescheduleRequest?.status === "approved") && onAdjustSchedule ? (
                             <button
                               type="button"
-                              onClick={() => onViewDetail(session)}
-                              title="View session details"
-                              className="inline-flex items-center gap-1 rounded-full bg-muted/60 px-2.5 py-1 text-xs font-medium text-foreground hover:bg-muted hover:text-primary transition-colors cursor-pointer"
+                              onClick={() => onAdjustSchedule(session)}
+                              className="rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold text-primary hover:bg-primary/20 transition-colors cursor-pointer"
                             >
-                              <Eye className="size-3 text-muted-foreground" />
-                              <span>Detail</span>
+                              Adjust Schedule
                             </button>
-                          ) : null}
+                          ) : (
+                            <span className="text-xs text-muted-foreground/60">—</span>
+                          )}
                         </div>
                       </TableCell>
                     </TableRow>

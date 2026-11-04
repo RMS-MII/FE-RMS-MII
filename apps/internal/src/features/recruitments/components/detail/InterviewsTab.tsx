@@ -5,6 +5,7 @@ import { mockInterviewSessions, getRecruitmentInterviewSessions } from "../../da
 import { InterviewMiniCalendar } from "./InterviewMiniCalendar"
 import { InterviewSessionTable } from "./InterviewSessionTable"
 import { ScheduleInterviewDialog } from "./ScheduleInterviewDialog"
+import { ReviewRescheduleDialog } from "./ReviewRescheduleDialog"
 import {
   Select,
   SelectContent,
@@ -50,10 +51,88 @@ export function InterviewsTab({
   const [selectedDate, setSelectedDate] = React.useState<string | null>("2026-03-10")
   const [isFilterPendingReschedule, setIsFilterPendingReschedule] = React.useState<boolean>(false)
   const [isScheduleOpen, setIsScheduleOpen] = React.useState<boolean>(false)
+  const [sessionToReschedule, setSessionToReschedule] =
+    React.useState<InterviewSessionItem | null>(null)
+  const [rescheduleSessionToReview, setRescheduleSessionToReview] =
+    React.useState<InterviewSessionItem | null>(null)
+  const [isReviewRescheduleOpen, setIsReviewRescheduleOpen] = React.useState<boolean>(false)
 
-  const handleAddNewSession = (newSession: InterviewSessionItem) => {
-    setSessions((prev) => [newSession, ...prev])
-    setSelectedDate(newSession.scheduledStart.slice(0, 10))
+  const handleOpenScheduleNew = () => {
+    setSessionToReschedule(null)
+    setIsScheduleOpen(true)
+    onScheduleInterview?.()
+  }
+
+  const handleOpenAdjustSchedule = (session: InterviewSessionItem) => {
+    setSessionToReschedule(session)
+    setIsScheduleOpen(true)
+  }
+
+  const handleSaveSession = (savedSession: InterviewSessionItem) => {
+    if (sessionToReschedule) {
+      setSessions((prev) =>
+        prev.map((s) => (s.id === savedSession.id ? savedSession : s))
+      )
+      setSessionToReschedule(null)
+    } else {
+      setSessions((prev) => [savedSession, ...prev])
+    }
+    setSelectedDate(savedSession.scheduledStart.slice(0, 10))
+    setIsFilterPendingReschedule(false)
+  }
+
+  const handleOpenReviewReschedule = (session: InterviewSessionItem) => {
+    setRescheduleSessionToReview(session)
+    setIsReviewRescheduleOpen(true)
+    onReviewReschedule?.(session)
+  }
+
+  const handleApproveReschedule = (
+    sessionId: string,
+    proposedStart: string,
+    proposedEnd: string,
+    notes?: string
+  ) => {
+    setSessions((prev) =>
+      prev.map((s) => {
+        if (s.id !== sessionId) return s
+        return {
+          ...s,
+          scheduledStart: proposedStart,
+          scheduledEnd: proposedEnd,
+          status: "rescheduled",
+          rescheduleRequest: s.rescheduleRequest
+            ? {
+                ...s.rescheduleRequest,
+                status: "approved",
+                reviewedAt: new Date().toISOString(),
+                reviewNotes: notes || null,
+              }
+            : null,
+        }
+      })
+    )
+    setSelectedDate(proposedStart.slice(0, 10))
+    setIsFilterPendingReschedule(false)
+  }
+
+  const handleRejectReschedule = (sessionId: string, notes: string) => {
+    setSessions((prev) =>
+      prev.map((s) => {
+        if (s.id !== sessionId) return s
+        return {
+          ...s,
+          rescheduleRequest: s.rescheduleRequest
+            ? {
+                ...s.rescheduleRequest,
+                status: "rejected",
+                reviewedAt: new Date().toISOString(),
+                reviewNotes: notes,
+              }
+            : null,
+        }
+      })
+    )
     setIsFilterPendingReschedule(false)
   }
 
@@ -175,13 +254,26 @@ export function InterviewsTab({
               </span>
             </div>
           </div>
-          <button
-            type="button"
-            onClick={handleTogglePendingReschedule}
-            className="shrink-0 rounded-full bg-amber-600 px-3.5 py-1.5 text-xs font-semibold text-white hover:bg-amber-700 transition-colors cursor-pointer"
-          >
-            Review Request
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={handleTogglePendingReschedule}
+              className="shrink-0 rounded-full bg-amber-100 text-amber-900 border border-amber-300 px-3 py-1.5 text-xs font-semibold hover:bg-amber-200 transition-colors cursor-pointer"
+            >
+              Filter in Table
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                if (pendingReschedules[0]) {
+                  handleOpenReviewReschedule(pendingReschedules[0])
+                }
+              }}
+              className="shrink-0 rounded-full bg-amber-600 px-3.5 py-1.5 text-xs font-semibold text-white hover:bg-amber-700 transition-colors cursor-pointer shadow-xs"
+            >
+              Review Request
+            </button>
+          </div>
         </div>
       )}
 
@@ -261,10 +353,7 @@ export function InterviewsTab({
         <div className="flex items-center gap-2 self-start lg:self-center shrink-0">
           <Button
             type="button"
-            onClick={() => {
-              setIsScheduleOpen(true)
-              onScheduleInterview?.()
-            }}
+            onClick={handleOpenScheduleNew}
             className="h-10 gap-2 rounded-full border-0 bg-primary px-4 text-xs font-semibold text-primary-foreground shadow-none hover:bg-primary/90 cursor-pointer shrink-0"
           >
             <CalendarPlus className="size-4" />
@@ -294,7 +383,8 @@ export function InterviewsTab({
             selectedDate={selectedDate}
             onClearDateFilter={handleClearDateFilter}
             onViewDetail={onViewSessionDetail}
-            onReviewReschedule={onReviewReschedule}
+            onReviewReschedule={handleOpenReviewReschedule}
+            onAdjustSchedule={handleOpenAdjustSchedule}
             isFilterPendingReschedule={isFilterPendingReschedule}
           />
         </div>
@@ -303,10 +393,23 @@ export function InterviewsTab({
       {/* Schedule Interview Dialog */}
       <ScheduleInterviewDialog
         open={isScheduleOpen}
-        onOpenChange={setIsScheduleOpen}
+        onOpenChange={(open) => {
+          setIsScheduleOpen(open)
+          if (!open) setSessionToReschedule(null)
+        }}
         recruitment={recruitment}
         existingSessions={sessions}
-        onSchedule={handleAddNewSession}
+        sessionToReschedule={sessionToReschedule}
+        onSchedule={handleSaveSession}
+      />
+
+      {/* Review Reschedule Dialog */}
+      <ReviewRescheduleDialog
+        open={isReviewRescheduleOpen}
+        onOpenChange={setIsReviewRescheduleOpen}
+        session={rescheduleSessionToReview}
+        onApprove={handleApproveReschedule}
+        onReject={handleRejectReschedule}
       />
     </Panel>
   )
