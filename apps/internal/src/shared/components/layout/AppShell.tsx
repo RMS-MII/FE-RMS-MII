@@ -10,7 +10,8 @@ import {
   UserCog,
   Users,
   Check,
-  Mail
+  Mail,
+  CalendarCheck,
 } from "lucide-react"
 import { Link } from "@tanstack/react-router"
 import { cn } from "@/shared/lib/utils"
@@ -79,6 +80,14 @@ const NAV: NavGroup[] = [
         icon: LayoutDashboard,
         roles: ["HR", "Interviewer"],
         match: startsWith("/dashboard"),
+      },
+      {
+        to: "/interviews",
+        label: "My Interviews",
+        icon: CalendarCheck,
+        roles: ["Interviewer", "HR"],
+        match: startsWith("/interviews"),
+        badge: "interviews",
       },
       {
         to: "/recruitments",
