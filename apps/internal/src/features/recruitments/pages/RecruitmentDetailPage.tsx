@@ -5,6 +5,7 @@ import { ArrowLeft } from "lucide-react"
 import { Button } from "@workspace/ui/components/button"
 import { PageHeader } from "@/shared/components"
 import { initialRecruitments, recruitmentPipeline } from "../data/mock"
+import { getRecruitmentInterviewSessions, mockInterviewSessions } from "../data/interviewMock"
 import { StagePipeline } from "../components/StagePipeline"
 import {
   RecruitmentDetailHeader,
@@ -12,10 +13,8 @@ import {
   StagesTab,
   CandidatesTab,
   InterviewsTab,
-  EvaluationsTab,
-  DecisionsTab,
 } from "../components/detail"
-import { candidates, interviews, evaluations } from "@/data/mock"
+import { candidates } from "@/data/mock"
 import { cn } from "@/shared/lib/utils"
 
 export type TabKey =
@@ -23,8 +22,6 @@ export type TabKey =
   | "stages"
   | "candidates"
   | "interviews"
-  | "evaluations"
-  | "decisions"
 
 export interface RecruitmentDetailPageProps {
   id: string
@@ -74,18 +71,9 @@ export function RecruitmentDetailPage({
   }, [id])
 
   const recruitmentInterviews = useMemo(() => {
-    return interviews.filter((i) => i.recruitmentId === id)
+    const list = getRecruitmentInterviewSessions(id)
+    return list.length > 0 ? list : mockInterviewSessions
   }, [id])
-
-  const recruitmentEvaluations = useMemo(() => {
-    return evaluations.filter((e) =>
-      recruitmentInterviews.some((i) => i.id === e.interviewId)
-    )
-  }, [recruitmentInterviews])
-
-  const pendingDecisions = useMemo(() => {
-    return recruitmentCandidates.filter((c) => c.status === "pending")
-  }, [recruitmentCandidates])
 
   const pipelineItems = useMemo(() => {
     if (!recruitment) return []
@@ -127,8 +115,6 @@ export function RecruitmentDetailPage({
     { key: "stages", label: "Stages", count: recruitment.stages.length },
     { key: "candidates", label: "Candidates", count: recruitmentCandidates.length },
     { key: "interviews", label: "Interviews", count: recruitmentInterviews.length },
-    { key: "evaluations", label: "Evaluations", count: recruitmentEvaluations.length },
-    { key: "decisions", label: "Decisions", count: pendingDecisions.length },
   ]
 
   const handleCreateStage = () => {
@@ -222,12 +208,6 @@ export function RecruitmentDetailPage({
         )}
         {activeTab === "interviews" && (
           <InterviewsTab recruitment={recruitment} />
-        )}
-        {activeTab === "evaluations" && (
-          <EvaluationsTab recruitment={recruitment} />
-        )}
-        {activeTab === "decisions" && (
-          <DecisionsTab recruitment={recruitment} />
         )}
       </section>
     </div>
