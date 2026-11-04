@@ -179,7 +179,11 @@ export function RegisterNewCandidateTab({
             <Label htmlFor="cand-gender" className="text-sm font-medium px-1">
               Gender
             </Label>
-            <Select value={gender} onValueChange={(val) => val && setGender(val)}>
+            <Select
+              items={genderOptions}
+              value={gender}
+              onValueChange={(val) => val && setGender(val)}
+            >
               <SelectTrigger
                 id="cand-gender"
                 className="h-10 w-full rounded-full border-0 bg-muted px-4 text-sm text-foreground transition-all duration-150 hover:bg-muted/60 outline-none focus-visible:ring-2 focus-visible:ring-primary shadow-none"

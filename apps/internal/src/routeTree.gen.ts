@@ -16,6 +16,7 @@ import { Route as AuthDashboardRouteImport } from './routes/_auth/dashboard'
 import { Route as AuthEmailLogsRouteImport } from './routes/_auth/email-logs'
 import { Route as AuthUsersRouteImport } from './routes/_auth/users'
 import { Route as AuthCandidatesIndexRouteImport } from './routes/_auth/candidates/index'
+import { Route as AuthInterviewsIndexRouteImport } from './routes/_auth/interviews/index'
 import { Route as AuthRecruitmentsIndexRouteImport } from './routes/_auth/recruitments/index'
 import { Route as AuthRecruitmentsIdIndexRouteImport } from './routes/_auth/recruitments/$id/index'
 import { Route as AuthRecruitmentsIdStagesRouteImport } from './routes/_auth/recruitments/$id/stages'
@@ -54,6 +55,11 @@ const AuthCandidatesIndexRoute = AuthCandidatesIndexRouteImport.update({
   path: '/candidates/',
   getParentRoute: () => AuthRoute,
 } as any)
+const AuthInterviewsIndexRoute = AuthInterviewsIndexRouteImport.update({
+  id: '/interviews/',
+  path: '/interviews/',
+  getParentRoute: () => AuthRoute,
+} as any)
 const AuthRecruitmentsIndexRoute = AuthRecruitmentsIndexRouteImport.update({
   id: '/recruitments/',
   path: '/recruitments/',
@@ -78,6 +84,7 @@ export interface FileRoutesByFullPath {
   '/email-logs': typeof AuthEmailLogsRoute
   '/users': typeof AuthUsersRoute
   '/candidates/': typeof AuthCandidatesIndexRoute
+  '/interviews/': typeof AuthInterviewsIndexRoute
   '/recruitments/': typeof AuthRecruitmentsIndexRoute
   '/recruitments/$id/stages': typeof AuthRecruitmentsIdStagesRoute
   '/recruitments/$id/': typeof AuthRecruitmentsIdIndexRoute
@@ -89,6 +96,7 @@ export interface FileRoutesByTo {
   '/users': typeof AuthUsersRoute
   '/': typeof AuthIndexRoute
   '/candidates': typeof AuthCandidatesIndexRoute
+  '/interviews': typeof AuthInterviewsIndexRoute
   '/recruitments': typeof AuthRecruitmentsIndexRoute
   '/recruitments/$id/stages': typeof AuthRecruitmentsIdStagesRoute
   '/recruitments/$id': typeof AuthRecruitmentsIdIndexRoute
@@ -102,6 +110,7 @@ export interface FileRoutesById {
   '/_auth/users': typeof AuthUsersRoute
   '/_auth/': typeof AuthIndexRoute
   '/_auth/candidates/': typeof AuthCandidatesIndexRoute
+  '/_auth/interviews/': typeof AuthInterviewsIndexRoute
   '/_auth/recruitments/': typeof AuthRecruitmentsIndexRoute
   '/_auth/recruitments/$id/stages': typeof AuthRecruitmentsIdStagesRoute
   '/_auth/recruitments/$id/': typeof AuthRecruitmentsIdIndexRoute
@@ -115,6 +124,7 @@ export interface FileRouteTypes {
     | '/email-logs'
     | '/users'
     | '/candidates/'
+    | '/interviews/'
     | '/recruitments/'
     | '/recruitments/$id/stages'
     | '/recruitments/$id/'
@@ -126,6 +136,7 @@ export interface FileRouteTypes {
     | '/users'
     | '/'
     | '/candidates'
+    | '/interviews'
     | '/recruitments'
     | '/recruitments/$id/stages'
     | '/recruitments/$id'
@@ -138,6 +149,7 @@ export interface FileRouteTypes {
     | '/_auth/users'
     | '/_auth/'
     | '/_auth/candidates/'
+    | '/_auth/interviews/'
     | '/_auth/recruitments/'
     | '/_auth/recruitments/$id/stages'
     | '/_auth/recruitments/$id/'
@@ -199,6 +211,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthCandidatesIndexRouteImport
       parentRoute: typeof AuthRoute
     }
+    '/_auth/interviews/': {
+      id: '/_auth/interviews/'
+      path: '/interviews'
+      fullPath: '/interviews/'
+      preLoaderRoute: typeof AuthInterviewsIndexRouteImport
+      parentRoute: typeof AuthRoute
+    }
     '/_auth/recruitments/': {
       id: '/_auth/recruitments/'
       path: '/recruitments'
@@ -229,6 +248,7 @@ interface AuthRouteChildren {
   AuthUsersRoute: typeof AuthUsersRoute
   AuthIndexRoute: typeof AuthIndexRoute
   AuthCandidatesIndexRoute: typeof AuthCandidatesIndexRoute
+  AuthInterviewsIndexRoute: typeof AuthInterviewsIndexRoute
   AuthRecruitmentsIndexRoute: typeof AuthRecruitmentsIndexRoute
   AuthRecruitmentsIdStagesRoute: typeof AuthRecruitmentsIdStagesRoute
   AuthRecruitmentsIdIndexRoute: typeof AuthRecruitmentsIdIndexRoute
@@ -240,6 +260,7 @@ const AuthRouteChildren: AuthRouteChildren = {
   AuthUsersRoute: AuthUsersRoute,
   AuthIndexRoute: AuthIndexRoute,
   AuthCandidatesIndexRoute: AuthCandidatesIndexRoute,
+  AuthInterviewsIndexRoute: AuthInterviewsIndexRoute,
   AuthRecruitmentsIndexRoute: AuthRecruitmentsIndexRoute,
   AuthRecruitmentsIdStagesRoute: AuthRecruitmentsIdStagesRoute,
   AuthRecruitmentsIdIndexRoute: AuthRecruitmentsIdIndexRoute,
