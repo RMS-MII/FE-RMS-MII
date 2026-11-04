@@ -5,6 +5,7 @@ import { ArrowLeft } from "lucide-react"
 import { Button } from "@workspace/ui/components/button"
 import { PageHeader } from "@/shared/components"
 import { initialRecruitments, recruitmentPipeline } from "../data/mock"
+import { getRecruitmentInterviewSessions, mockInterviewSessions } from "../data/interviewMock"
 import { StagePipeline } from "../components/StagePipeline"
 import {
   RecruitmentDetailHeader,
@@ -15,7 +16,7 @@ import {
   EvaluationsTab,
   DecisionsTab,
 } from "../components/detail"
-import { candidates, interviews, evaluations } from "@/data/mock"
+import { candidates, evaluations } from "@/data/mock"
 import { cn } from "@/shared/lib/utils"
 
 export type TabKey =
@@ -74,7 +75,8 @@ export function RecruitmentDetailPage({
   }, [id])
 
   const recruitmentInterviews = useMemo(() => {
-    return interviews.filter((i) => i.recruitmentId === id)
+    const list = getRecruitmentInterviewSessions(id)
+    return list.length > 0 ? list : mockInterviewSessions
   }, [id])
 
   const recruitmentEvaluations = useMemo(() => {
