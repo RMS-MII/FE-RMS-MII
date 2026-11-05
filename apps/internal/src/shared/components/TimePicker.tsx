@@ -7,8 +7,6 @@ import {
 } from "@workspace/ui/components/popover"
 import { cn } from "@/shared/lib/utils"
 import {
-  formatTime12h,
-  formatTime24h,
   generateHours,
   generateMinutes,
   parseTimeString,
@@ -95,13 +93,6 @@ export function TimePicker({
     e.stopPropagation()
     onChange?.("")
   }
-
-  const handleSetNow = () => {
-    const now = new Date()
-    const nowTime = formatTime24h(now.getHours(), now.getMinutes())
-    onChange?.(nowTime)
-  }
-
   // Check if an hour has at least one valid minute given minTime and maxTime
   const isHourDisabled = (hourStr: string) => {
     const h = Number(hourStr)
@@ -169,47 +160,16 @@ export function TimePicker({
           side="bottom"
           sideOffset={6}
           container={typeof document !== "undefined" ? document.body : undefined}
-          className="w-60 p-0 rounded-2xl border border-border bg-card shadow-float z-60 overflow-hidden"
+          className="w-60 p-0 rounded-2xl bg-card shadow-float z-60 overflow-hidden"
         >
-          {/* Header Preview */}
-          <div className="flex items-center justify-between px-3 py-2 bg-muted/30 border-b border-border/60">
-            <div className="flex items-center gap-1.5">
-              <Clock className="size-3.5 text-primary shrink-0" />
-              <span className="font-mono text-xs font-semibold text-foreground">
-                {value ? value : "--:--"}
-              </span>
-              {value && (
-                <span className="text-[10px] text-muted-foreground">
-                  ({formatTime12h(value)})
-                </span>
-              )}
-            </div>
-            <div className="flex items-center gap-1">
-              <button
-                type="button"
-                onClick={handleSetNow}
-                className="rounded-full px-2 py-0.5 text-[10px] font-medium text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer"
-              >
-                Now
-              </button>
-              <button
-                type="button"
-                onClick={() => setOpen(false)}
-                className="rounded-full bg-primary px-2.5 py-0.5 text-[11px] font-semibold text-primary-foreground hover:bg-primary/90 transition-colors cursor-pointer"
-              >
-                Done
-              </button>
-            </div>
-          </div>
-
           {/* 2 Columns: Hours & Minutes */}
           <div className="grid grid-cols-2 divide-x divide-border/60">
             {/* Column 1: Hour */}
             <div className="flex flex-col">
-              <div className="py-1 text-center text-[10px] font-semibold text-muted-foreground uppercase tracking-wider bg-muted/40 border-b border-border/40 select-none">
+              <div className="py-1 text-center text-[11px] font-semibold text-muted-foreground uppercase tracking-wider bg-muted/40 border-b border-border/40 select-none">
                 Hour
               </div>
-              <div className="max-h-52 overflow-y-auto p-1 space-y-0.5 select-none scrollbar-thin">
+              <div className="max-h-52 overflow-y-auto p-1 space-y-1 select-none scrollbar-thin">
                 {hoursList.map((h) => {
                   const isSelected = currentHour === h
                   const isDisabled = isHourDisabled(h)
@@ -222,7 +182,7 @@ export function TimePicker({
                       disabled={isDisabled}
                       onClick={() => handleHourSelect(h)}
                       className={cn(
-                        "w-full py-1 rounded-lg text-xs font-mono font-medium transition-colors text-center cursor-pointer",
+                        "w-full py-1 rounded-lg text-md font-mono font-medium transition-colors text-center cursor-pointer",
                         isSelected
                           ? "bg-primary text-primary-foreground font-semibold shadow-xs"
                           : "text-foreground hover:bg-muted",
@@ -239,7 +199,7 @@ export function TimePicker({
 
             {/* Column 2: Minute */}
             <div className="flex flex-col">
-              <div className="py-1 text-center text-[10px] font-semibold text-muted-foreground uppercase tracking-wider bg-muted/40 border-b border-border/40 select-none">
+              <div className="py-1 text-center text-[11px] font-semibold text-muted-foreground uppercase tracking-wider bg-muted/40 border-b border-border/40 select-none">
                 Minute
               </div>
               <div className="max-h-52 overflow-y-auto p-1 space-y-0.5 select-none scrollbar-thin">
@@ -255,7 +215,7 @@ export function TimePicker({
                       disabled={isDisabled}
                       onClick={() => handleMinuteSelect(m)}
                       className={cn(
-                        "w-full py-1 rounded-lg text-xs font-mono font-medium transition-colors text-center cursor-pointer",
+                        "w-full py-1 rounded-lg text-md font-mono font-medium transition-colors text-center cursor-pointer",
                         isSelected
                           ? "bg-primary text-primary-foreground font-semibold shadow-xs"
                           : "text-foreground hover:bg-muted",

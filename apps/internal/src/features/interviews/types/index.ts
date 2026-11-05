@@ -3,7 +3,12 @@
 // Matches Document/ERD.sql
 // =====================================================================
 
-export type MyInterviewStatus = "pending" | "accepted" | "declined" | "completed"
+export type MyInterviewStatus =
+  | "pending"
+  | "accepted"
+  | "declined"
+  | "completed"
+  | "reschedule_requested"
 
 export type InterviewMode = "online" | "onsite"
 
@@ -29,6 +34,15 @@ export interface CoInterviewerItem {
   avatar?: string
   role?: string // e.g. "Frontend Architect", "Engineering Manager", "Lead HR"
   status: "pending" | "accepted" | "declined"
+}
+
+export interface RescheduleRequestItem {
+  id: string
+  proposedStart: string
+  proposedEnd: string
+  reason: string
+  status: "pending" | "approved" | "rejected"
+  requestedAt: string
 }
 
 export interface MyInterviewItem {
@@ -65,6 +79,13 @@ export interface MyInterviewItem {
 
   // Co-interviewers assigned to this same interview session
   coInterviewers?: CoInterviewerItem[]
+
+  // Reschedule request if any (from RescheduleRequest table)
+  rescheduleRequest?: RescheduleRequestItem | null
+
+  // Candidate take-home file submission if any (from InterviewSession table)
+  fileSubmission?: string | null
+  endedSubmissionAt?: string | null
 
   // Result assessment if completed
   assessment?: InterviewAssessmentItem | null

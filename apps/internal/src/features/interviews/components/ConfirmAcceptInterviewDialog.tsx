@@ -88,17 +88,17 @@ export function ConfirmAcceptInterviewDialog({
           {/* Co-Interviewers Panel */}
           {hasCoInterviewers && (
             <div className="space-y-2 text-xs">
-              <div className="flex items-center gap-1.5 text-foreground font-semibold text-[11px]">
+              <div className="flex items-center gap-1.5 text-foreground font-semibold text-sm">
                 <span>Interview Panel (Co-Interviewers)</span>
               </div>
               <div className="space-y-1.5 pt-0.5">
                 {session.coInterviewers!.map((co) => (
                   <div
                     key={co.id}
-                    className="flex items-center justify-between gap-2 text-[11px] border border-border rounded-full px-2.5 py-1.5"
+                    className="flex items-center justify-between gap-2 text-xs border border-border rounded-full px-2.5 py-1.5"
                   >
                     <div className="flex items-center gap-2 min-w-0">
-                      <div className="size-6 rounded-full bg-primary/10 text-primary font-bold text-[9px] flex items-center justify-center shrink-0">
+                      <div className="size-6 rounded-full bg-primary/10 text-primary font-bold text-xs flex items-center justify-center shrink-0">
                         {co.name.charAt(0)}
                       </div>
                       <div className="truncate">
@@ -106,7 +106,7 @@ export function ConfirmAcceptInterviewDialog({
                           {co.name}
                         </span>
                         {co.role && (
-                          <span className="text-[10px] text-muted-foreground block truncate">
+                          <span className="text-xs text-muted-foreground block truncate">
                             {co.role}
                           </span>
                         )}
@@ -115,12 +115,12 @@ export function ConfirmAcceptInterviewDialog({
 
                     <div className="shrink-0">
                       {co.status === "accepted" ? (
-                        <span className="inline-flex items-center gap-1 text-[10px] text-emerald-600 font-medium">
+                        <span className="inline-flex items-center gap-1 text-xs text-emerald-600 font-medium">
                           <CheckCircle2 className="size-3" />
                           Confirmed
                         </span>
                       ) : (
-                        <span className="inline-flex items-center gap-1 text-[10px] text-amber-600 font-medium">
+                        <span className="inline-flex items-center gap-1 text-xs text-amber-600 font-medium">
                           <AlertCircle className="size-3" />
                           Pending
                         </span>
