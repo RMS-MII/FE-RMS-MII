@@ -18,7 +18,8 @@ import { cn } from "@/shared/lib/utils"
 const loginSchema = z.object({
   username: z
     .string()
-    .min(1, "Username or work email is required"),
+    .trim()
+    .min(1, "Username is required"),
   password: z
     .string()
     .min(1, "Password is required"),
@@ -47,6 +48,11 @@ export function LoginForm({ onSuccess }: LoginFormProps) {
     formState: { errors },
   } = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
+    defaultValues: {
+      username: "",
+      password: "",
+      rememberMe: false,
+    },
   })
 
   const rememberMe = watch("rememberMe")
@@ -77,6 +83,7 @@ export function LoginForm({ onSuccess }: LoginFormProps) {
         navigate({ to: "/dashboard" })
       }
     } catch (err: unknown) {
+      console.error("Login request error:", err)
       const errorObj = err as {
         status?: number | string
         data?: { detail?: string; message?: string; title?: string }
@@ -95,7 +102,12 @@ export function LoginForm({ onSuccess }: LoginFormProps) {
   }
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+    <form
+      onSubmit={handleSubmit(onSubmit, (validationErrors) => {
+        console.warn("Login form validation failed:", validationErrors)
+      })}
+      className="space-y-4"
+    >
       {/* API Error Alert Banner */}
       {apiError && (
         <div className="flex items-start gap-2.5 p-3 rounded-xl bg-destructive/10 text-destructive text-xs font-medium border border-destructive/20 animate-in fade-in">
@@ -104,20 +116,20 @@ export function LoginForm({ onSuccess }: LoginFormProps) {
         </div>
       )}
 
-      {/* Username / Email Input */}
+      {/* Username Input */}
       <div className="space-y-1.5">
         <Label
           htmlFor="login-username"
           className="text-xs font-semibold text-foreground px-1"
         >
-          Work Email / Username
+          Username
         </Label>
         <div className="relative">
           <Input
             id="login-username"
             type="text"
             autoComplete="username"
-            placeholder="hr_manager or name@metrodata.co.id"
+            placeholder="Enter your username"
             {...register("username")}
             aria-invalid={!!errors.username}
             className={cn(
