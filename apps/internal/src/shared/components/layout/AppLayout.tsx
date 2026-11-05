@@ -1,8 +1,9 @@
+import { useEffect } from "react"
 import { Outlet, useRouterState, useNavigate } from "@tanstack/react-router"
 import { AppShell } from "./AppShell"
 import type { Crumb } from "./AppShell"
-import { useAppDispatch } from "@/app/store"
-import { logout } from "@/features/auth"
+import { useAppDispatch, useAppSelector } from "@/app/store"
+import { logout, setUser, useGetMeQuery, mapCurrentUserToAuthUser } from "@/features/auth"
 import { initialRecruitments } from "@/features/recruitments/data/mock"
 
 function getCrumbsForPath(path: string): Crumb[] {
@@ -78,6 +79,19 @@ export function AppLayout() {
   const dispatch = useAppDispatch()
   const path = routerState.location.pathname
   const crumbs = getCrumbsForPath(path)
+
+  const isAuthenticated = useAppSelector((state) => state.auth.isAuthenticated)
+
+  // Rehidrasi data profil user via GET /api/auth/me jika authenticated
+  const { data: currentUserData } = useGetMeQuery(undefined, {
+    skip: !isAuthenticated,
+  })
+
+  useEffect(() => {
+    if (currentUserData) {
+      dispatch(setUser(mapCurrentUserToAuthUser(currentUserData)))
+    }
+  }, [currentUserData, dispatch])
 
   const handleLogout = () => {
     dispatch(logout())

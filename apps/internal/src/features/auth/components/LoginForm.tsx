@@ -4,24 +4,25 @@ import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
 import { useDispatch } from "react-redux"
-import { Eye, EyeOff, Lock, Mail, ArrowRight, Loader2 } from "lucide-react"
+import { Eye, EyeOff, Lock, User, ArrowRight, Loader2, AlertCircle } from "lucide-react"
 
 import { Input } from "@workspace/ui/components/input"
 import { Label } from "@workspace/ui/components/label"
 import { Button } from "@workspace/ui/components/button"
 import { Checkbox } from "@workspace/ui/components/checkbox"
 import { setCredentials } from "../store/auth-slice"
-import type { AuthUser } from "../types"
+import { useLoginMutation } from "../api/auth-api"
+import { mapCurrentUserToAuthUser } from "../types"
 import { cn } from "@/shared/lib/utils"
 
 const loginSchema = z.object({
-  email: z
+  username: z
     .string()
-    .min(1, "Email address is required")
-    .email("Please enter a valid work email address"),
+    .trim()
+    .min(1, "Username is required"),
   password: z
     .string()
-    .min(6, "Password must be at least 6 characters"),
+    .min(1, "Password is required"),
   rememberMe: z.boolean(),
 })
 
@@ -34,9 +35,10 @@ export interface LoginFormProps {
 export function LoginForm({ onSuccess }: LoginFormProps) {
   const navigate = useNavigate()
   const dispatch = useDispatch()
+  const [login, { isLoading }] = useLoginMutation()
 
   const [showPassword, setShowPassword] = useState(false)
-  const [isLoading, setIsLoading] = useState(false)
+  const [apiError, setApiError] = useState<string | null>(null)
 
   const {
     register,
@@ -47,72 +49,98 @@ export function LoginForm({ onSuccess }: LoginFormProps) {
   } = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
     defaultValues: {
-      email: "hr@metrodata.co.id",
-      password: "password123",
-      rememberMe: true,
+      username: "",
+      password: "",
+      rememberMe: false,
     },
   })
 
   const rememberMe = watch("rememberMe")
 
   const onSubmit = async (values: LoginFormValues) => {
-    setIsLoading(true)
+    setApiError(null)
 
-    // Simulate authentication latency for realistic UX
-    setTimeout(() => {
-      setIsLoading(false)
+    try {
+      const response = await login({
+        username: values.username.trim(),
+        password: values.password,
+      }).unwrap()
 
-      const isInterviewer = values.email.toLowerCase().includes("interviewer")
-
-      const mockUser: AuthUser = {
-        id: isInterviewer ? "usr-interviewer-1" : "usr-hr-1",
-        name: isInterviewer ? "Bambang Wijaya" : "Fajar Mahendra",
-        email: values.email.trim(),
-        role: isInterviewer ? "Interviewer" : "HR",
-      }
+      const authUser = mapCurrentUserToAuthUser(response.user)
 
       dispatch(
         setCredentials({
-          accessToken: `jwt-mock-${Date.now()}`,
-          user: mockUser,
+          accessToken: response.accessToken,
+          tokenType: response.tokenType,
+          expiresAt: response.expiresAt,
+          user: authUser,
         })
       )
 
       if (onSuccess) {
         onSuccess()
       } else {
-        navigate({ to: "/" })
+        navigate({ to: "/dashboard" })
       }
-    }, 600)
+    } catch (err: unknown) {
+      console.error("Login request error:", err)
+      const errorObj = err as {
+        status?: number | string
+        data?: { detail?: string; message?: string; title?: string }
+      }
+
+      const message =
+        errorObj?.data?.detail ||
+        errorObj?.data?.message ||
+        errorObj?.data?.title ||
+        (errorObj?.status === "FETCH_ERROR"
+          ? "Unable to connect to the authentication server (http://localhost:5160). Please make sure backend is running."
+          : "Invalid username or password. Please verify your credentials.")
+
+      setApiError(message)
+    }
   }
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-      {/* Email Input */}
+    <form
+      onSubmit={handleSubmit(onSubmit, (validationErrors) => {
+        console.warn("Login form validation failed:", validationErrors)
+      })}
+      className="space-y-4"
+    >
+      {/* API Error Alert Banner */}
+      {apiError && (
+        <div className="flex items-start gap-2.5 p-3 rounded-xl bg-destructive/10 text-destructive text-xs font-medium border border-destructive/20 animate-in fade-in">
+          <AlertCircle className="size-4 shrink-0 mt-0.5" />
+          <span className="leading-relaxed">{apiError}</span>
+        </div>
+      )}
+
+      {/* Username Input */}
       <div className="space-y-1.5">
         <Label
-          htmlFor="login-email"
+          htmlFor="login-username"
           className="text-xs font-semibold text-foreground px-1"
         >
-          Work Email
+          Username
         </Label>
         <div className="relative">
           <Input
-            id="login-email"
-            type="email"
-            autoComplete="email"
-            placeholder="name@metrodata.co.id"
-            {...register("email")}
-            aria-invalid={!!errors.email}
+            id="login-username"
+            type="text"
+            autoComplete="username"
+            placeholder="Enter your username"
+            {...register("username")}
+            aria-invalid={!!errors.username}
             className={cn(
               "h-11 rounded-full border-0 bg-muted pl-11 pr-4 text-sm text-foreground placeholder:text-muted-foreground transition-all duration-150 outline-none focus-visible:bg-card focus-visible:ring-2 focus-visible:ring-primary shadow-none",
-              errors.email && "ring-2 ring-destructive"
+              errors.username && "ring-2 ring-destructive"
             )}
           />
-          <Mail className="size-4 text-muted-foreground absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none" />
+          <User className="size-4 text-muted-foreground absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none" />
         </div>
-        {errors.email && (
-          <p className="text-xs text-destructive px-1">{errors.email.message}</p>
+        {errors.username && (
+          <p className="text-xs text-destructive px-1">{errors.username.message}</p>
         )}
       </div>
 

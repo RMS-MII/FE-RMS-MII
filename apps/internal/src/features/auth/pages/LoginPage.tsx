@@ -33,7 +33,7 @@ export function LoginPage() {
               Welcome back
             </h2>
             <p className="text-xs sm:text-sm text-muted-foreground">
-              Sign in with your corporate email to access candidate pipelines and interview schedules.
+              Sign in with your corporate username to access candidate pipelines and interview schedules.
             </p>
           </div>
 
@@ -49,4 +49,3 @@ export function LoginPage() {
     </div>
   )
 }
-

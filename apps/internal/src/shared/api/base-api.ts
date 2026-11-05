@@ -17,9 +17,13 @@ interface AuthSliceState {
 
 const rawBaseQuery = fetchBaseQuery({
   baseUrl: env.VITE_API_BASE_URL,
-  credentials: "include", // Cookie HttpOnly untuk refresh token
   prepareHeaders: (headers, { getState }) => {
-    const token = (getState() as AuthSliceState)?.auth?.accessToken
+    // 1. Ambil dari Redux state
+    let token = (getState() as AuthSliceState)?.auth?.accessToken
+    // 2. Fallback ambil dari localStorage jika state belum terhidrasi
+    if (!token && typeof window !== "undefined") {
+      token = localStorage.getItem("rms_access_token")
+    }
     if (token) {
       headers.set("Authorization", `Bearer ${token}`)
     }
@@ -27,70 +31,25 @@ const rawBaseQuery = fetchBaseQuery({
   },
 })
 
-// Serialized refresh mutex: cegah beberapa 401 memicu refresh bersamaan
-let isRefreshing = false
-let refreshSubscribers: Array<(token: string | null) => void> = []
-
-const onRefreshed = (token: string | null) => {
-  refreshSubscribers.forEach((callback) => callback(token))
-  refreshSubscribers = []
-}
-
-const addRefreshSubscriber = (callback: (token: string | null) => void) => {
-  refreshSubscribers.push(callback)
-}
-
 const baseQueryWithReauth: BaseQueryFn<
   string | FetchArgs,
   unknown,
   FetchBaseQueryError
 > = async (args, api, extraOptions) => {
-  let result = await rawBaseQuery(args, api, extraOptions)
+  const result = await rawBaseQuery(args, api, extraOptions)
 
+  // Tangani 401 Unauthorized
   if (result.error && result.error.status === 401) {
-    if (!isRefreshing) {
-      isRefreshing = true
+    const isLoginEndpoint =
+      (typeof args === "string" && args.includes("/auth/login")) ||
+      (typeof args === "object" && args.url?.includes("/auth/login"))
 
-      try {
-        const refreshResult = await rawBaseQuery(
-          { url: "/auth/refresh", method: "POST" },
-          api,
-          extraOptions
-        )
-
-        if (refreshResult.data) {
-          const newAccessToken = (
-            refreshResult.data as { accessToken: string }
-          ).accessToken
-
-          // Dispatch action auth secara decoupling (tanpa impor statis modul features/)
-          api.dispatch({ type: "auth/setAccessToken", payload: newAccessToken })
-          isRefreshing = false
-          onRefreshed(newAccessToken)
-
-          // Ulangi request awal dengan token baru
-          result = await rawBaseQuery(args, api, extraOptions)
-        } else {
-          isRefreshing = false
-          onRefreshed(null)
-          api.dispatch({ type: "auth/logout" })
-        }
-      } catch {
-        isRefreshing = false
-        onRefreshed(null)
-        api.dispatch({ type: "auth/logout" })
+    // Jangan lakukan global reset jika request login itu sendiri yang gagal kredensial
+    if (!isLoginEndpoint) {
+      if (typeof window !== "undefined") {
+        localStorage.removeItem("rms_access_token")
       }
-    } else {
-      // Tunggu hingga proses refresh selesai
-      const token = await new Promise<string | null>((resolve) => {
-        addRefreshSubscriber((newToken) => {
-          resolve(newToken)
-        })
-      })
-
-      if (token) {
-        result = await rawBaseQuery(args, api, extraOptions)
-      }
+      api.dispatch({ type: "auth/logout" })
     }
   }
 
