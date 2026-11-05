@@ -34,7 +34,7 @@ export function ErrorState({
       </div>
       <h3 className="text-base font-semibold text-foreground">{title}</h3>
       {description && (
-        <p className="mt-1 max-w-sm text-sm text-muted-foreground">
+        <p className="mt-1 max-w-full text-sm text-muted-foreground">
           {description}
         </p>
       )}
