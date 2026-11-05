@@ -115,7 +115,8 @@ export function RegisterNewCandidateTab({
   }
 
   return (
-    <div className="space-y-4 pt-2">
+    <>
+      <div className="p-6 pt-4 space-y-4 max-h-[65vh] overflow-y-auto">
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div className="space-y-3.5">
           <div className="space-y-1.5">
@@ -296,14 +297,16 @@ export function RegisterNewCandidateTab({
         />
       </div>
 
+      </div>
+
       {/* Footer */}
-      <DialogFooter className="mt-6 gap-2 sm:gap-2 bg-white flex flex-row items-center justify-end">
+      <DialogFooter className="pb-9 px-9 border-t border-border bg-card flex items-center justify-end gap-2.5">
         <CancelButton onClick={onCancel} />
         <SaveButton type="button" onClick={handleSubmit}>
           Save Candidate
         </SaveButton>
       </DialogFooter>
-    </div>
+    </>
   )
 }
 

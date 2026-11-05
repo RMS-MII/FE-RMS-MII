@@ -41,46 +41,48 @@ export function AddCandidateDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-2xl rounded-2xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
+      <DialogContent className="sm:max-w-2xl p-0 gap-0 overflow-hidden rounded-2xl border-border bg-card shadow-xl">
+        <DialogHeader className="p-6 pb-4 border-b border-border text-left">
           <div className="flex items-center gap-2">
-            <DialogTitle>Add Candidate</DialogTitle>
+            <DialogTitle className="text-xl font-bold text-foreground">Add Candidate</DialogTitle>
             <span className="font-mono text-xs font-semibold rounded-md bg-muted px-2 py-0.5 text-foreground">
               {recruitment.batchCode}
             </span>
           </div>
-          <DialogDescription>
+          <DialogDescription className="text-xs text-muted-foreground mt-0.5">
             Add candidates from talent pool or register a new candidate into {recruitment.name}.
           </DialogDescription>
         </DialogHeader>
 
-        <div className="grid grid-cols-2 p-1 bg-muted rounded-full w-full h-11 select-none">
-          <button
-            type="button"
-            onClick={() => setActiveTab("talent-pool")}
-            className={cn(
-              "inline-flex items-center justify-center gap-2 h-9 rounded-full text-sm font-medium transition-all duration-150 cursor-pointer",
-              activeTab === "talent-pool"
-                ? "bg-card text-foreground shadow-xs font-semibold"
-                : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
-            )}
-          >
-            <Users className="size-4" />
-            <span>From Talent Pool ({availableCount})</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => setActiveTab("new-candidate")}
-            className={cn(
-              "inline-flex items-center justify-center gap-2 h-9 rounded-full text-sm font-medium transition-all duration-150 cursor-pointer",
-              activeTab === "new-candidate"
-                ? "bg-card text-foreground shadow-xs font-semibold"
-                : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
-            )}
-          >
-            <UserPlus className="size-4" />
-            <span>Register New Candidate</span>
-          </button>
+        <div className="px-6 pt-5">
+          <div className="grid grid-cols-2 p-1 bg-muted rounded-full w-full h-11 select-none">
+            <button
+              type="button"
+              onClick={() => setActiveTab("talent-pool")}
+              className={cn(
+                "inline-flex items-center justify-center gap-2 h-9 rounded-full text-sm font-medium transition-all duration-150 cursor-pointer",
+                activeTab === "talent-pool"
+                  ? "bg-card text-foreground shadow-xs font-semibold"
+                  : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
+              )}
+            >
+              <Users className="size-4" />
+              <span>From Talent Pool ({availableCount})</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab("new-candidate")}
+              className={cn(
+                "inline-flex items-center justify-center gap-2 h-9 rounded-full text-sm font-medium transition-all duration-150 cursor-pointer",
+                activeTab === "new-candidate"
+                  ? "bg-card text-foreground shadow-xs font-semibold"
+                  : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
+              )}
+            >
+              <UserPlus className="size-4" />
+              <span>Register New Candidate</span>
+            </button>
+          </div>
         </div>
 
         {/* Tab 1 Content: From Talent Pool */}

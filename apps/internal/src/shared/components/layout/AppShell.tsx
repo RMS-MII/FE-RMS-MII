@@ -1,6 +1,7 @@
 import { Fragment, useEffect, useMemo, useState, type ReactNode } from "react"
 import {
   Briefcase,
+  ChevronDown,
   ChevronRight,
   LayoutDashboard,
   LogOut,
@@ -51,7 +52,15 @@ export interface Crumb {
   to?: string
 }
 
-type BadgeKey = "interviews" | "offerings"
+type BadgeKey = "interviews" | "stageInvitations" | "offerings"
+
+export interface NavSubItem {
+  to: string
+  label: string
+  roles: UserRole[]
+  match: (path: string) => boolean
+  badge?: BadgeKey
+}
 
 interface NavItem {
   to: string
@@ -60,6 +69,7 @@ interface NavItem {
   roles: UserRole[]
   match: (path: string) => boolean
   badge?: BadgeKey
+  children?: NavSubItem[]
 }
 
 interface NavGroup {
@@ -82,12 +92,28 @@ const NAV: NavGroup[] = [
         match: startsWith("/dashboard"),
       },
       {
-        to: "/interviews",
+        to: "/interviews/stages",
         label: "My Interviews",
         icon: CalendarCheck,
         roles: ["Interviewer", "HR"],
         match: startsWith("/interviews"),
         badge: "interviews",
+        children: [
+          {
+            to: "/interviews/stages",
+            label: "Stage Invitations",
+            roles: ["Interviewer", "HR"],
+            match: startsWith("/interviews/stages"),
+            badge: "stageInvitations",
+          },
+          {
+            to: "/interviews/schedules",
+            label: "Interview Schedules",
+            roles: ["Interviewer", "HR"],
+            match: startsWith("/interviews/schedules"),
+            badge: "interviews",
+          },
+        ],
       },
       {
         to: "/recruitments",
@@ -129,9 +155,14 @@ const NAV: NavGroup[] = [
 function useBadges(): Record<BadgeKey, number> {
   const role = useAppSelector((state) => state.auth.user?.role) ?? "HR"
   return useMemo(() => {
-    const interviewsCount = role === "HR" ? 3 : 1
+    const stageInvitationsCount = 1
+    const interviewsCount = 1
     const offeringsCount = role === "HR" ? 2 : 0
-    return { interviews: interviewsCount, offerings: offeringsCount }
+    return {
+      interviews: interviewsCount,
+      stageInvitations: stageInvitationsCount,
+      offerings: offeringsCount,
+    }
   }, [role])
 }
 
@@ -232,11 +263,57 @@ function Nav({
                         />
                       )}
                     </span>
-                    {!collapsed && <span className="truncate">{n.label}</span>}
+                    {!collapsed && (
+                      <div className="flex flex-1 items-center justify-between min-w-0">
+                        <span className="truncate">{n.label}</span>
+                        {n.children && (
+                          <ChevronDown
+                            className={cn(
+                              "size-3.5 text-muted-foreground transition-transform duration-200",
+                              active && "rotate-180"
+                            )}
+                          />
+                        )}
+                      </div>
+                    )}
                     {count > 0 && (
                       <span className="sr-only">, {count} pending action</span>
                     )}
                   </Link>
+
+                  {/* Nested Sub-menu Links (when expanded and active) */}
+                  {n.children && !collapsed && active && (
+                    <ul className="ml-6 pl-3 border-l border-border/80 flex flex-col gap-1 mt-1 mb-1">
+                      {n.children
+                        .filter((sub) => sub.roles.includes(role))
+                        .map((sub) => {
+                          const subActive = sub.match(path)
+                          const subCount = sub.badge ? badges[sub.badge] : 0
+
+                          return (
+                            <li key={sub.to + sub.label}>
+                              <Link
+                                to={sub.to}
+                                onClick={onNavigate}
+                                className={cn(
+                                  "flex h-8 items-center justify-between rounded-full px-3 text-xs font-medium transition-colors duration-150",
+                                  subActive
+                                    ? "bg-primary/10 text-primary font-semibold"
+                                    : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                                )}
+                              >
+                                <span className="truncate">{sub.label}</span>
+                                {subCount > 0 && (
+                                  <span className="flex items-center justify-center min-w-4.5 h-4 px-1.5 rounded-full bg-attention text-[10px] font-bold text-white leading-none">
+                                    {subCount}
+                                  </span>
+                                )}
+                              </Link>
+                            </li>
+                          )
+                        })}
+                    </ul>
+                  )}
 
                   {collapsed && (
                     <span

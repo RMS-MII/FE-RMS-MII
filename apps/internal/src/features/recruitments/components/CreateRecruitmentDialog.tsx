@@ -127,15 +127,15 @@ export function CreateRecruitmentDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md rounded-2xl">
-        <DialogHeader>
+      <DialogContent className="sm:max-w-md rounded-2xl p-0 gap-0 bg-card overflow-hidden">
+        <DialogHeader className="p-6 pb-4 border-b border-border">
           <DialogTitle>Create Recruitment</DialogTitle>
           <DialogDescription>
             Add a new recruitment batch and define its department and schedule.
           </DialogDescription>
         </DialogHeader>
 
-        <form id={formId} onSubmit={handleSubmit} className="space-y-4 py-2">
+        <form id={formId} onSubmit={handleSubmit} className="space-y-4 p-6">
           {/* Nama Rekrutmen */}
           <div className="space-y-1.5">
             <Label htmlFor="recruitment-name" className="text-sm font-medium px-1">
@@ -250,7 +250,7 @@ export function CreateRecruitmentDialog({
           </div>
         </form>
 
-        <DialogFooter className="mt-4 gap-2 sm:gap-2 bg-white">
+        <DialogFooter className="px-9 pb-9 border-t border-border bg-card gap-2">
           <CancelButton onClick={() => onOpenChange(false)} />
           <SaveButton type="submit" form={formId}>
             Save

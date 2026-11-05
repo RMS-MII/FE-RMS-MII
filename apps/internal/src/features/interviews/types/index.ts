@@ -74,9 +74,42 @@ export interface SubmitAssessmentPayload {
   notes: string
 }
 
-export interface MyInterviewFilterParams {
+export type MyInterviewFilterParams = {
   search?: string
   status?: "all" | MyInterviewStatus
   mode?: "all" | "online" | "onsite"
 }
+
+// =====================================================================
+// Stage Employee Mandate (Level 1: Undangan Pewawancara Tahap Rekrutmen)
+// Matches StageEmployee table in Document/ERD.sql
+// =====================================================================
+
+export type StageInvitationStatus = "pending" | "accepted" | "declined"
+
+export interface StageInvitationItem {
+  id: string // StageEmployee.Id
+  batchStageId: string // BatchStage.Id
+  recruitmentId: string // RecruitmentBatch.Id
+  recruitmentName: string
+  recruitmentBatchCode: string
+  department: string
+  stageId: string
+  stageName: string
+  stageType: string
+  startDate: string
+  endDate: string
+  estimatedCandidates: number
+  assignedPanelists: Array<{
+    employeeId: string
+    name: string
+    role?: string
+    isYou?: boolean
+  }>
+  status: StageInvitationStatus
+  declineReason?: string | null
+  assignedAt: string
+  respondedAt?: string | null
+}
+
 

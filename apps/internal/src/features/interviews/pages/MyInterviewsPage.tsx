@@ -20,7 +20,8 @@ import type { MyInterviewItem } from "../types"
 import {
   MyInterviewsTable,
   type InterviewSortKey,
-} from "../components/MyInterviewsTable"
+  AcceptDeclineDialog,
+} from "../components"
 
 const statusItems = [
   { label: "All Status", value: "all" },
@@ -361,9 +362,6 @@ export function MyInterviewsPage() {
           onViewCandidate={(item) => {
             setCandidateToView(item)
           }}
-          onViewDeclineReason={(item) => {
-            alert(`Decline Reason: ${item.declineReason || "No reason specified."}`)
-          }}
         />
 
         {/* 4. Pagination directly at bottom of Panel */}
@@ -377,13 +375,22 @@ export function MyInterviewsPage() {
         )}
       </Panel>
 
-      {/* State placeholders connecting to Phase 4 & 5 dialogs */}
-      {sessionToConfirm && (
-        <span
-          className="hidden"
-          onClick={() => handleUpdateStatus(sessionToConfirm.id, "accepted")}
-        />
-      )}
+      {/* Phase 4 Dialog: Accept / Decline Interview Schedule */}
+      <AcceptDeclineDialog
+        open={Boolean(sessionToConfirm)}
+        onOpenChange={(open) => {
+          if (!open) setSessionToConfirm(null)
+        }}
+        session={sessionToConfirm}
+        onAccept={(sessionId) => {
+          handleUpdateStatus(sessionId, "accepted")
+        }}
+        onDecline={(sessionId, reason) => {
+          handleUpdateStatus(sessionId, "declined", reason)
+        }}
+      />
+
+      {/* State placeholders connecting to Phase 5 & 6 dialogs */}
       {sessionToAssess && (
         <span
           className="hidden"

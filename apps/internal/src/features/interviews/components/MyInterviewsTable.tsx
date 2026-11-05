@@ -21,6 +21,11 @@ import {
 } from "@workspace/ui/components/table"
 import { TableSortHeader, EmptyState } from "@/shared/components"
 import { Button } from "@workspace/ui/components/button"
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@workspace/ui/components/popover"
 import { cn } from "@/shared/lib/utils"
 
 export type InterviewSortKey =
@@ -39,7 +44,6 @@ export interface MyInterviewsTableProps {
   onSubmitAssessment?: (item: MyInterviewItem) => void
   onViewAssessment?: (item: MyInterviewItem) => void
   onViewCandidate?: (item: MyInterviewItem) => void
-  onViewDeclineReason?: (item: MyInterviewItem) => void
   onResetFilters?: () => void
   hasActiveFilters?: boolean
 }
@@ -53,7 +57,6 @@ export function MyInterviewsTable({
   onSubmitAssessment,
   onViewAssessment,
   onViewCandidate,
-  onViewDeclineReason,
   onResetFilters,
   hasActiveFilters = false,
 }: MyInterviewsTableProps) {
@@ -298,15 +301,34 @@ export function MyInterviewsTable({
                         </span>
                       )}
                       {isDeclined && (
-                        <button
-                          type="button"
-                          onClick={() => onViewDeclineReason?.(item)}
-                          className="inline-flex items-center gap-1 rounded-full bg-rose-500/15 px-2.5 py-0.5 text-[11px] font-semibold text-rose-800 dark:text-rose-300 hover:bg-rose-500/25 transition-colors cursor-pointer"
-                          title="Click to view decline reason"
-                        >
-                          <XCircle className="size-3 text-rose-600" />
-                          Declined
-                        </button>
+                        <Popover>
+                          <PopoverTrigger
+                            render={
+                              <button
+                                type="button"
+                                className="inline-flex items-center gap-1 rounded-full bg-rose-500/15 px-2.5 py-0.5 text-[11px] font-semibold text-rose-800 dark:text-rose-300 hover:bg-rose-500/25 transition-colors cursor-pointer"
+                                title="Click to view decline reason"
+                              >
+                                <XCircle className="size-3 text-rose-600" />
+                                Declined
+                              </button>
+                            }
+                          />
+                          <PopoverContent
+                            align="center"
+                            className="w-80 p-3.5 rounded-xl border border-border bg-card shadow-lg"
+                          >
+                            <div className="space-y-1.5 text-left">
+                              <div className="flex items-center gap-1.5 text-xs font-semibold text-rose-600">
+                                <XCircle className="size-3.5 shrink-0" />
+                                <span>Decline Reason</span>
+                              </div>
+                              <p className="text-xs text-foreground/90 italic leading-relaxed whitespace-pre-wrap">
+                                &ldquo;{item.declineReason || "No explanation reason was provided."}&rdquo;
+                              </p>
+                            </div>
+                          </PopoverContent>
+                        </Popover>
                       )}
                       {isCompleted && (
                         <span className="inline-flex items-center gap-1 rounded-full bg-blue-500/15 px-2.5 py-0.5 text-[11px] font-semibold text-blue-800 dark:text-blue-300">
@@ -385,15 +407,34 @@ export function MyInterviewsTable({
                         </button>
                       )}
 
-                      {/* 4. Declined: Reason */}
-                      {isDeclined && onViewDeclineReason && (
-                        <button
-                          type="button"
-                          onClick={() => onViewDeclineReason(item)}
-                          className="rounded-full border border-rose-200 bg-rose-50 hover:bg-rose-100 text-rose-700 text-xs px-2.5 py-0.5 font-medium transition-colors cursor-pointer dark:bg-rose-950/30 dark:text-rose-300 dark:border-rose-800"
-                        >
-                          View Reason
-                        </button>
+                      {/* 4. Declined: Reason Popover */}
+                      {isDeclined && (
+                        <Popover>
+                          <PopoverTrigger
+                            render={
+                              <button
+                                type="button"
+                                className="rounded-full border border-rose-200 bg-rose-50 hover:bg-rose-100 text-rose-700 text-xs px-2.5 py-0.5 font-medium transition-colors cursor-pointer dark:bg-rose-950/30 dark:text-rose-300 dark:border-rose-800"
+                              >
+                                View Reason
+                              </button>
+                            }
+                          />
+                          <PopoverContent
+                            align="end"
+                            className="w-80 p-3.5 rounded-xl border border-border bg-card shadow-lg"
+                          >
+                            <div className="space-y-1.5 text-left">
+                              <div className="flex items-center gap-1.5 text-xs font-semibold text-rose-600">
+                                <XCircle className="size-3.5 shrink-0" />
+                                <span>Decline Reason</span>
+                              </div>
+                              <p className="text-xs text-foreground/90 italic leading-relaxed whitespace-pre-wrap">
+                                &ldquo;{item.declineReason || "No explanation reason was provided."}&rdquo;
+                              </p>
+                            </div>
+                          </PopoverContent>
+                        </Popover>
                       )}
                     </div>
                   </TableCell>
