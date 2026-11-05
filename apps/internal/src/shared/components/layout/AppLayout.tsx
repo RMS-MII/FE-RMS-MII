@@ -47,6 +47,26 @@ function getCrumbsForPath(path: string): Crumb[] {
   if (path.startsWith("/users")) {
     return [{ label: "Dashboard", to: "/dashboard" }, { label: "Users" }]
   }
+  if (path.startsWith("/interviews/stages")) {
+    return [
+      { label: "Dashboard", to: "/dashboard" },
+      { label: "My Interviews", to: "/interviews/stages" },
+      { label: "Stage Invitations" },
+    ]
+  }
+  if (path.startsWith("/interviews/schedules")) {
+    return [
+      { label: "Dashboard", to: "/dashboard" },
+      { label: "My Interviews", to: "/interviews/schedules" },
+      { label: "Interview Schedules" },
+    ]
+  }
+  if (path.startsWith("/interviews")) {
+    return [
+      { label: "Dashboard", to: "/dashboard" },
+      { label: "My Interviews", to: "/interviews/stages" },
+    ]
+  }
   const cleanPath = path.replace("/", "")
   const capitalized = cleanPath.charAt(0).toUpperCase() + cleanPath.slice(1)
   return [{ label: "Dashboard", to: "/dashboard" }, { label: capitalized }]

@@ -30,6 +30,24 @@ export const initialMyInterviews: MyInterviewItem[] = [
     interviewerName: "Fajar Mahendra",
     interviewerEmail: "fajar.mahendra@metrodata.co.id",
     declineReason: null,
+    coInterviewers: [
+      {
+        id: "emp-co-1",
+        name: "Sarah Jenkins",
+        email: "sarah.jenkins@metrodata.co.id",
+        role: "Frontend Architect",
+        status: "accepted",
+        avatar: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=120&q=80",
+      },
+      {
+        id: "emp-co-2",
+        name: "Budi Pratama",
+        email: "budi.pratama@metrodata.co.id",
+        role: "Engineering Manager",
+        status: "pending",
+        avatar: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=crop&w=120&q=80",
+      },
+    ],
     assessment: null,
     candidateSummary: {
       currentJobTitle: "Frontend Developer",
@@ -65,6 +83,16 @@ export const initialMyInterviews: MyInterviewItem[] = [
     interviewerName: "Fajar Mahendra",
     interviewerEmail: "fajar.mahendra@metrodata.co.id",
     declineReason: null,
+    coInterviewers: [
+      {
+        id: "emp-co-1",
+        name: "Sarah Jenkins",
+        email: "sarah.jenkins@metrodata.co.id",
+        role: "Frontend Architect",
+        status: "accepted",
+        avatar: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=120&q=80",
+      },
+    ],
     assessment: null,
     candidateSummary: {
       currentJobTitle: "Software Engineer",
@@ -100,6 +128,16 @@ export const initialMyInterviews: MyInterviewItem[] = [
     interviewerName: "Fajar Mahendra",
     interviewerEmail: "fajar.mahendra@metrodata.co.id",
     declineReason: null,
+    coInterviewers: [
+      {
+        id: "emp-co-3",
+        name: "Rina Kusuma",
+        email: "rina.kusuma@metrodata.co.id",
+        role: "Lead Engineer",
+        status: "accepted",
+        avatar: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=120&q=80",
+      },
+    ],
     assessment: null,
     candidateSummary: {
       currentJobTitle: "UI/UX & Web Developer",
@@ -135,6 +173,16 @@ export const initialMyInterviews: MyInterviewItem[] = [
     interviewerName: "Fajar Mahendra",
     interviewerEmail: "fajar.mahendra@metrodata.co.id",
     declineReason: null,
+    coInterviewers: [
+      {
+        id: "emp-co-1",
+        name: "Sarah Jenkins",
+        email: "sarah.jenkins@metrodata.co.id",
+        role: "Frontend Architect",
+        status: "accepted",
+        avatar: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=120&q=80",
+      },
+    ],
     assessment: {
       id: "ia-001",
       sessionInterviewId: "si-interviewer-04",
@@ -177,6 +225,16 @@ export const initialMyInterviews: MyInterviewItem[] = [
     interviewerName: "Fajar Mahendra",
     interviewerEmail: "fajar.mahendra@metrodata.co.id",
     declineReason: null,
+    coInterviewers: [
+      {
+        id: "emp-co-4",
+        name: "Hendra Wijaya",
+        email: "hendra.wijaya@metrodata.co.id",
+        role: "Cloud Solution Lead",
+        status: "accepted",
+        avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=120&q=80",
+      },
+    ],
     assessment: {
       id: "ia-002",
       sessionInterviewId: "si-interviewer-05",
@@ -219,6 +277,16 @@ export const initialMyInterviews: MyInterviewItem[] = [
     interviewerName: "Fajar Mahendra",
     interviewerEmail: "fajar.mahendra@metrodata.co.id",
     declineReason: "Bentrok dengan jadwal Sprint Planning tim internal Q1.",
+    coInterviewers: [
+      {
+        id: "emp-co-1",
+        name: "Sarah Jenkins",
+        email: "sarah.jenkins@metrodata.co.id",
+        role: "Frontend Architect",
+        status: "accepted",
+        avatar: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=120&q=80",
+      },
+    ],
     assessment: null,
     candidateSummary: {
       currentJobTitle: "Frontend Developer",
@@ -271,4 +339,3 @@ export function submitMyInterviewAssessment(
   }
   return target
 }
-

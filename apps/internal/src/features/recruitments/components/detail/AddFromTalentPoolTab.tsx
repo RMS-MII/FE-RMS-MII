@@ -128,7 +128,8 @@ export function AddFromTalentPoolTab({
   }
 
   return (
-    <div className="space-y-4 pt-2">
+    <>
+      <div className="p-6 pt-4 space-y-4 max-h-[65vh] overflow-y-auto">
       <div className="space-y-2">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 px-1">
           <Label className="text-sm font-medium">
@@ -246,8 +247,10 @@ export function AddFromTalentPoolTab({
         </div>
       )}
 
+      </div>
+
       {/* Footer */}
-      <DialogFooter className="mt-6 gap-2 sm:gap-2 bg-white flex flex-row items-center justify-end">
+      <DialogFooter className="pb-9 px-9 border-t border-border bg-card flex items-center justify-end gap-2.5">
         <CancelButton onClick={onCancel} />
         <SaveButton type="button" onClick={handleSubmit}>
           {selectedCandidates.length > 0
@@ -255,7 +258,7 @@ export function AddFromTalentPoolTab({
             : "Add Candidate"}
         </SaveButton>
       </DialogFooter>
-    </div>
+    </>
   )
 }
 

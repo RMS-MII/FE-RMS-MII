@@ -20,7 +20,9 @@ import type { MyInterviewItem } from "../types"
 import {
   MyInterviewsTable,
   type InterviewSortKey,
-} from "../components/MyInterviewsTable"
+  ConfirmAcceptInterviewDialog,
+  ConfirmDeclineInterviewDialog,
+} from "../components"
 
 const statusItems = [
   { label: "All Status", value: "all" },
@@ -54,8 +56,10 @@ export function MyInterviewsPage() {
   const [page, setPage] = React.useState(1)
   const pageSize = 6
 
-  // Modal dialog states (for Phases 4, 5, 6)
-  const [sessionToConfirm, setSessionToConfirm] =
+  // Action dialog states
+  const [sessionToAccept, setSessionToAccept] =
+    React.useState<MyInterviewItem | null>(null)
+  const [sessionToDecline, setSessionToDecline] =
     React.useState<MyInterviewItem | null>(null)
   const [sessionToAssess, setSessionToAssess] =
     React.useState<MyInterviewItem | null>(null)
@@ -214,22 +218,36 @@ export function MyInterviewsPage() {
     setPage(1)
   }
 
-  const handleUpdateStatus = (
-    id: string,
-    status: MyInterviewItem["status"],
-    reason?: string
-  ) => {
+  const handleConfirmAccept = () => {
+    if (!sessionToAccept) return
+    const id = sessionToAccept.id
     setInterviews((prev) =>
       prev.map((item) => {
         if (item.id !== id) return item
         return {
           ...item,
-          status,
-          declineReason: reason || null,
+          status: "accepted",
+          declineReason: null,
         }
       })
     )
-    setSessionToConfirm(null)
+    setSessionToAccept(null)
+  }
+
+  const handleConfirmDecline = (reason: string) => {
+    if (!sessionToDecline) return
+    const id = sessionToDecline.id
+    setInterviews((prev) =>
+      prev.map((item) => {
+        if (item.id !== id) return item
+        return {
+          ...item,
+          status: "declined",
+          declineReason: reason,
+        }
+      })
+    )
+    setSessionToDecline(null)
   }
 
   const handleSaveAssessment = (
@@ -258,13 +276,13 @@ export function MyInterviewsPage() {
 
   return (
     <div className="space-y-6">
-      {/* 1. Page Header (Exact layout hierarchy of RecruitmentsListPage) */}
+      {/* 1. Page Header */}
       <PageHeader
         title="My Interview Assignments"
         description="Review assigned candidate interviews, confirm attendance schedule, join virtual/onsite rooms, and submit evaluations."
       />
 
-      {/* 2. Main Container Panel (Direct child of space-y-6 container) */}
+      {/* 2. Main Container Panel */}
       <Panel>
         {/* Top Search & Filter Bar */}
         <div className="flex flex-col gap-3 border-b border-border px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
@@ -341,7 +359,7 @@ export function MyInterviewsPage() {
         {/* Removable Active Filter Chips */}
         <FilterChips chips={activeChips} onReset={handleResetFilters} />
 
-        {/* 3. Table directly placed inside Panel (no extra card wrapper) */}
+        {/* 3. Table directly placed inside Panel */}
         <MyInterviewsTable
           interviews={paginatedInterviews}
           sortKey={sortKey}
@@ -349,9 +367,8 @@ export function MyInterviewsPage() {
           onSort={handleSort}
           hasActiveFilters={activeChips.length > 0}
           onResetFilters={handleResetFilters}
-          onConfirmInvitation={(item) => {
-            setSessionToConfirm(item)
-          }}
+          onAcceptInvitation={(item) => setSessionToAccept(item)}
+          onDeclineInvitation={(item) => setSessionToDecline(item)}
           onSubmitAssessment={(item) => {
             setSessionToAssess(item)
           }}
@@ -360,9 +377,6 @@ export function MyInterviewsPage() {
           }}
           onViewCandidate={(item) => {
             setCandidateToView(item)
-          }}
-          onViewDeclineReason={(item) => {
-            alert(`Decline Reason: ${item.declineReason || "No reason specified."}`)
           }}
         />
 
@@ -377,13 +391,27 @@ export function MyInterviewsPage() {
         )}
       </Panel>
 
-      {/* State placeholders connecting to Phase 4 & 5 dialogs */}
-      {sessionToConfirm && (
-        <span
-          className="hidden"
-          onClick={() => handleUpdateStatus(sessionToConfirm.id, "accepted")}
-        />
-      )}
+      {/* Accept Interview Attendance Dialog */}
+      <ConfirmAcceptInterviewDialog
+        open={Boolean(sessionToAccept)}
+        onOpenChange={(open) => {
+          if (!open) setSessionToAccept(null)
+        }}
+        session={sessionToAccept}
+        onConfirm={handleConfirmAccept}
+      />
+
+      {/* Decline Interview Attendance Dialog with Reason */}
+      <ConfirmDeclineInterviewDialog
+        open={Boolean(sessionToDecline)}
+        onOpenChange={(open) => {
+          if (!open) setSessionToDecline(null)
+        }}
+        session={sessionToDecline}
+        onConfirm={handleConfirmDecline}
+      />
+
+      {/* State placeholders connecting to Phase 5 & 6 dialogs */}
       {sessionToAssess && (
         <span
           className="hidden"
