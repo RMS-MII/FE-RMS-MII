@@ -7,6 +7,7 @@ import {
   ExternalLink,
   Copy,
   Check,
+  X,
   AlertCircle,
   CheckCircle2,
   XCircle,
@@ -40,7 +41,8 @@ export interface MyInterviewsTableProps {
   sortKey: InterviewSortKey
   sortDirection: "asc" | "desc"
   onSort: (key: string) => void
-  onConfirmInvitation?: (item: MyInterviewItem) => void
+  onAcceptInvitation?: (item: MyInterviewItem) => void
+  onDeclineInvitation?: (item: MyInterviewItem) => void
   onSubmitAssessment?: (item: MyInterviewItem) => void
   onViewAssessment?: (item: MyInterviewItem) => void
   onViewCandidate?: (item: MyInterviewItem) => void
@@ -53,7 +55,8 @@ export function MyInterviewsTable({
   sortKey,
   sortDirection,
   onSort,
-  onConfirmInvitation,
+  onAcceptInvitation,
+  onDeclineInvitation,
   onSubmitAssessment,
   onViewAssessment,
   onViewCandidate,
@@ -102,6 +105,11 @@ export function MyInterviewsTable({
               className="min-w-44"
             />
             <TableSortHeader
+              label="Interview Panel"
+              align="center"
+              className="min-w-36"
+            />
+            <TableSortHeader
               label="Attendance Status"
               sortKey="status"
               currentSortKey={sortKey}
@@ -122,7 +130,7 @@ export function MyInterviewsTable({
             <TableSortHeader
               label="Action"
               align="center"
-              className="pr-5 w-36"
+              className="pr-5 w-48"
             />
           </TableRow>
         </TableHeader>
@@ -130,7 +138,7 @@ export function MyInterviewsTable({
         <TableBody>
           {interviews.length === 0 ? (
             <TableRow>
-              <TableCell colSpan={7} className="h-64 text-center">
+              <TableCell colSpan={8} className="h-64 text-center">
                 <EmptyState
                   title="No interviews match"
                   description={
@@ -285,7 +293,119 @@ export function MyInterviewsTable({
                     </div>
                   </TableCell>
 
-                  {/* Your Attendance Status */}
+                  {/* Interview Panel (Co-interviewers) */}
+                  <TableCell className="py-3.5 text-center whitespace-nowrap text-xs">
+                    {item.coInterviewers && item.coInterviewers.length > 0 ? (
+                      <Popover>
+                        <PopoverTrigger
+                          render={
+                            <button
+                              type="button"
+                              className="inline-flex items-center gap-1.5 rounded-full bg-muted/40 hover:bg-muted p-1 pr-2.5 transition-colors cursor-pointer border border-border/50"
+                              title="Click to view panel members"
+                            >
+                              <div className="flex -space-x-1.5 overflow-hidden">
+                                <div
+                                  className="inline-flex size-5 rounded-full ring-2 ring-card bg-primary/20 text-primary font-bold text-[9px] items-center justify-center"
+                                  title="You"
+                                >
+                                  Me
+                                </div>
+                                {item.coInterviewers.slice(0, 2).map((co) =>
+                                    <div
+                                      key={co.id}
+                                      className="inline-flex size-5 rounded-full ring-2 ring-card bg-muted text-muted-foreground font-semibold text-[9px] items-center justify-center"
+                                    >
+                                      {co.name.charAt(0)}
+                                    </div>
+                                )}
+                                {item.coInterviewers.length > 2 && (
+                                  <div className="inline-flex size-5 rounded-full ring-2 ring-card bg-muted text-foreground font-bold text-[9px] items-center justify-center">
+                                    +{item.coInterviewers.length - 2}
+                                  </div>
+                                )}
+                              </div>
+                              <span className="text-[11px] font-medium text-foreground">
+                                {item.coInterviewers.length + 1} Panelists
+                              </span>
+                            </button>
+                          }
+                        />
+                        <PopoverContent
+                          align="center"
+                          className="w-72 p-3.5 rounded-xl bg-card shadow-lg"
+                        >
+                          <div className="space-y-2 text-left">
+                            <div className="flex items-center justify-between border-b border-border/60 pb-1.5 text-xs font-semibold">
+                              <span className="flex items-center gap-1.5 text-foreground">
+                                Panel Members
+                              </span>
+                              <span className="text-[10px] text-muted-foreground">
+                                {item.coInterviewers.length + 1} Interviewers
+                              </span>
+                            </div>
+
+                            <div className="space-y-1.5">
+                              {/* You */}
+                              <div className="flex items-center justify-between text-xs py-1">
+                                <div className="flex items-center gap-2 min-w-0">
+                                  <div className="size-5 rounded-full bg-primary/10 text-primary font-bold text-[10px] flex items-center justify-center shrink-0">
+                                    Me
+                                  </div>
+                                  <span className="font-medium text-foreground truncate">
+                                    {item.interviewerName} (You)
+                                  </span>
+                                </div>
+                                <span className="text-[10px] font-medium capitalize text-muted-foreground">
+                                  {item.status}
+                                </span>
+                              </div>
+
+                              {/* Co-Interviewers */}
+                              {item.coInterviewers.map((co) => (
+                                <div
+                                  key={co.id}
+                                  className="flex items-center justify-between text-xs py-1 border-t border-border/30"
+                                >
+                                  <div className="flex items-center gap-2 min-w-0">
+                                      <div className="size-5 rounded-full bg-muted text-foreground font-semibold text-[10px] flex items-center justify-center shrink-0">
+                                        {co.name.charAt(0)}
+                                      </div>
+                                    <div className="truncate">
+                                      <span className="font-medium text-foreground block truncate">
+                                        {co.name}
+                                      </span>
+                                      {co.role && (
+                                        <span className="text-[10px] text-muted-foreground block truncate">
+                                          {co.role}
+                                        </span>
+                                      )}
+                                    </div>
+                                  </div>
+                                  <span
+                                    className={cn(
+                                      "text-[10px] font-semibold shrink-0",
+                                      co.status === "accepted"
+                                        ? "text-emerald-600"
+                                        : "text-amber-600"
+                                    )}
+                                  >
+                                    {co.status === "accepted" ? "Confirmed" : "Pending"}
+                                  </span>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        </PopoverContent>
+                      </Popover>
+                    ) : (
+                      <span className="text-[11px] text-muted-foreground font-medium">
+                        Solo Interviewer
+                      </span>
+                    )}
+                  </TableCell>
+
+                  {/* Attendance Status */}
                   <TableCell className="py-3.5 text-center whitespace-nowrap">
                     <div className="flex flex-col items-center gap-1">
                       {isPending && (
@@ -371,18 +491,32 @@ export function MyInterviewsTable({
                     )}
                   </TableCell>
 
-                  {/* Action Button */}
+                  {/* Action Buttons */}
                   <TableCell className="pr-5 py-3.5 text-center whitespace-nowrap">
-                    <div className="flex items-center justify-center gap-1.5">
-                      {/* 1. Pending: Confirm Invitation */}
-                      {isPending && onConfirmInvitation && (
-                        <button
-                          type="button"
-                          onClick={() => onConfirmInvitation(item)}
-                          className="rounded-full bg-amber-600 hover:bg-amber-700 text-white px-3.5 py-1 text-xs font-semibold shadow-xs transition-colors cursor-pointer"
-                        >
-                          Confirm Schedule
-                        </button>
+                    <div className="flex items-center justify-center gap-2">
+                      {/* 1. Pending: Direct Accept & Decline Buttons */}
+                      {isPending && (
+                        <>
+                          <Button
+                            type="button"
+                            size="sm"
+                            onClick={() => onAcceptInvitation?.(item)}
+                            className="h-8 rounded-full bg-emerald-600 hover:bg-emerald-700 text-white px-3 text-xs font-semibold shadow-xs transition-colors cursor-pointer inline-flex items-center gap-1.5"
+                          >
+                            <Check className="size-3.5" />
+                            Accept
+                          </Button>
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            onClick={() => onDeclineInvitation?.(item)}
+                            className="h-8 rounded-full border-rose-200 text-rose-700 hover:bg-rose-50 hover:text-rose-800 dark:border-rose-800 dark:text-rose-300 dark:hover:bg-rose-950/40 px-3 text-xs font-semibold transition-colors cursor-pointer inline-flex items-center gap-1.5"
+                          >
+                            <X className="size-3.5" />
+                            Decline
+                          </Button>
+                        </>
                       )}
 
                       {/* 2. Accepted & Needs Assessment */}
@@ -414,7 +548,7 @@ export function MyInterviewsTable({
                             render={
                               <button
                                 type="button"
-                                className="rounded-full border border-rose-200 bg-rose-50 hover:bg-rose-100 text-rose-700 text-xs px-2.5 py-0.5 font-medium transition-colors cursor-pointer dark:bg-rose-950/30 dark:text-rose-300 dark:border-rose-800"
+                                className="rounded-full border-none bg-rose-100 hover:bg-rose-200 hover:text-rose-800 text-rose-700 text-xs px-2.5 py-1 font-medium transition-colors cursor-pointer dark:bg-rose-950/30 dark:text-rose-300"
                               >
                                 View Reason
                               </button>
@@ -422,7 +556,7 @@ export function MyInterviewsTable({
                           />
                           <PopoverContent
                             align="end"
-                            className="w-80 p-3.5 rounded-xl border border-border bg-card shadow-lg"
+                            className="w-80 p-3.5 rounded-xl bg-card shadow-lg"
                           >
                             <div className="space-y-1.5 text-left">
                               <div className="flex items-center gap-1.5 text-xs font-semibold text-rose-600">

@@ -22,6 +22,15 @@ export interface InterviewAssessmentItem {
   assessedAt: string
 }
 
+export interface CoInterviewerItem {
+  id: string // Employee.Id or SessionInterview.Id
+  name: string
+  email: string
+  avatar?: string
+  role?: string // e.g. "Frontend Architect", "Engineering Manager", "Lead HR"
+  status: "pending" | "accepted" | "declined"
+}
+
 export interface MyInterviewItem {
   id: string // SessionInterview.Id
   sessionId: string // InterviewSession.Id
@@ -53,6 +62,9 @@ export interface MyInterviewItem {
   interviewerName: string
   interviewerEmail: string
   declineReason?: string | null
+
+  // Co-interviewers assigned to this same interview session
+  coInterviewers?: CoInterviewerItem[]
 
   // Result assessment if completed
   assessment?: InterviewAssessmentItem | null
@@ -87,6 +99,13 @@ export type MyInterviewFilterParams = {
 
 export type StageInvitationStatus = "pending" | "accepted" | "declined"
 
+export interface StagePanelistItem {
+  employeeId: string
+  name: string
+  role: string
+  isYou?: boolean
+}
+
 export interface StageInvitationItem {
   id: string // StageEmployee.Id
   batchStageId: string // BatchStage.Id
@@ -99,17 +118,10 @@ export interface StageInvitationItem {
   stageType: string
   startDate: string
   endDate: string
-  estimatedCandidates: number
-  assignedPanelists: Array<{
-    employeeId: string
-    name: string
-    role?: string
-    isYou?: boolean
-  }>
   status: StageInvitationStatus
-  declineReason?: string | null
   assignedAt: string
   respondedAt?: string | null
+  declineReason?: string | null
+  estimatedCandidates: number
+  assignedPanelists?: StagePanelistItem[]
 }
-
-

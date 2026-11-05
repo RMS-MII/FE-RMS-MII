@@ -1,5 +1,6 @@
 export * from "./MyInterviewsTable"
-export * from "./AcceptDeclineDialog"
 export * from "./StageInvitationsTable"
 export * from "./ConfirmAcceptStageDialog"
 export * from "./ConfirmDeclineStageDialog"
+export * from "./ConfirmAcceptInterviewDialog"
+export * from "./ConfirmDeclineInterviewDialog"

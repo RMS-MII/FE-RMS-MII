@@ -222,7 +222,7 @@ export function StageInvitationsTable({
                             type="button"
                             size="sm"
                             onClick={() => onAccept?.(item)}
-                            className="h-8 rounded-full border-none bg-emerald-600 hover:bg-emerald-700 text-white px-3 text-xs font-semibold shadow-xs transition-colors cursor-pointer inline-flex items-center gap-1.5"
+                            className="rounded-full border-none bg-emerald-600 hover:bg-emerald-700 text-white px-3 text-xs font-semibold shadow-xs transition-colors cursor-pointer inline-flex items-center gap-1.5"
                           >
                             <Check className="size-3.5" />
                             Accept
@@ -232,7 +232,7 @@ export function StageInvitationsTable({
                             size="sm"
                             variant="outline"
                             onClick={() => onDecline?.(item)}
-                            className="h-8 rounded-full border-none bg-rose-100 text-rose-700 hover:bg-rose-200 hover:text-rose-800 px-3 text-xs font-semibold transition-colors cursor-pointer inline-flex items-center gap-1.5"
+                            className="rounded-full border-none bg-rose-100 text-rose-700 hover:bg-rose-200 hover:text-rose-800 px-3 text-xs font-semibold transition-colors cursor-pointer inline-flex items-center gap-1.5"
                           >
                             <X className="size-3.5" />
                             Decline
