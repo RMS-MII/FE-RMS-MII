@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react"
 import { useNavigate, useSearch } from "@tanstack/react-router"
-import { Eye, MoreHorizontal, Plus, Loader2, AlertCircle, Calendar } from "lucide-react"
+import { Eye, Plus } from "lucide-react"
 
 // Primitives from @workspace/ui
 import { Button } from "@workspace/ui/components/button"
@@ -11,12 +11,6 @@ import {
   TableHeader,
   TableRow,
 } from "@workspace/ui/components/table"
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@workspace/ui/components/dropdown-menu"
 import {
   Select,
   SelectContent,
@@ -37,6 +31,8 @@ import {
   StatusBadge,
   DataTablePagination,
   EmptyState,
+  ErrorState,
+  TableSkeleton,
 } from "@/shared/components"
 import { formatPeriod } from "@/shared/lib/format"
 import { cn } from "@/shared/lib/utils"
@@ -272,7 +268,7 @@ export function RecruitmentsListPage() {
               value={statusFilter}
               onValueChange={handleStatusChange}
             >
-              <SelectTrigger className="h-10 w-36 rounded-full border border-border bg-muted/60 px-3 text-xs font-medium text-foreground transition-colors hover:bg-muted focus-visible:ring-1 focus-visible:ring-primary">
+              <SelectTrigger className="w-36 rounded-full border-none bg-muted/60 px-3 text-xs font-medium text-foreground transition-colors hover:bg-muted focus-visible:ring-1 focus-visible:ring-primary">
                 <SelectValue placeholder="All Status" />
               </SelectTrigger>
               <SelectContent className="rounded-xl bg-card p-1 shadow-md">
@@ -376,35 +372,38 @@ export function RecruitmentsListPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {/* 1. Loading state */}
+              {/* 1. Loading state (skeleton rows only; header and controls remain visible) */}
               {isLoading ? (
-                <TableRow>
-                  <TableCell colSpan={7} className="h-64 text-center">
-                    <div className="flex flex-col items-center justify-center gap-2.5 text-muted-foreground">
-                      <Loader2 className="size-6 animate-spin text-primary" />
-                      <p className="text-xs font-medium">Loading recruitments from API...</p>
-                    </div>
-                  </TableCell>
-                </TableRow>
+                <TableSkeleton
+                  rowCount={5}
+                  colWidths={[
+                    "w-24",
+                    ["w-44", "w-28"],
+                    "w-32",
+                    "w-12 mx-auto",
+                    "w-36 mx-auto",
+                    "w-20 mx-auto",
+                    "w-6 ml-auto",
+                  ]}
+                  cellClassNames={[
+                    "pl-5",
+                    "py-3",
+                    "",
+                    "text-center",
+                    "text-center",
+                    "text-center",
+                    "pr-5 text-right",
+                  ]}
+                />
               ) : isError ? (
-                /* 2. Error state */
+                /* 2. Error state (generic message, reusable) */
                 <TableRow>
                   <TableCell colSpan={7} className="h-64 text-center">
-                    <div className="flex flex-col items-center justify-center gap-2 text-destructive">
-                      <AlertCircle className="size-7" />
-                      <p className="text-sm font-semibold">Failed to fetch recruitments</p>
-                      <p className="text-xs text-muted-foreground max-w-sm">
-                        Could not connect to backend server at http://localhost:5160/api/batches. Please make sure the backend is active.
-                      </p>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => refetch()}
-                        className="mt-2 rounded-full cursor-pointer"
-                      >
-                        Try Again
-                      </Button>
-                    </div>
+                    <ErrorState
+                      title="Failed to load recruitments"
+                      description="Something went wrong while fetching recruitment data. Please check your connection and try again."
+                      onRetry={() => refetch()}
+                    />
                   </TableCell>
                 </TableRow>
               ) : recruitments.length === 0 ? (
@@ -487,36 +486,16 @@ export function RecruitmentsListPage() {
                       </TableCell>
 
                       <TableCell className="pr-5 text-right whitespace-nowrap">
-                        <DropdownMenu>
-                          <DropdownMenuTrigger
-                            render={
-                              <Button
-                                variant="ghost"
-                                size="icon-sm"
-                                className="size-8 rounded-full text-foreground transition-colors hover:bg-muted cursor-pointer"
-                                aria-label={`Actions for ${recruitment.name}`}
-                              />
-                            }
-                          >
-                            <MoreHorizontal className="size-4" aria-hidden />
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end" className="w-40 rounded-xl bg-card shadow-lg p-1">
-                            <DropdownMenuItem
-                              onClick={() => handleViewDetail(recruitment.id)}
-                              className="cursor-pointer gap-2 text-xs"
-                            >
-                              <Eye className="size-3.5" aria-hidden />
-                              <span>View Detail</span>
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                              onClick={() => navigate({ to: `/recruitments/${recruitment.id}/stages` })}
-                              className="cursor-pointer gap-2 text-xs"
-                            >
-                              <Calendar className="size-3.5" aria-hidden />
-                              <span>Manage Stages</span>
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
+                        <Button
+                          variant="ghost"
+                          size="icon-sm"
+                          onClick={() => handleViewDetail(recruitment.id)}
+                          className="size-8 rounded-full text-muted-foreground transition-colors hover:text-foreground hover:bg-muted cursor-pointer"
+                          aria-label={`View details for ${recruitment.name}`}
+                          title="View Detail"
+                        >
+                          <Eye className="size-4" aria-hidden />
+                        </Button>
                       </TableCell>
                     </TableRow>
                   )
