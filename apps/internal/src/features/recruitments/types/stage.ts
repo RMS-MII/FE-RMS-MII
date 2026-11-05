@@ -2,6 +2,7 @@ import type { Employee } from "./employee"
 
 // =====================================================================
 // Matches BatchStage, StageType, StageEmployee tables in Document/ERD.sql
+// and BE-RMS-MII API models
 // =====================================================================
 
 export type LegacyStageType = "screening" | "test" | "interview" | "offering"
@@ -18,12 +19,14 @@ export interface StageTypeEntity {
   updatedAt?: string | null
 }
 
-/** Matches BatchStage table in ERD.sql */
+/** Matches BatchStage in backend API & ERD.sql */
 export interface BatchStage {
   id: string
   nextStageId?: string | null
   recruitmentBatchId: string
   stageTypeId: string
+  stageTypeName?: string
+  stageCategory?: string | null
   stageName: string
   isActive: boolean
   passingScore?: number | null
@@ -84,4 +87,3 @@ export interface PipelineItem {
   state: StageState
   note?: string
 }
-

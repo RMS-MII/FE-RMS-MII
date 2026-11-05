@@ -230,7 +230,7 @@ export function AddFromTalentPoolTab({
               <span>{selectedCandidates.length} Candidate{selectedCandidates.length > 1 ? "s" : ""} Selected</span>
             </div>
             <span className="text-xs text-muted-foreground">
-              Will enter at Stage 1: {recruitment.stages[0]?.name || "Screening"}
+              Will enter at Stage 1: {(recruitment.stages ?? [])[0]?.name || "Screening"}
             </span>
           </div>
           <div className="flex flex-wrap gap-1.5 pt-1">

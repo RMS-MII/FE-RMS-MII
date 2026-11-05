@@ -25,8 +25,9 @@ export function RecruitmentDetailHeader({
         </div>
 
         <p className="text-sm text-muted-foreground">
-          {recruitment.name}, division {recruitment.division}. Open{" "}
-          {formatDate(recruitment.openDate)} to {formatDate(recruitment.closeDate)}.
+          {recruitment.name}, division {recruitment.departmentName || recruitment.division || "General"}. Open{" "}
+          {formatDate(recruitment.startDate || recruitment.openDate || "")} to{" "}
+          {formatDate(recruitment.endDate || recruitment.closeDate || "")}.
         </p>
       </div>
     </div>

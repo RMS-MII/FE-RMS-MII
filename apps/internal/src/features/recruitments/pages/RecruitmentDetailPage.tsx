@@ -112,7 +112,7 @@ export function RecruitmentDetailPage({
 
   const tabs: { key: TabKey; label: string; count?: number }[] = [
     { key: "summary", label: "Summary" },
-    { key: "stages", label: "Stages", count: recruitment.stages.length },
+    { key: "stages", label: "Stages", count: (recruitment.batchStages || recruitment.stages || []).length },
     { key: "candidates", label: "Candidates", count: recruitmentCandidates.length },
     { key: "interviews", label: "Interviews", count: recruitmentInterviews.length },
   ]

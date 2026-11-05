@@ -3,40 +3,61 @@ import type { Department } from "./department"
 import type { BatchStage, Stage } from "./stage"
 
 // =====================================================================
-// Matches RecruitmentBatch table in Document/ERD.sql
+// Matches RecruitmentBatch in BE-RMS-MII API & Document/ERD.sql
 // =====================================================================
 
-export type RecruitmentStatus = "draft" | "running" | "completed" | "closed"
+export type BatchStatus = "Draft" | "Open" | "Closed" | 1 | 2 | 3
+export type LegacyRecruitmentStatus = "draft" | "running" | "completed" | "closed"
+export type RecruitmentStatus = LegacyRecruitmentStatus | BatchStatus
+
+export interface PagedResult<T> {
+  items: T[]
+  page: number
+  pageSize: number
+  totalItems: number
+  totalPages: number
+  hasPreviousPage: boolean
+  hasNextPage: boolean
+}
+
+export interface GetBatchesParams {
+  search?: string
+  status?: number
+  departmentId?: string
+  page?: number
+  pageSize?: number
+}
 
 /**
- * Matches RecruitmentBatch table in ERD.sql
- * Includes convenience aliases for UI components
+ * Matches RecruitmentBatch from BE-RMS-MII API
+ * Includes convenience aliases for legacy UI compatibility
  */
 export interface Recruitment {
   id: string
+  departmentId: string
+  departmentName?: string
   batchCode: string
-  code?: string
   name: string
-  departmentId?: string
-  division: string
-  department?: Department
-  openDate: string
+  description: string
   startDate?: string
-  closeDate: string
   endDate?: string
   status: RecruitmentStatus
-  description: string
   createdBy?: string
-  ownerId: string
   createdAt?: string
   updatedAt?: string | null
-
-  // UI state & display
-  location: string
-  quota: number
-  currentStage: number
-  stages: Stage[]
   batchStages?: BatchStage[]
+
+  // Convenience aliases for UI components / mock compatibility
+  code?: string
+  division?: string
+  department?: Department
+  openDate?: string
+  closeDate?: string
+  ownerId?: string
+  location?: string
+  quota?: number
+  currentStage?: number
+  stages?: Stage[]
 }
 
 export interface CreateRecruitmentFormData {
@@ -57,10 +78,23 @@ export type SortOrder = "asc" | "desc"
 
 export interface RecruitmentListSearchParams {
   search?: string
-  status?: RecruitmentStatus
+  status?: string
   division?: string
   sortBy?: RecruitmentSortKey
   order?: SortOrder
   page?: number
 }
 
+export function getRecruitmentStatusMeta(status: any): RecruitmentStatusMeta {
+  const str = String(status).toLowerCase()
+  if (str === "draft" || str === "1") {
+    return { label: "Draft", tone: "neutral" }
+  }
+  if (str === "open" || str === "running" || str === "2") {
+    return { label: "Open", tone: "success" }
+  }
+  if (str === "closed" || str === "completed" || str === "3") {
+    return { label: "Closed", tone: "danger" }
+  }
+  return { label: String(status), tone: "neutral" }
+}

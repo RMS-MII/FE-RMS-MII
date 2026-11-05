@@ -5,7 +5,6 @@ import type {
   Employee,
   BatchApplication,
   Recruitment,
-  RecruitmentStatus,
   Stage,
   LegacyStageType,
   PipelineItem,
@@ -542,11 +541,17 @@ export const mockBatchApplications: BatchApplication[] = candidates.map((c, inde
 // =====================================================================
 // UI Status Metadata & Helpers
 // =====================================================================
-export const recruitmentStatusMeta: Record<RecruitmentStatus, { label: string; tone: Tone }> = {
+export const recruitmentStatusMeta: Record<string, { label: string; tone: Tone }> = {
   draft: { label: "Draft", tone: "neutral" },
-  running: { label: "Running", tone: "info" },
-  completed: { label: "Completed", tone: "success" },
+  running: { label: "Open", tone: "success" },
+  completed: { label: "Closed", tone: "danger" },
   closed: { label: "Closed", tone: "danger" },
+  Draft: { label: "Draft", tone: "neutral" },
+  Open: { label: "Open", tone: "success" },
+  Closed: { label: "Closed", tone: "danger" },
+  "1": { label: "Draft", tone: "neutral" },
+  "2": { label: "Open", tone: "success" },
+  "3": { label: "Closed", tone: "danger" },
 }
 
 export function activeCandidateCount(r: Recruitment): number {
@@ -558,7 +563,7 @@ export function activeCandidateCount(r: Recruitment): number {
 }
 
 export function recruitmentPipeline(r: Recruitment): PipelineItem[] {
-  return r.stages.map((s, i) => ({
+  return (r.stages ?? []).map((s, i) => ({
     name: s.name,
     count: candidates.filter(
       (c) =>
@@ -566,6 +571,6 @@ export function recruitmentPipeline(r: Recruitment): PipelineItem[] {
         c.stageIndex === i &&
         (c.status === "in_progress" || c.status === "pending" || c.status === "accepted")
     ).length,
-    state: i < r.currentStage ? "done" : i === r.currentStage ? "current" : "upcoming",
+    state: i < (r.currentStage ?? 0) ? "done" : i === (r.currentStage ?? 0) ? "current" : "upcoming",
   }))
 }

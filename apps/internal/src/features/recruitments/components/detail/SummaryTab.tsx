@@ -32,10 +32,10 @@ export function SummaryTab({ recruitment }: SummaryTabProps) {
       </span>,
     ],
     ["Position", recruitment.name],
-    ["Department", recruitment.division],
+    ["Department", recruitment.departmentName || recruitment.division || "—"],
     [
       "Period",
-      `${formatDate(recruitment.openDate)} to ${formatDate(recruitment.closeDate)}`,
+      `${formatDate(recruitment.startDate || recruitment.openDate || "")} to ${formatDate(recruitment.endDate || recruitment.closeDate || "")}`,
     ],
     ["Person in Charge", owner?.fullName ?? "Fajar Mahendra"],
     [

@@ -37,7 +37,8 @@ export function StageOverviewBanner({
           <div>
             <span className="text-muted-foreground">Batch Period: </span>
             <span className="font-medium text-foreground">
-              {formatDate(recruitment.openDate)} to {formatDate(recruitment.closeDate)}
+              {formatDate(recruitment.startDate || recruitment.openDate || "")} to{" "}
+              {formatDate(recruitment.endDate || recruitment.closeDate || "")}
             </span>
           </div>
           <div className="h-3 w-px bg-border hidden sm:block" />

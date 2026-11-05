@@ -33,8 +33,9 @@ export function ManageStagesPage({ id }: ManageStagesPageProps) {
 
   const [stages, setStages] = useState<EditableStage[]>(() => {
     if (!recruitment) return []
-    if (recruitment.stages.length > 0) {
-      return recruitment.stages.map((s, index) => ({
+    const existingStages = recruitment.stages ?? []
+    if (existingStages.length > 0) {
+      return existingStages.map((s, index) => ({
         tempId: `stage-${s.id || index}-${Date.now()}`,
         id: s.id,
         stageTypeId: s.stageTypeId || mockStageTypes[0].id,

@@ -94,6 +94,7 @@ export function CreateRecruitmentDialog({
       description: description.trim(),
       createdAt: new Date().toISOString(),
       updatedAt: null,
+      batchStages: [],
       stages: [
         {
           id: newStageId,

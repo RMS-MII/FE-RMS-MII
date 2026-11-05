@@ -55,14 +55,14 @@ const statusDescriptions: Record<StageEmployeeStatus, string> = {
 }
 
 export function StagesTab({ recruitment, onCreateStage, onEditStage }: StagesTabProps) {
-  const [stages, setStages] = useState<Stage[]>(() => recruitment.stages)
+  const [stages, setStages] = useState<Stage[]>(() => recruitment.stages ?? [])
   const [assignStage, setAssignStage] = useState<Stage | null>(null)
   const [assignIndex, setAssignIndex] = useState<number>(0)
   const [isDialogOpen, setIsDialogOpen] = useState(false)
 
   // Sync state if parent recruitment stages update
   useEffect(() => {
-    setStages(recruitment.stages)
+    setStages(recruitment.stages ?? [])
   }, [recruitment.stages])
 
   if (stages.length === 0) {
@@ -114,7 +114,7 @@ export function StagesTab({ recruitment, onCreateStage, onEditStage }: StagesTab
     if (rIdx !== -1) {
       initialRecruitments[rIdx] = {
         ...initialRecruitments[rIdx],
-        stages: initialRecruitments[rIdx].stages.map((s) => {
+        stages: (initialRecruitments[rIdx].stages ?? []).map((s) => {
           if (s.id !== stageId) return s
           return {
             ...s,
@@ -154,10 +154,11 @@ export function StagesTab({ recruitment, onCreateStage, onEditStage }: StagesTab
             </TableHeader>
             <TableBody>
               {stages.map((stage, index) => {
+                const currentStageIdx = recruitment.currentStage ?? 0
                 const isDone =
-                  index < recruitment.currentStage || recruitment.status === "completed"
+                  index < currentStageIdx || recruitment.status === "completed"
                 const isCurrent =
-                  index === recruitment.currentStage && recruitment.status === "running"
+                  index === currentStageIdx && recruitment.status === "running"
 
                 const stateMeta = isDone
                   ? { label: "Completed", tone: "success" as const }
