@@ -9,7 +9,6 @@ import { Eye, EyeOff, Lock, User, ArrowRight, Loader2, AlertCircle } from "lucid
 import { Input } from "@workspace/ui/components/input"
 import { Label } from "@workspace/ui/components/label"
 import { Button } from "@workspace/ui/components/button"
-import { Checkbox } from "@workspace/ui/components/checkbox"
 import { setCredentials } from "../store/auth-slice"
 import { useLoginMutation } from "../api/auth-api"
 import { mapCurrentUserToAuthUser } from "../types"
@@ -23,7 +22,6 @@ const loginSchema = z.object({
   password: z
     .string()
     .min(1, "Password is required"),
-  rememberMe: z.boolean(),
 })
 
 export type LoginFormValues = z.infer<typeof loginSchema>
@@ -43,19 +41,14 @@ export function LoginForm({ onSuccess }: LoginFormProps) {
   const {
     register,
     handleSubmit,
-    setValue,
-    watch,
     formState: { errors },
   } = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
     defaultValues: {
       username: "",
       password: "",
-      rememberMe: false,
     },
   })
-
-  const rememberMe = watch("rememberMe")
 
   const onSubmit = async (values: LoginFormValues) => {
     setApiError(null)
@@ -194,21 +187,6 @@ export function LoginForm({ onSuccess }: LoginFormProps) {
         {errors.password && (
           <p className="text-xs text-destructive px-1">{errors.password.message}</p>
         )}
-      </div>
-
-      {/* Remember me checkbox */}
-      <div className="flex items-center space-x-2 pt-1 px-1">
-        <Checkbox
-          id="rememberMe"
-          checked={rememberMe}
-          onCheckedChange={(checked) => setValue("rememberMe", Boolean(checked))}
-        />
-        <label
-          htmlFor="rememberMe"
-          className="text-xs font-medium text-muted-foreground cursor-pointer select-none"
-        >
-          Remember this device for 30 days
-        </label>
       </div>
 
       {/* Submit Button */}
