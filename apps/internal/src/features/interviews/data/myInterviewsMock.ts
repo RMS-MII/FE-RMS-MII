@@ -48,6 +48,8 @@ export const initialMyInterviews: MyInterviewItem[] = [
         avatar: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=crop&w=120&q=80",
       },
     ],
+    fileSubmission: null,
+    endedSubmissionAt: "2026-03-10T23:59:00",
     assessment: null,
     candidateSummary: {
       currentJobTitle: "Frontend Developer",
@@ -93,6 +95,8 @@ export const initialMyInterviews: MyInterviewItem[] = [
         avatar: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=120&q=80",
       },
     ],
+    fileSubmission: "https://github.com/rian-hidayat/fe-takehome-2026",
+    endedSubmissionAt: "2026-03-09T23:59:00",
     assessment: null,
     candidateSummary: {
       currentJobTitle: "Software Engineer",
@@ -138,6 +142,8 @@ export const initialMyInterviews: MyInterviewItem[] = [
         avatar: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=120&q=80",
       },
     ],
+    fileSubmission: "TakeHome_Assignment_DewiLestari.zip",
+    endedSubmissionAt: "2026-03-08T18:00:00",
     assessment: null,
     candidateSummary: {
       currentJobTitle: "UI/UX & Web Developer",
@@ -183,6 +189,8 @@ export const initialMyInterviews: MyInterviewItem[] = [
         avatar: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=120&q=80",
       },
     ],
+    fileSubmission: "https://github.com/sitinur/react-assessment",
+    endedSubmissionAt: "2026-03-04T23:59:00",
     assessment: {
       id: "ia-001",
       sessionInterviewId: "si-interviewer-04",
@@ -235,6 +243,8 @@ export const initialMyInterviews: MyInterviewItem[] = [
         avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=120&q=80",
       },
     ],
+    fileSubmission: "Terraform_Manifests_BudiSantoso.zip",
+    endedSubmissionAt: "2026-03-03T18:00:00",
     assessment: {
       id: "ia-002",
       sessionInterviewId: "si-interviewer-05",
@@ -287,6 +297,8 @@ export const initialMyInterviews: MyInterviewItem[] = [
         avatar: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=120&q=80",
       },
     ],
+    fileSubmission: null,
+    endedSubmissionAt: null,
     assessment: null,
     candidateSummary: {
       currentJobTitle: "Frontend Developer",
@@ -318,6 +330,17 @@ export function updateMyInterviewStatus(
   if (declineReason) {
     target.declineReason = declineReason
   }
+  return target
+}
+
+export function updateMyInterviewSubmissionDeadline(
+  id: string,
+  endedSubmissionAt: string
+): MyInterviewItem | null {
+  const target = currentMyInterviews.find((i) => i.id === id)
+  if (!target) return null
+
+  target.endedSubmissionAt = endedSubmissionAt
   return target
 }
 

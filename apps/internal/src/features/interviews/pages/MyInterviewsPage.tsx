@@ -21,12 +21,14 @@ import {
   MyInterviewsTable,
   type InterviewSortKey,
   ConfirmAcceptInterviewDialog,
-  ConfirmDeclineInterviewDialog,
+  RequestRescheduleDialog,
+  SetSubmissionDeadlineDialog,
 } from "../components"
 
 const statusItems = [
   { label: "All Status", value: "all" },
   { label: "Pending Confirmation", value: "pending" },
+  { label: "Reschedule Requested", value: "reschedule_requested" },
   { label: "Confirmed (Upcoming)", value: "accepted" },
   { label: "Needs Assessment", value: "needs_assessment" },
   { label: "Completed", value: "completed" },
@@ -59,7 +61,9 @@ export function MyInterviewsPage() {
   // Action dialog states
   const [sessionToAccept, setSessionToAccept] =
     React.useState<MyInterviewItem | null>(null)
-  const [sessionToDecline, setSessionToDecline] =
+  const [sessionToReschedule, setSessionToReschedule] =
+    React.useState<MyInterviewItem | null>(null)
+  const [sessionToSetDeadline, setSessionToSetDeadline] =
     React.useState<MyInterviewItem | null>(null)
   const [sessionToAssess, setSessionToAssess] =
     React.useState<MyInterviewItem | null>(null)
@@ -110,6 +114,8 @@ export function MyInterviewsPage() {
     // Status filter
     if (statusFilter === "pending") {
       result = result.filter((i) => i.status === "pending")
+    } else if (statusFilter === "reschedule_requested") {
+      result = result.filter((i) => i.status === "reschedule_requested")
     } else if (statusFilter === "accepted") {
       result = result.filter((i) => i.status === "accepted")
     } else if (statusFilter === "needs_assessment") {
@@ -234,20 +240,46 @@ export function MyInterviewsPage() {
     setSessionToAccept(null)
   }
 
-  const handleConfirmDecline = (reason: string) => {
-    if (!sessionToDecline) return
-    const id = sessionToDecline.id
+  const handleConfirmReschedule = (
+    sessionId: string,
+    proposedStart: string,
+    proposedEnd: string,
+    reason: string
+  ) => {
     setInterviews((prev) =>
       prev.map((item) => {
-        if (item.id !== id) return item
+        if (item.id !== sessionId) return item
         return {
           ...item,
-          status: "declined",
-          declineReason: reason,
+          status: "reschedule_requested",
+          rescheduleRequest: {
+            id: `rr-${Date.now()}`,
+            proposedStart,
+            proposedEnd,
+            reason,
+            status: "pending",
+            requestedAt: new Date().toISOString(),
+          },
         }
       })
     )
-    setSessionToDecline(null)
+    setSessionToReschedule(null)
+  }
+
+  const handleSaveSubmissionDeadline = (
+    sessionId: string,
+    endedSubmissionAt: string
+  ) => {
+    setInterviews((prev) =>
+      prev.map((item) => {
+        if (item.id !== sessionId) return item
+        return {
+          ...item,
+          endedSubmissionAt,
+        }
+      })
+    )
+    setSessionToSetDeadline(null)
   }
 
   const handleSaveAssessment = (
@@ -300,7 +332,7 @@ export function MyInterviewsPage() {
               value={statusFilter}
               onValueChange={(val) => setStatusFilter(val ?? "all")}
             >
-              <SelectTrigger className="h-10 w-48 rounded-full border-0 bg-muted px-4 text-sm text-foreground transition-all duration-150 hover:bg-muted/40 focus-visible:ring-2 focus-visible:ring-primary shadow-none">
+              <SelectTrigger className="h-10 w-52 rounded-full border-0 bg-muted px-4 text-sm text-foreground transition-all duration-150 hover:bg-muted/40 focus-visible:ring-2 focus-visible:ring-primary shadow-none">
                 <SelectValue placeholder="All Status" />
               </SelectTrigger>
               <SelectContent className="rounded-xl">
@@ -368,7 +400,8 @@ export function MyInterviewsPage() {
           hasActiveFilters={activeChips.length > 0}
           onResetFilters={handleResetFilters}
           onAcceptInvitation={(item) => setSessionToAccept(item)}
-          onDeclineInvitation={(item) => setSessionToDecline(item)}
+          onRequestReschedule={(item) => setSessionToReschedule(item)}
+          onSetSubmissionDeadline={(item) => setSessionToSetDeadline(item)}
           onSubmitAssessment={(item) => {
             setSessionToAssess(item)
           }}
@@ -401,17 +434,27 @@ export function MyInterviewsPage() {
         onConfirm={handleConfirmAccept}
       />
 
-      {/* Decline Interview Attendance Dialog with Reason */}
-      <ConfirmDeclineInterviewDialog
-        open={Boolean(sessionToDecline)}
+      {/* Request Reschedule Dialog */}
+      <RequestRescheduleDialog
+        open={Boolean(sessionToReschedule)}
         onOpenChange={(open) => {
-          if (!open) setSessionToDecline(null)
+          if (!open) setSessionToReschedule(null)
         }}
-        session={sessionToDecline}
-        onConfirm={handleConfirmDecline}
+        session={sessionToReschedule}
+        onSubmitRequest={handleConfirmReschedule}
       />
 
-      {/* State placeholders connecting to Phase 5 & 6 dialogs */}
+      {/* Set Submission Deadline Dialog */}
+      <SetSubmissionDeadlineDialog
+        open={Boolean(sessionToSetDeadline)}
+        onOpenChange={(open) => {
+          if (!open) setSessionToSetDeadline(null)
+        }}
+        session={sessionToSetDeadline}
+        onSaveDeadline={handleSaveSubmissionDeadline}
+      />
+
+      {/* State placeholders connecting to assessment dialogs */}
       {sessionToAssess && (
         <span
           className="hidden"
