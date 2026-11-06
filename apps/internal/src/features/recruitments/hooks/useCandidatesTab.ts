@@ -265,6 +265,9 @@ export function useCandidatesTab({
 
   const handleAddCandidates = (newApps: CandidateApplicationItem[]) => {
     setApplications((prev) => [...newApps, ...prev])
+    if (isRealBatch) {
+      refetchApplications()
+    }
   }
 
   const handleUpdateCandidateStatus = (

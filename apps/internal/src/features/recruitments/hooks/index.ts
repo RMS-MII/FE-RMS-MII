@@ -4,4 +4,5 @@ export * from "./useStagesTab"
 export * from "./useManageStages"
 export * from "./useCandidatesTab"
 export * from "./useCreateRecruitmentForm"
-
+export * from "./useRegisterNewCandidate"
+export * from "./useAddFromTalentPool"

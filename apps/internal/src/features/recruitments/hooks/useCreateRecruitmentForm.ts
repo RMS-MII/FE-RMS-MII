@@ -1,8 +1,9 @@
 import { useState, useMemo } from "react"
 import type { Recruitment } from "../types"
 import { mockDepartments } from "../data/mock"
-import { generateBatchCode, validateRecruitmentFormData } from "../utils"
+import { validateRecruitmentFormData } from "../utils"
 import { useGetDepartmentsQuery } from "../api/departments-api"
+import { useCreateBatchMutation } from "../api/recruitments-api"
 
 export interface UseCreateRecruitmentFormProps {
   existingCount?: number
@@ -11,20 +12,19 @@ export interface UseCreateRecruitmentFormProps {
 }
 
 export function useCreateRecruitmentForm({
-  existingCount = 5,
   onSuccess,
   onOpenChange,
 }: UseCreateRecruitmentFormProps) {
-  const generatedCode = generateBatchCode(existingCount)
-
   const [name, setName] = useState("")
   const [departmentId, setDepartmentId] = useState("")
   const [description, setDescription] = useState("")
   const [openDate, setOpenDate] = useState("")
   const [closeDate, setCloseDate] = useState("")
   const [errors, setErrors] = useState<Record<string, string>>({})
+  const [submitError, setSubmitError] = useState<string | null>(null)
 
   const { data: departments, isLoading: isLoadingDepts } = useGetDepartmentsQuery()
+  const [createBatchApi, { isLoading: isCreating }] = useCreateBatchMutation()
 
   const departmentSelectItems = useMemo(() => {
     const list = departments && departments.length > 0 ? departments : mockDepartments
@@ -52,61 +52,39 @@ export function useCreateRecruitmentForm({
     setOpenDate("")
     setCloseDate("")
     setErrors({})
+    setSubmitError(null)
   }
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!validate()) return
+    setSubmitError(null)
 
-    const allDepartments = departments && departments.length > 0 ? departments : mockDepartments
-    const selectedDept = allDepartments.find((d) => d.id === departmentId)
+    const startIso = new Date(openDate).toISOString()
+    const endIso = new Date(closeDate + "T23:59:59").toISOString()
 
-    const newRecruitmentId = `r-${Date.now()}`
-    const newStageId = `s-${Date.now()}-1`
+    try {
+      const createdBatch = await createBatchApi({
+        departmentId,
+        batchCode: null, // Let backend automatically generate unique format: BATCH-{DEPT}-{YEAR}-{001}
+        name: name.trim(),
+        description: description.trim() || name.trim(),
+        startDate: startIso,
+        endDate: endIso,
+      }).unwrap()
 
-    const newRecruitment: Recruitment = {
-      id: newRecruitmentId,
-      batchCode: generatedCode,
-      name: name.trim(),
-      division: selectedDept?.name ?? "General",
-      departmentId: selectedDept?.id ?? "",
-      department: selectedDept,
-      location: "Jakarta, APL Tower",
-      quota: 1,
-      openDate,
-      startDate: openDate,
-      closeDate,
-      endDate: closeDate,
-      status: "draft",
-      currentStage: -1,
-      createdBy: "e1000000-0000-4000-8000-000000000001",
-      ownerId: "u1",
-      description: description.trim(),
-      createdAt: new Date().toISOString(),
-      updatedAt: null,
-      batchStages: [],
-      stages: [
-        {
-          id: newStageId,
-          batchStageId: `bs-${newStageId}`,
-          recruitmentBatchId: newRecruitmentId,
-          stageTypeId: "st-10000000-0000-4000-8000-000000000001",
-          name: "Document Screening",
-          type: "screening",
-          durationDays: 7,
-          passingScore: 70,
-          ownerId: "u1",
-          startDate: openDate,
-          endDate: closeDate,
-          nextStageId: null,
-          isActive: true,
-        },
-      ],
+      onSuccess(createdBatch)
+      onOpenChange(false)
+      resetForm()
+    } catch (err: any) {
+      console.error("Failed to create recruitment batch via API:", err)
+      const errMsg =
+        err?.data?.message ||
+        err?.data?.title ||
+        err?.data?.detail ||
+        "Failed to create recruitment batch on server. Please try again."
+      setSubmitError(errMsg)
     }
-
-    onSuccess(newRecruitment)
-    onOpenChange(false)
-    resetForm()
   }
 
   const clearFieldError = (field: string) => {
@@ -116,7 +94,6 @@ export function useCreateRecruitmentForm({
   }
 
   return {
-    generatedCode,
     name,
     setName,
     departmentId,
@@ -129,6 +106,8 @@ export function useCreateRecruitmentForm({
     setCloseDate,
     errors,
     setErrors,
+    submitError,
+    isSubmitting: isCreating,
     clearFieldError,
     departmentSelectItems,
     isLoadingDepts,
@@ -136,4 +115,3 @@ export function useCreateRecruitmentForm({
     resetForm,
   }
 }
-

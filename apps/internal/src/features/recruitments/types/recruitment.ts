@@ -30,7 +30,7 @@ export interface GetBatchesParams {
 
 export interface CreateBatchRequest {
   departmentId: string
-  batchCode: string
+  batchCode?: string | null
   name: string
   description?: string
   startDate: string

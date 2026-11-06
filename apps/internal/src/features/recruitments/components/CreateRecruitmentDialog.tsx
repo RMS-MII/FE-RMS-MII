@@ -52,6 +52,8 @@ export function CreateRecruitmentDialog({
     closeDate,
     setCloseDate,
     errors,
+    submitError,
+    isSubmitting,
     clearFieldError,
     departmentSelectItems,
     isLoadingDepts,
@@ -73,6 +75,12 @@ export function CreateRecruitmentDialog({
         </DialogHeader>
 
         <form id={formId} onSubmit={handleSubmit} className="space-y-4 p-6">
+          {submitError && (
+            <div className="rounded-xl border border-destructive/20 bg-destructive/10 px-4 py-3 text-xs text-destructive font-medium">
+              {submitError}
+            </div>
+          )}
+
           {/* Nama Rekrutmen */}
           <div className="space-y-1.5">
             <Label htmlFor="recruitment-name" className="text-sm font-medium px-1">
@@ -188,9 +196,9 @@ export function CreateRecruitmentDialog({
         </form>
 
         <DialogFooter className="px-9 pb-9 border-t border-border bg-card gap-2">
-          <CancelButton onClick={() => onOpenChange(false)} />
-          <SaveButton type="submit" form={formId}>
-            Save
+          <CancelButton onClick={() => onOpenChange(false)} disabled={isSubmitting} />
+          <SaveButton type="submit" form={formId} disabled={isSubmitting}>
+            {isSubmitting ? "Saving..." : "Save"}
           </SaveButton>
         </DialogFooter>
       </DialogContent>
