@@ -7,7 +7,7 @@ import {
   DialogTitle,
 } from "@workspace/ui/components/dialog"
 import { cn } from "@/shared/lib/utils"
-import { mockCandidates } from "@/features/candidates/data/mock"
+import { useGetCandidatesQuery } from "@/features/candidates/api/candidates-api"
 import type { Recruitment, CandidateApplicationItem } from "../../types"
 import { Users, UserPlus } from "lucide-react"
 import { AddFromTalentPoolTab } from "./AddFromTalentPoolTab"
@@ -30,14 +30,21 @@ export function AddCandidateDialog({
 }: AddCandidateDialogProps) {
   const [activeTab, setActiveTab] = useState<"talent-pool" | "new-candidate">("talent-pool")
 
-  // Count available candidates not yet in this recruitment batch
+  const { data: apiCandidatesData } = useGetCandidatesQuery(undefined, {
+    skip: !open,
+  })
+
+  // Count available candidates not yet in this recruitment batch directly from API
   const availableCount = useMemo(() => {
-    return mockCandidates.filter((c) => {
-      return !c.appliedBatches?.some(
-        (b) => b.batchId === recruitment.id || b.batchCode === recruitment.batchCode
+    if (!apiCandidatesData?.items) return 0
+    return apiCandidatesData.items.filter((c) => {
+      return !c.assignedBatches?.some(
+        (b) =>
+          (b.batchId && b.batchId.toLowerCase() === recruitment.id?.toLowerCase()) ||
+          (recruitment.batchCode && b.batchCode && b.batchCode.toLowerCase() === recruitment.batchCode.toLowerCase())
       )
     }).length
-  }, [recruitment.id, recruitment.batchCode])
+  }, [apiCandidatesData, recruitment.id, recruitment.batchCode])
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>

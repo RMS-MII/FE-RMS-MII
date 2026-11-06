@@ -1,12 +1,7 @@
 import { useState, useMemo, useEffect } from "react"
 import type { Recruitment, CandidateApplicationItem } from "../types"
 import type { Chip, SortDirection } from "@/shared/components"
-import {
-  getRecruitmentCandidateApplications,
-  filterCandidateApplications,
-  sortCandidateApplications,
-  type CandidateAppSortKey,
-} from "../utils"
+import { type CandidateAppSortKey } from "../utils"
 import { useGetBatchApplicationsQuery } from "../api/applications-api"
 
 export const statusToneMap: Record<string, "success" | "warning" | "info" | "danger" | "neutral"> = {
@@ -83,34 +78,21 @@ export function useCandidatesTab({
   const [sortKey, setSortKey] = useState<CandidateAppSortKey>("appliedAt")
   const [sortDirection, setSortDirection] = useState<SortDirection>("desc")
   const [page, setPage] = useState(1)
-  const pageSize = 5
+  const pageSize = 10
 
-  const isRealBatch = Boolean(recruitment.id && !recruitment.id.startsWith("r"))
-
+  // Real API Query for Batch Applications
   const {
     data: apiData,
     isLoading: isApiLoading,
     isError: isApiError,
     refetch: refetchApplications,
-  } = useGetBatchApplicationsQuery(
-    {
-      id: recruitment.id,
-      search: search.trim() || undefined,
-      status: statusFilter !== "all" ? parseStatusFilterToNumber(statusFilter) : undefined,
-      page,
-      pageSize,
-    },
-    { skip: !isRealBatch }
-  )
-
-  // Applications state (allows adding candidates manually)
-  const [applications, setApplications] = useState<CandidateApplicationItem[]>(() =>
-    getRecruitmentCandidateApplications(recruitment)
-  )
-
-  useEffect(() => {
-    setApplications(getRecruitmentCandidateApplications(recruitment))
-  }, [recruitment])
+  } = useGetBatchApplicationsQuery({
+    id: recruitment.id,
+    search: search.trim() || undefined,
+    status: statusFilter !== "all" ? parseStatusFilterToNumber(statusFilter) : undefined,
+    page,
+    pageSize,
+  })
 
   // Selected application for detail modal
   const [selectedApplication, setSelectedApplication] =
@@ -125,7 +107,7 @@ export function useCandidatesTab({
     }
   }, [selectedStageIndex])
 
-  // Build stage dropdown items from batchStages or fallback to stages
+  // Build stage dropdown items directly from batchStages
   const stageItems = useMemo(() => {
     const items = [{ label: "All Stages", value: "all" }]
     const list =
@@ -141,8 +123,6 @@ export function useCandidatesTab({
     })
     return items
   }, [recruitment.batchStages, recruitment.stages])
-
-  const parsedStageIndex = stageFilter !== "all" ? Number(stageFilter) : null
 
   // Handle stage filter changes
   const handleStageChange = (val: string | null) => {
@@ -161,36 +141,11 @@ export function useCandidatesTab({
     setPage(1)
   }
 
-  // Filter applications (for mock mode)
-  const filteredApplications = useMemo(() => {
-    return filterCandidateApplications(
-      applications,
-      search,
-      parsedStageIndex,
-      statusFilter
-    )
-  }, [applications, search, parsedStageIndex, statusFilter])
-
-  // Sort applications (for mock mode)
-  const sortedApplications = useMemo(() => {
-    return sortCandidateApplications(
-      filteredApplications,
-      sortKey,
-      sortDirection,
-      parsedStageIndex
-    )
-  }, [filteredApplications, sortKey, sortDirection, parsedStageIndex])
-
-  // Paginate applications (for mock mode)
-  const paginatedApplications = useMemo(() => {
-    const start = (page - 1) * pageSize
-    return sortedApplications.slice(start, start + pageSize)
-  }, [sortedApplications, page, pageSize])
-
-  // Map API data if real batch
-  const apiApplications: CandidateApplicationItem[] = useMemo(() => {
-    if (!isRealBatch || !apiData?.items) return []
+  // Map API data into UI application items
+  const currentApplications: CandidateApplicationItem[] = useMemo(() => {
+    if (!apiData?.items) return []
     const stages = recruitment.batchStages || []
+
     return apiData.items.map((item) => {
       const cand = item.candidate
       const statusStr = mapApplicationStatus(item.status)
@@ -233,10 +188,9 @@ export function useCandidatesTab({
         })),
       }
     })
-  }, [isRealBatch, apiData?.items, recruitment.batchStages])
+  }, [apiData?.items, recruitment.batchStages])
 
-  const currentApplications = isRealBatch ? apiApplications : paginatedApplications
-  const totalCount = isRealBatch ? (apiData?.totalItems ?? 0) : sortedApplications.length
+  const totalCount = apiData?.totalItems ?? 0
 
   const handleSort = (key: string) => {
     const k = key as CandidateAppSortKey
@@ -263,114 +217,16 @@ export function useCandidatesTab({
     setIsDetailOpen(true)
   }
 
-  const handleAddCandidates = (newApps: CandidateApplicationItem[]) => {
-    setApplications((prev) => [...newApps, ...prev])
-    if (isRealBatch) {
-      refetchApplications()
-    }
+  const handleAddCandidates = (_newApps: CandidateApplicationItem[]) => {
+    refetchApplications()
   }
 
   const handleUpdateCandidateStatus = (
-    applicationId: string,
-    action: "advance" | "reject" | "reopen",
-    payload?: { reason?: string; notes?: string }
+    _applicationId: string,
+    _action: "advance" | "reject" | "reopen",
+    _payload?: { reason?: string; notes?: string }
   ) => {
-    setApplications((prev) =>
-      prev.map((app) => {
-        if (app.id !== applicationId) return app
-
-        const now = new Date().toISOString()
-        const stages = [...app.applicationStages]
-        const currentIdx = app.currentStageIndex
-        const currentStage = stages[currentIdx]
-
-        if (action === "advance") {
-          // Mark current stage passed
-          if (currentStage) {
-            stages[currentIdx] = {
-              ...currentStage,
-              status: "passed",
-              completedAt: now,
-              feedback: payload?.notes || currentStage.feedback || "Passed by HR evaluation",
-            }
-          }
-
-          const isLastStage = currentIdx >= stages.length - 1
-          if (isLastStage) {
-            const updated: CandidateApplicationItem = {
-              ...app,
-              status: "accepted",
-              finalStatus: "accepted",
-              applicationStages: stages,
-            }
-            if (selectedApplication?.id === applicationId) {
-              setSelectedApplication(updated)
-            }
-            return updated
-          } else {
-            const nextIdx = currentIdx + 1
-            if (stages[nextIdx]) {
-              stages[nextIdx] = {
-                ...stages[nextIdx],
-                status: "in_progress",
-                startedAt: now,
-              }
-            }
-            const updated: CandidateApplicationItem = {
-              ...app,
-              status: "in_progress",
-              currentStageIndex: nextIdx,
-              applicationStages: stages,
-            }
-            if (selectedApplication?.id === applicationId) {
-              setSelectedApplication(updated)
-            }
-            return updated
-          }
-        } else if (action === "reject") {
-          if (currentStage) {
-            stages[currentIdx] = {
-              ...currentStage,
-              status: "failed",
-              completedAt: now,
-              feedback: payload?.notes || payload?.reason || "Disqualified",
-            }
-          }
-          const updated: CandidateApplicationItem = {
-            ...app,
-            status: "rejected",
-            finalStatus: "rejected",
-            rejectReason: payload?.reason,
-            applicationStages: stages,
-          }
-          if (selectedApplication?.id === applicationId) {
-            setSelectedApplication(updated)
-          }
-          return updated
-        } else if (action === "reopen") {
-          if (currentStage) {
-            stages[currentIdx] = {
-              ...currentStage,
-              status: "in_progress",
-              completedAt: null,
-            }
-          }
-          const updated: CandidateApplicationItem = {
-            ...app,
-            status: "in_progress",
-            finalStatus: undefined,
-            rejectReason: undefined,
-            applicationStages: stages,
-          }
-          if (selectedApplication?.id === applicationId) {
-            setSelectedApplication(updated)
-          }
-          return updated
-        }
-
-        return app
-      })
-    )
+    refetchApplications()
   }
 
   // Active filter chips
@@ -416,7 +272,7 @@ export function useCandidatesTab({
     sortDirection,
     page,
     pageSize,
-    isRealBatch,
+    isRealBatch: true,
     isApiLoading,
     isApiError,
     refetchApplications,
@@ -442,4 +298,3 @@ export function useCandidatesTab({
     handleUpdateCandidateStatus,
   }
 }
-

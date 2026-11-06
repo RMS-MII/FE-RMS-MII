@@ -1,10 +1,9 @@
 import { useMemo, useState } from "react"
 import { useNavigate } from "@tanstack/react-router"
-import { initialRecruitments, recruitmentPipeline } from "../data/mock"
+import { recruitmentPipeline } from "../data/mock"
 import { getRecruitmentInterviewSessions, mockInterviewSessions } from "../data/interviewMock"
 import { useGetBatchByIdQuery } from "../api/recruitments-api"
 import { useGetBatchApplicationsQuery } from "../api/applications-api"
-import { candidates } from "@/data/mock"
 
 export type TabKey =
   | "summary"
@@ -51,15 +50,14 @@ export function useRecruitmentDetail({
   }
 
   const { data: apiRecruitment, isLoading, isError, refetch } = useGetBatchByIdQuery(id)
+  const recruitment = apiRecruitment ?? null
 
-  const recruitment = useMemo(() => {
-    return apiRecruitment ?? initialRecruitments.find((r) => r.id === id) ?? null
-  }, [apiRecruitment, id])
+  const { data: batchApps } = useGetBatchApplicationsQuery(
+    { id, pageSize: 1 },
+    { skip: !id }
+  )
 
-  // Related data counts matching ERD records
-  const recruitmentCandidates = useMemo(() => {
-    return candidates.filter((c) => c.recruitmentId === id)
-  }, [id])
+  const candidatesCount = batchApps?.totalItems ?? 0
 
   const recruitmentInterviews = useMemo(() => {
     const list = getRecruitmentInterviewSessions(id)
@@ -78,16 +76,6 @@ export function useRecruitmentDetail({
       handleStageChange(index)
     }
   }
-
-  const isRealBatch = Boolean(recruitment && !recruitment.id.startsWith("r"))
-  const { data: batchApps } = useGetBatchApplicationsQuery(
-    { id: recruitment?.id ?? "", pageSize: 1 },
-    { skip: !isRealBatch || !recruitment?.id }
-  )
-
-  const candidatesCount = isRealBatch
-    ? (batchApps?.totalItems ?? 0)
-    : recruitmentCandidates.length
 
   const tabs: { key: TabKey; label: string; count?: number }[] = useMemo(() => {
     if (!recruitment) return []
@@ -136,4 +124,3 @@ export function useRecruitmentDetail({
     handleBackToList,
   }
 }
-

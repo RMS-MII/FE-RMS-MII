@@ -42,13 +42,13 @@ export const applicationsApi = baseApi.injectEndpoints({
         url: `/batches/${batchId}/applications`,
         method: "POST",
         body: {
-          batchId,
           candidates,
         },
       }),
       invalidatesTags: (_result, _err, { batchId }) => [
         { type: "Candidate", id: `BATCH_${batchId}` },
         { type: "Candidate", id: "LIST" },
+        { type: "Candidate", id: "TALENT_POOL" },
         { type: "Recruitment", id: batchId },
       ],
     }),
@@ -87,4 +87,3 @@ export const {
   useEvaluateStageMutation,
   useSetFinalResultMutation,
 } = applicationsApi
-

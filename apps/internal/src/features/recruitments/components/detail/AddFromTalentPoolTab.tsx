@@ -25,7 +25,11 @@ export function AddFromTalentPoolTab({
     isAllSelected,
     handleToggleSelectAll,
     handleToggleCandidate,
+    handleClearSelection,
     error,
+    isLoadingCandidates,
+    isCandidatesError,
+    refetchCandidates,
     isSubmitting,
     handleSubmit,
   } = useAddFromTalentPool({
@@ -59,11 +63,13 @@ export function AddFromTalentPoolTab({
             <button
               type="button"
               onClick={handleToggleSelectAll}
-              className="inline-flex items-center gap-2 hover:text-foreground cursor-pointer font-medium"
+              disabled={availableTalentCandidates.length === 0}
+              className="inline-flex items-center gap-2 hover:text-foreground cursor-pointer font-medium disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <Checkbox
                 checked={isAllSelected}
                 onCheckedChange={handleToggleSelectAll}
+                disabled={availableTalentCandidates.length === 0}
                 className="size-4 rounded"
               />
               <span>Select All ({availableTalentCandidates.length})</span>
@@ -75,9 +81,26 @@ export function AddFromTalentPoolTab({
           </div>
 
           <div className="max-h-64 overflow-y-auto rounded-2xl border border-border divide-y divide-border bg-card p-1">
-            {availableTalentCandidates.length === 0 ? (
+            {isLoadingCandidates ? (
               <div className="p-8 text-center text-sm text-muted-foreground">
-                No available candidates found matching "{talentSearch}".
+                Loading talent pool candidates from server...
+              </div>
+            ) : isCandidatesError ? (
+              <div className="p-8 text-center text-sm text-destructive space-y-2">
+                <p>Failed to load candidates from server.</p>
+                <button
+                  type="button"
+                  onClick={() => refetchCandidates()}
+                  className="text-xs underline text-foreground hover:text-primary cursor-pointer font-medium"
+                >
+                  Retry loading candidates
+                </button>
+              </div>
+            ) : availableTalentCandidates.length === 0 ? (
+              <div className="p-8 text-center text-sm text-muted-foreground">
+                {talentSearch.trim()
+                  ? `No available candidates found matching "${talentSearch}".`
+                  : "No available candidates in the talent pool for this batch. Registered candidates may already be in this batch, or the talent pool is currently empty."}
               </div>
             ) : (
               availableTalentCandidates.map((c) => {
@@ -131,24 +154,36 @@ export function AddFromTalentPoolTab({
           )}
         </div>
 
+        {/* Selected preview bar */}
         {selectedCandidates.length > 0 && (
-          <div className="rounded-2xl bg-primary/5 p-3 text-sm space-y-1">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2 font-semibold text-primary">
-                <span>{selectedCandidates.length} Candidate{selectedCandidates.length > 1 ? "s" : ""} Selected</span>
-              </div>
-              <span className="text-xs text-muted-foreground">
-                Will enter at Stage 1: {((recruitment.batchStages && recruitment.batchStages[0]?.stageName) || (recruitment.stages && recruitment.stages[0]?.name)) || "Screening"}
+          <div className="rounded-2xl border border-border bg-muted/30 p-4 space-y-2">
+            <div className="flex items-center justify-between text-xs">
+              <span className="font-semibold text-foreground flex items-center gap-1.5">
+                <CheckCircle2 className="size-4 text-primary" />
+                Selected Candidates ({selectedCandidates.length})
               </span>
+              <button
+                type="button"
+                onClick={handleClearSelection}
+                className="text-muted-foreground hover:text-destructive cursor-pointer text-xs underline"
+              >
+                Clear all
+              </button>
             </div>
-            <div className="flex flex-wrap gap-1.5 pt-1">
-              {selectedCandidates.map((cand) => (
+            <div className="flex flex-wrap gap-1.5 max-h-24 overflow-y-auto">
+              {selectedCandidates.map((c) => (
                 <span
-                  key={cand.id}
-                  className="inline-flex items-center gap-1 rounded-full bg-card px-2.5 py-0.5 text-xs font-medium border border-border shadow-2xs"
+                  key={c.id}
+                  className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-card border border-border text-xs text-foreground font-medium shadow-none"
                 >
-                  <CheckCircle2 className="size-3 text-primary" />
-                  <span>{cand.fullName}</span>
+                  {c.fullName}
+                  <button
+                    type="button"
+                    onClick={() => handleToggleCandidate(c.id)}
+                    className="ml-1 text-muted-foreground hover:text-foreground cursor-pointer"
+                  >
+                    ×
+                  </button>
                 </span>
               ))}
             </div>
@@ -156,15 +191,15 @@ export function AddFromTalentPoolTab({
         )}
       </div>
 
-      {/* Footer */}
       <DialogFooter className="pb-9 px-9 border-t border-border bg-card flex items-center justify-end gap-2.5">
         <CancelButton onClick={onCancel} disabled={isSubmitting} />
-        <SaveButton type="button" onClick={handleSubmit} disabled={isSubmitting}>
+        <SaveButton
+          onClick={handleSubmit}
+          disabled={selectedCandidates.length === 0 || isSubmitting}
+        >
           {isSubmitting
-            ? "Adding..."
-            : selectedCandidates.length > 0
-            ? `Add ${selectedCandidates.length} Candidate${selectedCandidates.length > 1 ? "s" : ""}`
-            : "Add Candidate"}
+            ? "Adding Candidates..."
+            : `Add Selected (${selectedCandidates.length})`}
         </SaveButton>
       </DialogFooter>
     </>

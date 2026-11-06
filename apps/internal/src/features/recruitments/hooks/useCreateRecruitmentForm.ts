@@ -1,6 +1,5 @@
 import { useState, useMemo } from "react"
 import type { Recruitment } from "../types"
-import { mockDepartments } from "../data/mock"
 import { validateRecruitmentFormData } from "../utils"
 import { useGetDepartmentsQuery } from "../api/departments-api"
 import { useCreateBatchMutation } from "../api/recruitments-api"
@@ -27,8 +26,7 @@ export function useCreateRecruitmentForm({
   const [createBatchApi, { isLoading: isCreating }] = useCreateBatchMutation()
 
   const departmentSelectItems = useMemo(() => {
-    const list = departments && departments.length > 0 ? departments : mockDepartments
-    return list.map((d) => ({
+    return (departments ?? []).map((d) => ({
       label: d.name,
       value: d.id,
     }))
@@ -104,7 +102,6 @@ export function useCreateRecruitmentForm({
     closeDate,
     setCloseDate,
     errors,
-    setErrors,
     submitError,
     isSubmitting: isCreating,
     clearFieldError,
