@@ -5,7 +5,11 @@ import {
   useUpdateBatchStagesMutation,
 } from "../api/recruitments-api"
 import { useGetStageTypesQuery } from "../api/stage-types-api"
-import type { Recruitment } from "../types"
+import type {
+  Recruitment,
+  StageEmployeeStatus,
+  StageInterviewerAssignment,
+} from "../types"
 import type { EditableStage } from "../components/stages"
 import {
   reorderArray,
@@ -26,6 +30,16 @@ export function getInitialEditableStages(recruitment: Recruitment | null): Edita
           duration = Math.max(1, Math.round((end - start) / (1000 * 60 * 60 * 24)))
         }
       }
+
+      // Extract existing interviewers from API batchStage
+      const assignedList: StageInterviewerAssignment[] =
+        (bs as any).interviewers?.map((inv: any) => ({
+          employeeId: inv.employeeId,
+          status: (inv.statusName?.toLowerCase() === "accepted" ? "accepted" : "pending") as StageEmployeeStatus,
+        })) ?? []
+
+      const interviewerIds = assignedList.map((a) => a.employeeId)
+
       return {
         tempId: `stage-${bs.id || index}`,
         id: bs.id,
@@ -33,8 +47,9 @@ export function getInitialEditableStages(recruitment: Recruitment | null): Edita
         name: bs.stageName,
         type: stageCategoryToLegacyType(bs.stageCategory),
         durationDays: duration,
-        ownerId: "",
-        interviewerIds: [],
+        ownerId: interviewerIds[0] || "",
+        interviewerIds,
+        assignedInterviewers: assignedList,
         passingScore: bs.passingScore ?? null,
         startDate: bs.startDate ? bs.startDate.slice(0, 10) : "",
         endDate: bs.endDate ? bs.endDate.slice(0, 10) : "",
@@ -55,6 +70,7 @@ export function getInitialEditableStages(recruitment: Recruitment | null): Edita
       durationDays: s.durationDays || 7,
       ownerId: s.ownerId || recruitment.ownerId || "",
       interviewerIds: s.interviewerIds ?? (s.ownerId ? [s.ownerId] : []),
+      assignedInterviewers: s.assignedInterviewers ?? [],
       passingScore: s.passingScore ?? null,
       startDate: s.startDate ? s.startDate.slice(0, 10) : "",
       endDate: s.endDate ? s.endDate.slice(0, 10) : "",
@@ -62,7 +78,7 @@ export function getInitialEditableStages(recruitment: Recruitment | null): Edita
     }))
   }
 
-  // 3. Fresh batch without stages starts empty (presets removed)
+  // 3. Fresh batch without stages starts empty
   return []
 }
 
@@ -74,7 +90,7 @@ export function useManageStages({ id }: UseManageStagesProps) {
   const navigate = useNavigate()
 
   const { data: apiRecruitment, isLoading, isError, refetch } = useGetBatchByIdQuery(id)
-  const [updateBatchStagesApi, { isLoading: isSaving }] = useUpdateBatchStagesMutation()
+  const [updateBatchStagesApi, { isLoading: isSavingStages }] = useUpdateBatchStagesMutation()
   const { data: stageTypes = [], isLoading: isLoadingStageTypes } = useGetStageTypesQuery({ activeOnly: true })
 
   const recruitment = useMemo(() => {
@@ -159,68 +175,45 @@ export function useManageStages({ id }: UseManageStagesProps) {
       ? stageCategoryToLegacyType(defaultType.stageCategory)
       : "screening"
 
-    // Compute sensible default dates based on batch or previous stage
-    let defaultStartDate = recruitment.startDate || recruitment.openDate || ""
-    let defaultEndDate = recruitment.endDate || recruitment.closeDate || ""
-
-    if (stages.length > 0) {
-      const lastStage = stages[stages.length - 1]
-      if (lastStage.endDate) {
-        const lastEnd = new Date(lastStage.endDate)
-        if (!isNaN(lastEnd.getTime())) {
-          const nextStart = new Date(lastEnd)
-          nextStart.setDate(nextStart.getDate() + 1)
-          defaultStartDate = nextStart.toISOString().slice(0, 10)
-          const nextEnd = new Date(nextStart)
-          nextEnd.setDate(nextEnd.getDate() + 7)
-          defaultEndDate = nextEnd.toISOString().slice(0, 10)
-        }
-      }
-    }
-
-    const newTempId = `stage-new-${Date.now()}-${Math.random()}`
+    const newIndex = stages.length
     const newStage: EditableStage = {
-      tempId: newTempId,
-      id: `s-${recruitment.id}-${stages.length + 1}`,
+      tempId: `stage-new-${Date.now()}-${newIndex}`,
+      id: "",
       stageTypeId: defaultType ? defaultType.id : "",
-      name: defaultType ? defaultType.name : `Stage ${stages.length + 1}`,
+      name: defaultType ? defaultType.name : `Stage ${newIndex + 1}`,
       type: category,
       durationDays: 7,
-      ownerId: recruitment.ownerId || "",
-      interviewerIds: recruitment.ownerId ? [recruitment.ownerId] : [],
-      passingScore: 75,
-      startDate: defaultStartDate ? defaultStartDate.slice(0, 10) : "",
-      endDate: defaultEndDate ? defaultEndDate.slice(0, 10) : "",
+      ownerId: "",
+      interviewerIds: [],
+      assignedInterviewers: [],
+      passingScore: null,
+      startDate: "",
+      endDate: "",
       isActive: true,
     }
 
     setStages((prev) => [...prev, newStage])
-    setSelectedTempId(newTempId)
+    setSelectedTempId(newStage.tempId)
   }
 
   const handleCancel = () => {
-    if (!recruitment) return
     navigate({
-      to: `/recruitments/${recruitment.id}`,
+      to: `/recruitments/${id}`,
       search: { tab: "stages" },
     })
   }
 
   const handleSave = async () => {
     if (!recruitment) return
-    setErrorMessage(null)
 
     if (stages.length === 0) {
-      setErrorMessage("Please add at least one stage before saving.")
+      setErrorMessage("At least one stage is required.")
       return
     }
 
-    if (stages.length > 20) {
-      setErrorMessage("A batch can have at most 20 stages.")
-      return
-    }
+    setErrorMessage(null)
 
-    // Validation matching backend validator
+    // Validation
     const stageNames = new Set<string>()
     for (let i = 0; i < stages.length; i++) {
       const s = stages[i]
@@ -281,7 +274,7 @@ export function useManageStages({ id }: UseManageStagesProps) {
       }
     }
 
-    // Call backend API
+    // Configure and update batch stages on backend
     try {
       await updateBatchStagesApi({
         id: recruitment.id,
@@ -315,7 +308,7 @@ export function useManageStages({ id }: UseManageStagesProps) {
         to: `/recruitments/${recruitment.id}`,
         search: { tab: "stages" },
       })
-    }, 400)
+    }, 200)
   }
 
   return {
@@ -332,7 +325,7 @@ export function useManageStages({ id }: UseManageStagesProps) {
     selectedStage,
     nextStage,
     savedSuccess,
-    isSaving,
+    isSaving: isSavingStages,
     errorMessage,
     handleFieldChange,
     handleMoveUp,

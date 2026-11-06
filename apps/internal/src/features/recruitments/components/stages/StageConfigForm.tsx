@@ -1,5 +1,3 @@
-import { useMemo } from "react"
-import { Trash2 } from "lucide-react"
 import { Button } from "@workspace/ui/components/button"
 import { Input } from "@workspace/ui/components/input"
 import {
@@ -11,10 +9,10 @@ import {
   SelectValue,
 } from "@workspace/ui/components/select"
 import { Panel, PanelHeader, DatePicker } from "@/shared/components"
-import type { StageTypeDto, StageEmployeeStatus, StageInterviewerAssignment } from "../../types"
+import type { StageTypeDto } from "../../types"
 import { formatStageCategory, stageCategoryToLegacyType } from "../../utils"
 import type { EditableStage } from "./types"
-import { InterviewerAssignSection } from "../InterviewerAssignSection"
+import { Trash2 } from "lucide-react"
 
 export interface StageConfigFormProps {
   selectedStage: EditableStage | null
@@ -49,29 +47,6 @@ export function StageConfigForm({
         </p>
       </Panel>
     )
-  }
-
-  const stageAssignments = useMemo<StageInterviewerAssignment[]>(() => {
-    if (selectedStage.assignedInterviewers && selectedStage.assignedInterviewers.length > 0) {
-      return selectedStage.assignedInterviewers
-    }
-    const fallback =
-      selectedStage.interviewerIds && selectedStage.interviewerIds.length > 0
-        ? selectedStage.interviewerIds
-        : selectedStage.ownerId
-        ? [selectedStage.ownerId]
-        : []
-    return fallback.map((id) => ({
-      employeeId: id,
-      status: "pending" as StageEmployeeStatus,
-    }))
-  }, [selectedStage.assignedInterviewers, selectedStage.interviewerIds, selectedStage.ownerId])
-
-  const handleInterviewerAssignmentsChange = (assignments: StageInterviewerAssignment[]) => {
-    const ids = assignments.map((a) => a.employeeId)
-    onFieldChange("assignedInterviewers", assignments)
-    onFieldChange("interviewerIds", ids)
-    onFieldChange("ownerId", ids[0] || "")
   }
 
   const handleStageTypeChange = (stageTypeId: string) => {
@@ -189,15 +164,6 @@ export function StageConfigForm({
             />
           </div>
         </div>
-
-        {/* Unified Interviewer Assignment Section */}
-        <InterviewerAssignSection
-          id="stage-config-interviewers"
-          label="Assigned Interviewers"
-          optional
-          assignments={stageAssignments}
-          onChange={handleInterviewerAssignmentsChange}
-        />
 
         {/* Delete Stage */}
         <div className="border-t border-border pt-4">

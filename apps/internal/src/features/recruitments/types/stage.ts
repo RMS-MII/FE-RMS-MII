@@ -2,18 +2,23 @@ import type { Employee } from "./employee"
 
 // =====================================================================
 // Matches BatchStage, StageType, StageEmployee tables in Document/ERD.sql
-// and BE-RMS-MII API models
 // =====================================================================
 
-export type LegacyStageType = "screening" | "test" | "interview" | "offering"
+export type LegacyStageType =
+  | "screening"
+  | "interview"
+  | "test"
+  | "offering"
+  | "other"
+
 export type StageType = LegacyStageType
 
-/** Matches StageType table in ERD.sql and backend API */
+/** Matches StageType table in ERD.sql */
 export interface StageTypeDto {
   id: string
   name: string
   description?: string | null
-  stageCategory: number | string // 1 = Test, 2 = Interview, 3 = Offering (or "Test", "Interview", "Offering")
+  stageCategory: number | string // 1 = Test, 2 = Interview, etc.
   isActive: boolean
   createdAt?: string
   updatedAt?: string | null
@@ -30,10 +35,9 @@ export interface StageTypeEntity {
   updatedAt?: string | null
 }
 
-/** Matches BatchStage in backend API & ERD.sql */
+/** Matches BatchStage table in ERD.sql */
 export interface BatchStage {
   id: string
-  nextStageId?: string | null
   recruitmentBatchId: string
   stageTypeId: string
   stageTypeName?: string
@@ -43,21 +47,58 @@ export interface BatchStage {
   passingScore?: number | null
   startDate?: string | null
   endDate?: string | null
+  nextStageId?: string | null
   createdAt?: string
   updatedAt?: string | null
   // UI Relations
   stageType?: StageTypeEntity | StageTypeDto
+  interviewers?: {
+    stageEmployeeId: string
+    employeeId: string
+    fullName: string
+    email: string
+    jobTitle: string
+    departmentName: string
+    status: number | string
+    statusName?: string
+  }[]
+}
+
+/**
+ * Rich view model for Recruitment Batch Stages flow.
+ * Combines BatchStage, StageType, and assigned StageEmployees.
+ */
+export interface Stage {
+  id: string
+  batchStageId?: string
+  recruitmentBatchId?: string
+  stageTypeId?: string
+  stageTypeName?: string | null
+  stageCategory?: string | null
+  name: string
+  type: LegacyStageType
+  durationDays: number
+  ownerId?: string
+  interviewerIds?: string[]
+  assignedInterviewers?: StageInterviewerAssignment[]
   assignees?: Employee[]
+  passingScore: number | null
+  startDate: string | null
+  endDate: string | null
+  isActive: boolean
+  nextStageId?: string | null
+  sequence?: number
 }
 
 /** Matches StageEmployee table in ERD.sql */
 export interface StageEmployee {
   id: string
-  batchStageId: string
+  batchStageId?: string
+  stageId?: string
   employeeId: string
-  status?: string
-  isActive: boolean
+  status: StageEmployeeStatus
   note?: string
+  isActive?: boolean
   createdAt?: string
   updatedAt?: string | null
 }
@@ -68,6 +109,9 @@ export interface StageInterviewerAssignment {
   employeeId: string
   status: StageEmployeeStatus
   note?: string
+  employeeName?: string
+  employeeEmail?: string
+  jobTitle?: string
 }
 
 export interface UpdateBatchStageItem {
@@ -86,28 +130,6 @@ export interface UpdateBatchStagesRequest {
 
 export interface AssignInterviewersRequest {
   interviewerEmployeeIds: string[]
-}
-
-/** UI pipeline stage with ERD BatchStage metadata */
-export interface Stage {
-  id: string
-  name: string
-  type: StageType
-  durationDays: number
-  ownerId?: string
-  interviewerIds?: string[]
-  assignedInterviewers?: StageInterviewerAssignment[]
-  // ERD fields
-  batchStageId?: string
-  recruitmentBatchId?: string
-  stageTypeId?: string
-  stageTypeName?: string
-  stageCategory?: string | null
-  nextStageId?: string | null
-  passingScore?: number | null
-  startDate?: string | null
-  endDate?: string | null
-  isActive?: boolean
 }
 
 export type StageState = "done" | "current" | "upcoming" | "halted"

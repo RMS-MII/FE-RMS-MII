@@ -20,11 +20,14 @@ export function mapBatchStagesToStages(r: Recruitment): Stage[] {
         }
       }
 
-      // Check if backend returned interviewers on the batch stage
+      // Extract existing interviewers with name & title from API batch stage
       const assignedList: StageInterviewerAssignment[] =
         (bs as any).interviewers?.map((inv: any) => ({
           employeeId: inv.employeeId,
           status: (inv.statusName?.toLowerCase() === "accepted" ? "accepted" : "pending") as StageEmployeeStatus,
+          employeeName: inv.fullName,
+          employeeEmail: inv.email,
+          jobTitle: inv.jobTitle,
         })) ?? []
 
       return {
@@ -58,17 +61,18 @@ export interface UseStagesTabProps {
 export function useStagesTab({ recruitment }: UseStagesTabProps) {
   const [stages, setStages] = useState<Stage[]>(() => mapBatchStagesToStages(recruitment))
   const [assignStage, setAssignStage] = useState<Stage | null>(null)
-  const [assignIndex, setAssignIndex] = useState<number>(0)
+  const [assignIndex, setAssignIndex] = useState<number | undefined>(undefined)
   const [isDialogOpen, setIsDialogOpen] = useState(false)
 
   const [assignInterviewersApi] = useAssignStageInterviewersMutation()
 
-  // Sync state if parent recruitment stages update
+  // Keep stages updated when recruitment data changes
   useEffect(() => {
     setStages(mapBatchStagesToStages(recruitment))
-  }, [recruitment.batchStages, recruitment.stages])
+  }, [recruitment])
 
-  const totalDays = stages.reduce((acc, s) => acc + (s.durationDays || 0), 0)
+  // Compute total duration across all stages
+  const totalDays = stages.reduce((acc, curr) => acc + (curr.durationDays || 0), 0)
 
   const handleOpenAssignDialog = (stage: Stage, index: number) => {
     setAssignStage(stage)
@@ -78,6 +82,8 @@ export function useStagesTab({ recruitment }: UseStagesTabProps) {
 
   const handleCloseAssignDialog = () => {
     setIsDialogOpen(false)
+    setAssignStage(null)
+    setAssignIndex(undefined)
   }
 
   const handleSaveInterviewers = async (
@@ -86,7 +92,7 @@ export function useStagesTab({ recruitment }: UseStagesTabProps) {
   ) => {
     const updatedIds = assignments.map((a) => a.employeeId)
 
-    // 1. Update local component state
+    // 1. Optimistic update
     setStages((prev) =>
       prev.map((s) => {
         if (s.id !== stageId) return s
