@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useState, useMemo } from "react"
 import type { Recruitment, CandidateApplicationItem } from "../types"
 import { useRegisterCandidatesMutation } from "../api/applications-api"
 
@@ -37,10 +37,22 @@ export function useRegisterNewCandidate({
 
   const [registerCandidatesApi, { isLoading: isApiSubmitting }] = useRegisterCandidatesMutation()
 
-  const isRealBatch = Boolean(recruitment.id && !recruitment.id.startsWith("r"))
+  const stages = useMemo(() => {
+    return recruitment.batchStages && recruitment.batchStages.length > 0
+      ? recruitment.batchStages
+      : recruitment.stages || []
+  }, [recruitment.batchStages, recruitment.stages])
+
+  const hasStages = stages.length > 0
 
   const handleSubmit = async () => {
     setSubmitError(null)
+
+    if (!hasStages) {
+      setSubmitError("Cannot register candidate because no selection stages have been configured for this recruitment batch. Please configure stages first.")
+      return
+    }
+
     const newErrors: Record<string, string> = {}
     if (!fullName.trim()) {
       newErrors.fullName = "Candidate full name is required."
@@ -64,9 +76,6 @@ export function useRegisterNewCandidate({
     const codeNumber = String(existingApplicationCount + 1).padStart(3, "0")
     const codeApplication = `APP-${codeYear}-${codeNumber}`
     const appliedAt = new Date().toISOString()
-    const stages = recruitment.batchStages && recruitment.batchStages.length > 0
-      ? recruitment.batchStages
-      : recruitment.stages || []
     const firstStage = stages[0]
 
     const applicationStages = stages.map((stg: any, sIdx) => ({
@@ -90,94 +99,70 @@ export function useRegisterNewCandidate({
 
     const resolvedCv = cv.trim() || undefined
 
-    if (isRealBatch) {
-      try {
-        const result = await registerCandidatesApi({
-          batchId: recruitment.id,
-          candidates: [
-            {
-              fullName: fullName.trim(),
-              email: email.trim().toLowerCase(),
-              phoneNumber: phone.trim() || undefined,
-              gender: gender.toLowerCase() === "female" ? 2 : 1,
-              birthDate: birthDate.trim().slice(0, 10),
-              address: address.trim(),
-              education: education.trim() || undefined,
-              institution: institution.trim() || undefined,
-              gpa: gpa.trim() ? Number(gpa.trim()) : undefined,
-              expectedSalary: expectedSalary.trim() ? Number(expectedSalary.trim()) : undefined,
-              cv: resolvedCv,
-              portfolio: portfolio.trim() || undefined,
-            },
-          ],
-        }).unwrap()
+    try {
+      const result = await registerCandidatesApi({
+        batchId: recruitment.id,
+        candidates: [
+          {
+            fullName: fullName.trim(),
+            email: email.trim().toLowerCase(),
+            phoneNumber: phone.trim() || undefined,
+            gender: gender.toLowerCase() === "female" ? 2 : 1,
+            birthDate: birthDate.trim().slice(0, 10),
+            address: address.trim(),
+            education: education.trim() || undefined,
+            institution: institution.trim() || undefined,
+            gpa: gpa.trim() ? Number(gpa.trim()) : undefined,
+            expectedSalary: expectedSalary.trim() ? Number(expectedSalary.trim()) : undefined,
+            cv: resolvedCv,
+            portfolio: portfolio.trim() || undefined,
+          },
+        ],
+      }).unwrap()
 
-        const createdItem = Array.isArray(result) && result[0] ? result[0] : null
+      const createdItem = Array.isArray(result) && result[0] ? result[0] : null
 
-        const newApplication: CandidateApplicationItem = {
-          id: createdItem?.id || `app-${Date.now()}`,
-          candidateId: createdItem?.candidateId || `cand-${Date.now()}`,
-          recruitmentBatchId: recruitment.id,
-          codeApplication: createdItem?.codeApplication || codeApplication,
-          appliedAt: createdItem?.appliedAt || appliedAt,
-          status: "in_progress",
-          finalStatus: "pending",
-          note: null,
-          fileOfferingLetter: null,
-          offeringLetterStatus: null,
-          candidateName: fullName.trim(),
-          candidateEmail: email.trim().toLowerCase(),
-          candidatePhone: phone.trim() || null,
-          candidateEducation: eduFull,
-          candidateInstitution: institution.trim() || null,
-          candidateGpa: gpa.trim() || null,
-          candidateCv: resolvedCv || null,
-          candidatePortfolio: portfolio.trim() || null,
-          currentStageIndex: 0,
-          currentStageName: firstStage ? (firstStage as any).stageName || (firstStage as any).name : "Stage 1",
-          currentStageScore: null,
-          currentStageStatus: "in_progress",
-          applicationStages,
-        }
-
-        onSuccess(newApplication)
-        return
-      } catch (err: any) {
-        console.error("Failed to register candidate via API:", err)
-        const errMsg = err?.data?.message || err?.data?.title || "Failed to register candidate on server. Please try again."
-        setSubmitError(errMsg)
-        return
+      const newApplication: CandidateApplicationItem = {
+        id: createdItem?.id || `app-${Date.now()}`,
+        candidateId: createdItem?.candidateId || `cand-${Date.now()}`,
+        recruitmentBatchId: recruitment.id,
+        codeApplication: createdItem?.codeApplication || codeApplication,
+        appliedAt: createdItem?.appliedAt || appliedAt,
+        status: "in_progress",
+        finalStatus: "pending",
+        note: null,
+        fileOfferingLetter: null,
+        offeringLetterStatus: null,
+        candidateName: fullName.trim(),
+        candidateEmail: email.trim().toLowerCase(),
+        candidatePhone: phone.trim() || null,
+        candidateEducation: eduFull,
+        candidateInstitution: institution.trim() || null,
+        candidateGpa: gpa.trim() || null,
+        candidateCv: resolvedCv || null,
+        candidatePortfolio: portfolio.trim() || null,
+        currentStageIndex: 0,
+        currentStageName: firstStage ? (firstStage as any).stageName || (firstStage as any).name : "Stage 1",
+        currentStageScore: null,
+        currentStageStatus: "in_progress",
+        applicationStages,
       }
-    }
 
-    // Fallback for mock batch
-    const newApplication: CandidateApplicationItem = {
-      id: `app-new-${Date.now()}`,
-      candidateId: `cand-new-${Date.now()}`,
-      recruitmentBatchId: recruitment.id,
-      codeApplication,
-      appliedAt,
-      status: "in_progress",
-      finalStatus: "pending",
-      note: null,
-      fileOfferingLetter: null,
-      offeringLetterStatus: null,
-      candidateName: fullName.trim(),
-      candidateEmail: email.trim().toLowerCase(),
-      candidatePhone: phone.trim() || null,
-      candidateEducation: eduFull,
-      candidateInstitution: institution.trim() || null,
-      candidateGpa: gpa.trim() || null,
-      candidateCv: resolvedCv || null,
-      candidatePortfolio: portfolio.trim() || null,
-      currentStageIndex: 0,
-      currentStageName: firstStage ? (firstStage as any).stageName || (firstStage as any).name : "Stage 1",
-      currentStageScore: null,
-      currentStageStatus: "in_progress",
-      applicationStages,
+      onSuccess(newApplication)
+    } catch (err: any) {
+      console.error("Failed to register candidate via API:", err)
+      const errMsg =
+        err?.data?.message ||
+        err?.data?.title ||
+        "Failed to register candidate on server. Please try again."
+      setSubmitError(errMsg)
     }
+  }
 
-    onSuccess(newApplication)
+  const clearFieldError = (field: string) => {
+    if (errors[field]) {
+      setErrors((prev) => ({ ...prev, [field]: "" }))
+    }
   }
 
   return {
@@ -208,7 +193,9 @@ export function useRegisterNewCandidate({
     errors,
     setErrors,
     submitError,
+    hasStages,
     isSubmitting: isApiSubmitting,
+    clearFieldError,
     handleSubmit,
   }
 }

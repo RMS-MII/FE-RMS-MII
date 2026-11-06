@@ -27,6 +27,7 @@ export function AddFromTalentPoolTab({
     handleToggleCandidate,
     handleClearSelection,
     error,
+    hasStages,
     isLoadingCandidates,
     isCandidatesError,
     refetchCandidates,
@@ -195,7 +196,7 @@ export function AddFromTalentPoolTab({
         <CancelButton onClick={onCancel} disabled={isSubmitting} />
         <SaveButton
           onClick={handleSubmit}
-          disabled={selectedCandidates.length === 0 || isSubmitting}
+          disabled={!hasStages || selectedCandidates.length === 0 || isSubmitting}
         >
           {isSubmitting
             ? "Adding Candidates..."

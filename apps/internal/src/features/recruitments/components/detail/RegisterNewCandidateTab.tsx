@@ -52,6 +52,7 @@ export function RegisterNewCandidateTab({
     errors,
     setErrors,
     submitError,
+    hasStages,
     isSubmitting,
     handleSubmit,
   } = useRegisterNewCandidate({
@@ -296,7 +297,11 @@ export function RegisterNewCandidateTab({
       {/* Footer */}
       <DialogFooter className="pb-9 px-9 border-t border-border bg-card flex items-center justify-end gap-2.5">
         <CancelButton onClick={onCancel} disabled={isSubmitting} />
-        <SaveButton type="button" onClick={handleSubmit} disabled={isSubmitting}>
+        <SaveButton
+          type="button"
+          onClick={handleSubmit}
+          disabled={!hasStages || isSubmitting}
+        >
           {isSubmitting ? "Saving..." : "Save Candidate"}
         </SaveButton>
       </DialogFooter>

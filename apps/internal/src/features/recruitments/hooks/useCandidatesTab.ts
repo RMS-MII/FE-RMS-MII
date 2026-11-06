@@ -108,6 +108,15 @@ export function useCandidatesTab({
   }, [selectedStageIndex])
 
   // Build stage dropdown items directly from batchStages
+  const stageCount = useMemo(() => {
+    if (recruitment.batchStages && recruitment.batchStages.length > 0) {
+      return recruitment.batchStages.length
+    }
+    return recruitment.stages?.length ?? 0
+  }, [recruitment.batchStages, recruitment.stages])
+
+  const hasStages = stageCount > 0
+
   const stageItems = useMemo(() => {
     const items = [{ label: "All Stages", value: "all" }]
     const list =
@@ -273,6 +282,8 @@ export function useCandidatesTab({
     page,
     pageSize,
     isRealBatch: true,
+    hasStages,
+    stageCount,
     isApiLoading,
     isApiError,
     refetchApplications,

@@ -100,7 +100,20 @@ export function useAddFromTalentPool({
     setSelectedCandidateIds([])
   }
 
+  const stages = useMemo(() => {
+    return recruitment.batchStages && recruitment.batchStages.length > 0
+      ? recruitment.batchStages
+      : recruitment.stages || []
+  }, [recruitment.batchStages, recruitment.stages])
+
+  const hasStages = stages.length > 0
+
   const handleSubmit = async () => {
+    if (!hasStages) {
+      setError("Cannot add candidates because no selection stages have been configured for this recruitment batch. Please configure stages first.")
+      return
+    }
+
     if (selectedCandidates.length === 0) {
       setError("Please select at least one candidate from the talent pool.")
       return
@@ -108,9 +121,6 @@ export function useAddFromTalentPool({
 
     const codeYear = recruitment.openDate ? recruitment.openDate.slice(0, 4) : "2026"
     const appliedAt = new Date().toISOString()
-    const stages = recruitment.batchStages && recruitment.batchStages.length > 0
-      ? recruitment.batchStages
-      : recruitment.stages || []
     const firstStage = stages[0]
 
     try {
@@ -203,6 +213,7 @@ export function useAddFromTalentPool({
     handleToggleCandidate,
     handleClearSelection,
     error,
+    hasStages,
     isLoadingCandidates: isLoadingCandidates || isFetchingCandidates,
     isCandidatesError,
     refetchCandidates,

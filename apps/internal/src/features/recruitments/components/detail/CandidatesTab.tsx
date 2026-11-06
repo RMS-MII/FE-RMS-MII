@@ -1,3 +1,5 @@
+import { useNavigate } from "@tanstack/react-router"
+import { cn } from "@/shared/lib/utils"
 import {
   Panel,
   SearchInput,
@@ -29,7 +31,7 @@ import {
   SelectValue,
 } from "@workspace/ui/components/select"
 import { Button } from "@workspace/ui/components/button"
-import { Eye, UserPlus } from "lucide-react"
+import { Eye, UserPlus, AlertCircle } from "lucide-react"
 import {
   useCandidatesTab,
   statusToneMap,
@@ -44,6 +46,8 @@ export function CandidatesTab({
   selectedStageIndex = null,
   onStageChange,
 }: CandidatesTabProps) {
+  const navigate = useNavigate()
+
   const {
     search,
     setSearch,
@@ -53,7 +57,7 @@ export function CandidatesTab({
     sortDirection,
     page,
     pageSize,
-    isRealBatch,
+    hasStages,
     isApiLoading,
     isApiError,
     refetchApplications,
@@ -144,14 +148,50 @@ export function CandidatesTab({
           <div className="flex flex-wrap items-center gap-3 self-start sm:self-center shrink-0">
             <Button
               type="button"
-              onClick={() => setIsAddOpen(true)}
-              className="h-10 gap-1.5 rounded-full border-0 bg-primary px-4 text-sm font-medium text-primary-foreground shadow-none hover:bg-primary/90 focus-visible:ring-2 focus-visible:ring-primary cursor-pointer shrink-0"
+              onClick={() => hasStages && setIsAddOpen(true)}
+              disabled={!hasStages}
+              title={
+                !hasStages
+                  ? "Configure selection stages first before adding candidates"
+                  : "Add candidate"
+              }
+              className={cn(
+                "h-10 gap-1.5 rounded-full border-0 px-4 text-sm font-medium shadow-none shrink-0 transition-all",
+                hasStages
+                  ? "bg-primary text-primary-foreground hover:bg-primary/90 focus-visible:ring-2 focus-visible:ring-primary cursor-pointer"
+                  : "bg-muted text-muted-foreground opacity-60 cursor-not-allowed hover:bg-muted"
+              )}
             >
               <UserPlus className="size-4" aria-hidden />
               <span>Add candidate</span>
             </Button>
           </div>
         </div>
+
+        {/* Warning Banner when recruitment batch has no stages yet */}
+        {!hasStages && (
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-border bg-amber-500/10 px-5 py-3 text-xs text-amber-700 dark:text-amber-400">
+            <div className="flex items-center gap-2.5">
+              <AlertCircle className="size-4 shrink-0 text-amber-600 dark:text-amber-400" />
+              <p>
+                <strong className="font-semibold">Selection stages required:</strong> Candidates can only be added once this recruitment batch has configured selection stages.
+              </p>
+            </div>
+            <Button
+              type="button"
+              size="xs"
+              onClick={() =>
+                navigate({
+                  to: "/recruitments/$id/stages",
+                  params: { id: recruitment.id },
+                })
+              }
+              className="rounded-full bg-amber-600 hover:bg-amber-700 text-white dark:bg-amber-500 dark:hover:bg-amber-600 text-xs font-semibold px-3 py-1 cursor-pointer shrink-0 self-start sm:self-auto"
+            >
+              Configure Stages
+            </Button>
+          </div>
+        )}
 
         {/* Removable Active Filter Chips */}
         <FilterChips chips={activeChips} onReset={handleResetFilters} />
@@ -193,7 +233,7 @@ export function CandidatesTab({
                   currentSortKey={sortKey}
                   currentDirection={sortDirection}
                   onSort={handleSort}
-                  align="center"
+                  className="text-center"
                 />
 
                 <TableSortHeader
@@ -213,79 +253,77 @@ export function CandidatesTab({
                   className="hidden md:table-cell"
                 />
 
-                <TableHead className="w-16 pr-5 text-center whitespace-nowrap">
-                  Action
-                </TableHead>
+                <TableHead className="w-14 pr-5 text-center">Action</TableHead>
               </TableRow>
             </TableHeader>
+
             <TableBody>
-              {isRealBatch && isApiLoading ? (
-                <TableSkeleton
-                  rowCount={pageSize}
-                  colCount={8}
-                  colWidths={[
-                    "w-6 mx-auto",
-                    ["w-36", "w-24"],
-                    "w-20",
-                    "w-28",
-                    "w-10 mx-auto",
-                    "w-20",
-                    "w-24",
-                    "w-8 mx-auto",
-                  ]}
-                  cellClassNames={[
-                    "pl-5 text-center",
-                    "py-3.5",
-                    "py-3.5",
-                    "py-3.5",
-                    "text-center",
-                    "py-3.5",
-                    "hidden md:table-cell",
-                    "pr-5 text-center",
-                  ]}
-                />
-              ) : isRealBatch && isApiError ? (
+              {isApiLoading ? (
+                <TableSkeleton colCount={8} rowCount={pageSize} />
+              ) : isApiError ? (
                 <TableRow>
-                  <TableCell colSpan={8} className="h-64 text-center">
+                  <TableCell colSpan={8} className="p-8">
                     <ErrorState
                       title="Failed to load candidates"
-                      description="Unable to fetch candidate applications for this batch. Please check your connection and try again."
+                      description="Unable to fetch candidates from server. Please check your connection."
                       onRetry={() => refetchApplications()}
                     />
                   </TableCell>
                 </TableRow>
               ) : currentApplications.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={8} className="h-64 text-center">
-                    <EmptyState
-                      title="No candidates match"
-                      description={
-                        activeChips.length > 0
-                          ? "Try adjusting your search terms or filters to find candidates."
-                          : "No candidates currently registered in this recruitment batch."
-                      }
-                      action={
-                        activeChips.length > 0 ? (
+                  <TableCell colSpan={8} className="p-8">
+                    {!hasStages ? (
+                      <EmptyState
+                        title="Selection stages required"
+                        description="This recruitment batch does not have selection stages yet. Please configure the stages first to begin adding candidates."
+                        action={
                           <Button
-                            variant="ghost"
+                            variant="default"
                             size="sm"
-                            onClick={handleResetFilters}
-                            className="rounded-full border-0 bg-muted/60 text-foreground hover:bg-muted cursor-pointer"
+                            onClick={() =>
+                              navigate({
+                                to: "/recruitments/$id/stages",
+                                params: { id: recruitment.id },
+                              })
+                            }
+                            className="rounded-full border-0 bg-primary text-primary-foreground hover:bg-primary/90 cursor-pointer"
                           >
-                            Reset filters
+                            Configure Stages
                           </Button>
-                        ) : (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => setIsAddOpen(true)}
-                            className="rounded-full border-0 bg-muted/60 text-foreground hover:bg-muted cursor-pointer"
-                          >
-                            Add your first candidate
-                          </Button>
-                        )
-                      }
-                    />
+                        }
+                      />
+                    ) : (
+                      <EmptyState
+                        title="No candidates match"
+                        description={
+                          activeChips.length > 0
+                            ? "Try adjusting your search terms or filters to find candidates."
+                            : "No candidates currently registered in this recruitment batch."
+                        }
+                        action={
+                          activeChips.length > 0 ? (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={handleResetFilters}
+                              className="rounded-full border-0 bg-muted/60 text-foreground hover:bg-muted cursor-pointer"
+                            >
+                              Reset filters
+                            </Button>
+                          ) : (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => setIsAddOpen(true)}
+                              className="rounded-full border-0 bg-muted/60 text-foreground hover:bg-muted cursor-pointer"
+                            >
+                              Add your first candidate
+                            </Button>
+                          )
+                        }
+                      />
+                    )}
                   </TableCell>
                 </TableRow>
               ) : (
