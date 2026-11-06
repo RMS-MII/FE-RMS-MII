@@ -85,7 +85,12 @@ export function SearchCombobox<T = unknown>({
           className
         )}
       >
-        <span className="truncate text-muted-foreground">
+        <span
+          className={cn(
+            "truncate",
+            selectedIds.length > 0 ? "text-foreground" : "text-muted-foreground"
+          )}
+        >
           {placeholder}
         </span>
         <ChevronDown className="size-4 shrink-0 text-muted-foreground" aria-hidden />

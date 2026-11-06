@@ -1,4 +1,4 @@
-import type { Recruitment, CandidateApplicationItem } from "../types"
+import type { Recruitment, CandidateApplicationItem, StageTestEvaluationItem, StageInterviewAssessmentItem } from "../types"
 import type { SortDirection } from "@/shared/components"
 import { candidates } from "@/data/mock"
 
@@ -27,11 +27,14 @@ export function getRecruitmentCandidateApplications(
       let startedAt: string | null = null
       let completedAt: string | null = null
       let notes: string | null = null
+      let testEvaluation: StageTestEvaluationItem | undefined = undefined
+      let interviewAssessments: StageInterviewAssessmentItem[] | undefined = undefined
+
+      const passing = stg.passingScore ?? 70
 
       if (sIdx < c.stageIndex) {
         // Stage previously completed and passed
         stageStatus = "passed"
-        const passing = stg.passingScore ?? 70
         const hash = (c.name.charCodeAt(0) + sIdx * 7) % 18
         stageScore = Math.min(100, passing + 6 + hash)
         startedAt = c.appliedAt
@@ -67,17 +70,62 @@ export function getRecruitmentCandidateApplications(
         stageScore = null
       }
 
+      // Populate test evaluation if stage is a test
+      if (stg.type === "test" && (sIdx <= c.stageIndex)) {
+        const scoreVal = stageScore ?? 80
+        testEvaluation = {
+          totalQuestions: 50,
+          attemptedQuestions: 48,
+          passingScore: passing,
+          score: scoreVal,
+          durationMinutes: 45,
+          submittedAt: completedAt || startedAt || undefined,
+        }
+      }
+
+      // Populate interview assessments if stage is an interview
+      if (stg.type === "interview" && (sIdx <= c.stageIndex)) {
+        const scoreVal = stageScore ?? 82
+        const isPassedScore = scoreVal >= passing
+        interviewAssessments = [
+          {
+            id: `ia-${c.id}-1`,
+            interviewerName: "Fajar Mahendra",
+            interviewerRole: "Lead Technical Architect",
+            score: scoreVal,
+            recommendation: isPassedScore ? "Recommend" : "Do Not Recommend",
+            notes: isPassedScore
+              ? "Problem solving sistem dan pemahaman framework sangat solid. Mampu menjelaskan arsitektur dengan lugas."
+              : "Pemahaman fundamental masih kurang mendalam pada studi kasus enterprise skala besar.",
+            assessedAt: completedAt || startedAt || undefined,
+          },
+          {
+            id: `ia-${c.id}-2`,
+            interviewerName: "Rina Kusumawati",
+            interviewerRole: "HR Business Partner",
+            score: Math.max(50, scoreVal - 2),
+            recommendation: isPassedScore ? "Strong Hire" : "Do Not Recommend",
+            notes: isPassedScore
+              ? "Komunikasi sangat baik, memiliki motivasi tinggi, dan culture alignment sangat sesuai dengan budaya kerja tim."
+              : "Ekspektasi kerja dan gaya komunikasi perlu diselaraskan kembali.",
+            assessedAt: completedAt || startedAt || undefined,
+          },
+        ]
+      }
+
       return {
         stageIndex: sIdx,
         stageId: stg.id,
         stageName: stg.name,
         stageType: stg.type,
-        passingScore: stg.passingScore ?? 70,
+        passingScore: passing,
         status: stageStatus,
         totalScore: stageScore,
         startedAt,
         completedAt,
         notes,
+        testEvaluation,
+        interviewAssessments,
       }
     })
 
@@ -135,9 +183,7 @@ export function filterCandidateApplications(
   let result = [...list]
 
   if (selectedStageIndex !== null) {
-    // When a stage is selected, filter candidates who have reached or are in this stage
     result = result.filter((item) => {
-      // Must have reached at least this stage
       return item.currentStageIndex >= selectedStageIndex
     })
   }

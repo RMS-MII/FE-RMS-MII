@@ -6,10 +6,13 @@ import { RouterProvider, createRouter } from "@tanstack/react-router"
 import "@workspace/ui/globals.css"
 import { store } from "./app/store"
 import { routeTree } from "./routeTree.gen"
+import { NotFoundPage, GeneralErrorPage } from "@/shared/components/errors"
 
 const router = createRouter({
   routeTree,
   defaultPreload: "intent",
+  defaultNotFoundComponent: () => <NotFoundPage />,
+  defaultErrorComponent: (props) => <GeneralErrorPage {...props} />,
 })
 
 declare module "@tanstack/react-router" {

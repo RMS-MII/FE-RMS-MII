@@ -1,6 +1,4 @@
-import { useEffect, useMemo, useState } from "react"
-import { useNavigate, useSearch } from "@tanstack/react-router"
-import { Eye, MoreHorizontal, Pencil, Plus, Trash2 } from "lucide-react"
+import { Eye, Plus } from "lucide-react"
 
 // Primitives from @workspace/ui
 import { Button } from "@workspace/ui/components/button"
@@ -12,16 +10,8 @@ import {
   TableRow,
 } from "@workspace/ui/components/table"
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@workspace/ui/components/dropdown-menu"
-import {
   Select,
   SelectContent,
-  SelectGroup,
   SelectItem,
   SelectTrigger,
   SelectValue,
@@ -33,313 +23,56 @@ import {
   Panel,
   SearchInput,
   FilterChips,
-  type Chip,
   TableSortHeader,
-  type SortDirection,
   StatusBadge,
   DataTablePagination,
   EmptyState,
+  ErrorState,
+  TableSkeleton,
 } from "@/shared/components"
 import { formatPeriod } from "@/shared/lib/format"
 import { cn } from "@/shared/lib/utils"
 
-// Feature-owned data & types
-import type { Recruitment, RecruitmentStatus } from "../types"
-import {
-  initialRecruitments,
-  recruitmentStatusMeta,
-  activeCandidateCount,
-} from "../data/mock"
+// Feature-owned data, api & types
+import type { Recruitment } from "../types"
+import { getRecruitmentStatusMeta } from "../types"
+import { activeCandidateCount } from "../data/mock"
 import { CreateRecruitmentDialog } from "../components/CreateRecruitmentDialog"
 import { formatCurrentStageText } from "../utils"
-
-type SortKey = "code" | "name" | "stage" | "candidates" | "period" | "status"
-
-const PAGE_SIZE = 5
-
-const statusItems: { label: string; value: RecruitmentStatus | "all" }[] = [
-  { label: "All Status", value: "all" },
-  { label: "Draft", value: "draft" },
-  { label: "Running", value: "running" },
-  { label: "Completed", value: "completed" },
-  { label: "Closed", value: "closed" },
-]
+import { useRecruitmentsList } from "../hooks/useRecruitmentsList"
 
 export function RecruitmentsListPage() {
-  const navigate = useNavigate()
-  const searchParams = useSearch({ from: "/_auth/recruitments/" })
-
-  const [data, setData] = useState<Recruitment[]>(initialRecruitments)
-  const [isCreateOpen, setIsCreateOpen] = useState(false)
-
-  // Derived from search params
-  const search = searchParams.search ?? ""
-  const statusFilter = (searchParams.status as RecruitmentStatus | undefined) ?? "all"
-  const divisionFilter = searchParams.division ?? "all"
-  const sortKey = (searchParams.sortBy as SortKey | undefined) ?? "code"
-  const sortDirection = (searchParams.order as SortDirection | undefined) ?? "asc"
-  const page = searchParams.page ? Number(searchParams.page) : 1
-
-  // Local state for smooth typing in SearchInput
-  const [searchTerm, setSearchTerm] = useState(search)
-
-  useEffect(() => {
-    setSearchTerm(search)
-  }, [search])
-
-  useEffect(() => {
-    if (searchTerm === search) return
-
-    const timer = setTimeout(() => {
-      navigate({
-        to: "/recruitments",
-        search: (prev) => ({
-          ...prev,
-          search: searchTerm.trim() ? searchTerm.trim() : undefined,
-          page: undefined,
-        }),
-        replace: true,
-      })
-    }, 300)
-
-    return () => clearTimeout(timer)
-  }, [searchTerm, search, navigate])
-
-  // Divisions list
-  const divisions = useMemo(() => {
-    return Array.from(new Set(data.map((r) => r.division))).sort()
-  }, [data])
-
-  const divisionItems = useMemo(() => {
-    return [
-      { label: "All Division", value: "all" },
-      ...divisions.map((d) => ({ label: d, value: d })),
-    ]
-  }, [divisions])
-
-  const handleClearSearch = () => {
-    setSearchTerm("")
-    navigate({
-      to: "/recruitments",
-      search: (prev) => ({
-        ...prev,
-        search: undefined,
-        page: undefined,
-      }),
-      replace: true,
-    })
-  }
-
-  const handleStatusChange = (val: string | null) => {
-    if (!val) return
-    navigate({
-      to: "/recruitments",
-      search: (prev) => ({
-        ...prev,
-        status: val === "all" ? undefined : (val as RecruitmentStatus),
-        page: undefined,
-      }),
-      replace: true,
-    })
-  }
-
-  const handleDivisionChange = (val: string | null) => {
-    if (!val) return
-    navigate({
-      to: "/recruitments",
-      search: (prev) => ({
-        ...prev,
-        division: val === "all" ? undefined : val,
-        page: undefined,
-      }),
-      replace: true,
-    })
-  }
-
-  const handleSort = (key: string) => {
-    const k = key as SortKey
-    let nextSortKey: SortKey | undefined = k
-    let nextOrder: SortDirection | undefined = "asc"
-
-    if (sortKey === k) {
-      if (sortDirection === "asc") {
-        nextOrder = "desc"
-      } else if (sortDirection === "desc") {
-        nextSortKey = undefined
-        nextOrder = undefined
-      }
-    }
-
-    navigate({
-      to: "/recruitments",
-      search: (prev) => ({
-        ...prev,
-        sortBy: nextSortKey,
-        order: nextOrder,
-      }),
-      replace: true,
-    })
-  }
-
-  const handlePageChange = (newPage: number) => {
-    navigate({
-      to: "/recruitments",
-      search: (prev) => ({
-        ...prev,
-        page: newPage === 1 ? undefined : newPage,
-      }),
-      replace: true,
-    })
-  }
-
-  // Filter & Search
-  const filteredData = useMemo(() => {
-    return data.filter((item) => {
-      const q = search.trim().toLowerCase()
-      const matchesSearch =
-        !q ||
-        item.batchCode.toLowerCase().includes(q) ||
-        item.name.toLowerCase().includes(q) ||
-        item.division.toLowerCase().includes(q)
-
-      const matchesStatus =
-        statusFilter === "all" || item.status === statusFilter
-
-      const matchesDivision =
-        divisionFilter === "all" || item.division === divisionFilter
-
-      return matchesSearch && matchesStatus && matchesDivision
-    })
-  }, [data, search, statusFilter, divisionFilter])
-
-  // Sorting
-  const sortedData = useMemo(() => {
-    if (!sortKey || !sortDirection) return filteredData
-
-    return [...filteredData].sort((a, b) => {
-      let valA: string | number = ""
-      let valB: string | number = ""
-
-      switch (sortKey) {
-        case "code":
-          valA = a.batchCode
-          valB = b.batchCode
-          break
-        case "name":
-          valA = a.name.toLowerCase()
-          valB = b.name.toLowerCase()
-          break
-        case "stage":
-          valA = a.currentStage
-          valB = b.currentStage
-          break
-        case "candidates":
-          valA = activeCandidateCount(a)
-          valB = activeCandidateCount(b)
-          break
-        case "period":
-          valA = a.openDate
-          valB = b.openDate
-          break
-        case "status":
-          valA = a.status
-          valB = b.status
-          break
-      }
-
-      if (valA < valB) return sortDirection === "asc" ? -1 : 1
-      if (valA > valB) return sortDirection === "asc" ? 1 : -1
-      return 0
-    })
-  }, [filteredData, sortKey, sortDirection])
-
-  // Pagination
-  const totalItems = sortedData.length
-  const totalPages = Math.max(1, Math.ceil(totalItems / PAGE_SIZE))
-  const safePage = Math.min(page, totalPages)
-  const paginatedData = useMemo(() => {
-    const start = (safePage - 1) * PAGE_SIZE
-    return sortedData.slice(start, start + PAGE_SIZE)
-  }, [sortedData, safePage])
-
-  // Filter chips
-  const activeChips: Chip[] = useMemo(() => {
-    const chips: Chip[] = []
-    if (search.trim()) {
-      chips.push({
-        key: "search",
-        label: `Search: "${search}"`,
-        onRemove: handleClearSearch,
-      })
-    }
-    if (statusFilter !== "all") {
-      chips.push({
-        key: "status",
-        label: `Status: ${recruitmentStatusMeta[statusFilter]?.label ?? statusFilter}`,
-        onRemove: () => {
-          navigate({
-            to: "/recruitments",
-            search: (prev) => ({
-              ...prev,
-              status: undefined,
-              page: undefined,
-            }),
-            replace: true,
-          })
-        },
-      })
-    }
-    if (divisionFilter !== "all") {
-      chips.push({
-        key: "division",
-        label: `Division: ${divisionFilter}`,
-        onRemove: () => {
-          navigate({
-            to: "/recruitments",
-            search: (prev) => ({
-              ...prev,
-              division: undefined,
-              page: undefined,
-            }),
-            replace: true,
-          })
-        },
-      })
-    }
-    return chips
-  }, [search, statusFilter, divisionFilter, navigate])
-
-  const handleResetFilters = () => {
-    setSearchTerm("")
-    navigate({
-      to: "/recruitments",
-      search: (prev) => ({
-        sortBy: prev.sortBy,
-        order: prev.order,
-      }),
-      replace: true,
-    })
-  }
-
-  const handleDelete = (id: string) => {
-    setData((prev) => prev.filter((r) => r.id !== id))
-  }
-
-  const handleViewDetail = (id: string) => {
-    navigate({
-      to: "/recruitments/$id",
-      params: { id },
-    })
-  }
+  const {
+    search,
+    searchTerm,
+    setSearchTerm,
+    statusFilter,
+    sortKey,
+    sortDirection,
+    page,
+    pageSize,
+    recruitments,
+    totalItems,
+    isLoading,
+    isError,
+    refetch,
+    isCreateOpen,
+    setIsCreateOpen,
+    activeChips,
+    statusItems,
+    handleStatusChange,
+    handleSort,
+    handlePageChange,
+    handleResetFilters,
+    handleViewDetail,
+  } = useRecruitmentsList()
 
   const renderCurrentStage = (r: Recruitment) => {
     const text = formatCurrentStageText(r)
     const isMuted =
-      r.stages.length === 0 ||
-      r.currentStage < 0 ||
-      r.status === "draft" ||
-      r.currentStage >= r.stages.length ||
-      r.status === "completed"
+      text === "No stages" ||
+      text === "Not started" ||
+      text === "All stages completed"
 
     return (
       <span className={cn("text-sm", isMuted ? "text-muted-foreground" : "font-normal text-foreground")}>
@@ -356,12 +89,13 @@ export function RecruitmentsListPage() {
       />
 
       <Panel>
+        {/* Controls: Search, Filter, New Recruitment Button */}
         <div className="flex flex-col gap-3 border-b border-border px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex flex-1 flex-wrap items-center gap-2.5">
             <SearchInput
               value={searchTerm}
               onChange={setSearchTerm}
-              placeholder="Search by name or position"
+              placeholder="Search by code or position name"
             />
 
             <Select
@@ -369,51 +103,46 @@ export function RecruitmentsListPage() {
               value={statusFilter}
               onValueChange={handleStatusChange}
             >
-              <SelectTrigger className="h-10 w-40 rounded-full border-0 bg-muted px-4 text-sm text-foreground transition-all duration-150 hover:bg-muted/40 focus-visible:ring-2 focus-visible:ring-primary shadow-none">
+              <SelectTrigger className="w-36 rounded-full border-none bg-muted/60 px-3 text-xs font-medium text-foreground transition-colors hover:bg-muted focus-visible:ring-1 focus-visible:ring-primary">
                 <SelectValue placeholder="All Status" />
               </SelectTrigger>
-              <SelectContent className="rounded-xl">
-                <SelectGroup>
-                  {statusItems.map((item) => (
-                    <SelectItem key={item.value} value={item.value}>
-                      {item.label}
-                    </SelectItem>
-                  ))}
-                </SelectGroup>
-              </SelectContent>
-            </Select>
-
-            <Select
-              items={divisionItems}
-              value={divisionFilter}
-              onValueChange={handleDivisionChange}
-            >
-              <SelectTrigger className="h-10 w-44 rounded-full border-0 bg-muted px-4 text-sm text-foreground transition-all duration-150 hover:bg-muted/40 focus-visible:ring-2 focus-visible:ring-primary shadow-none">
-                <SelectValue placeholder="All Division" />
-              </SelectTrigger>
-              <SelectContent className="rounded-xl">
-                <SelectGroup>
-                  {divisionItems.map((item) => (
-                    <SelectItem key={item.value} value={item.value}>
-                      {item.label}
-                    </SelectItem>
-                  ))}
-                </SelectGroup>
+              <SelectContent className="rounded-xl bg-card p-1 shadow-md">
+                {statusItems.map((item) => (
+                  <SelectItem
+                    key={item.value}
+                    value={item.value}
+                    className="cursor-pointer rounded-lg text-xs"
+                  >
+                    {item.label}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>
 
-          <Button
-            onClick={() => setIsCreateOpen(true)}
-            className="h-10 gap-1.5 rounded-full border-0 bg-primary px-5 text-sm font-medium text-primary-foreground shadow-none hover:bg-primary/90 focus-visible:ring-2 focus-visible:ring-primary cursor-pointer shrink-0"
-          >
-            <Plus className="size-4" aria-hidden />
-            <span>Create recruitment</span>
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              onClick={() => setIsCreateOpen(true)}
+              size="sm"
+              className="h-10 gap-1.5 rounded-full bg-primary px-4 text-xs font-semibold text-primary-foreground hover:bg-primary/90 cursor-pointer"
+            >
+              <Plus className="size-3.5" aria-hidden />
+              <span>New Recruitment</span>
+            </Button>
+          </div>
         </div>
 
-        <FilterChips chips={activeChips} onReset={handleResetFilters} />
+        {/* Filter chips bar */}
+        {activeChips.length > 0 && (
+          <div className="border-b border-border bg-muted/20 px-5 py-2.5">
+            <FilterChips
+              chips={activeChips}
+              onReset={handleResetFilters}
+            />
+          </div>
+        )}
 
+        {/* Table Section */}
         <div className="overflow-x-auto">
           <Table>
             <TableHeader className="bg-card">
@@ -424,7 +153,7 @@ export function RecruitmentsListPage() {
                   currentSortKey={sortKey}
                   currentDirection={sortDirection}
                   onSort={handleSort}
-                  className="w-36 pl-5"
+                  className="w-52 pl-5"
                 />
                 <TableSortHeader
                   label="Name"
@@ -478,23 +207,58 @@ export function RecruitmentsListPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {paginatedData.length === 0 ? (
+              {/* 1. Loading state (skeleton rows only; header and controls remain visible) */}
+              {isLoading ? (
+                <TableSkeleton
+                  rowCount={5}
+                  colWidths={[
+                    "w-24",
+                    ["w-44", "w-28"],
+                    "w-32",
+                    "w-12 mx-auto",
+                    "w-36 mx-auto",
+                    "w-20 mx-auto",
+                    "w-6 ml-auto",
+                  ]}
+                  cellClassNames={[
+                    "pl-5",
+                    "py-3",
+                    "",
+                    "text-center",
+                    "text-center",
+                    "text-center",
+                    "pr-5 text-right",
+                  ]}
+                />
+              ) : isError ? (
+                /* 2. Error state (generic message, reusable) */
+                <TableRow>
+                  <TableCell colSpan={7} className="h-64 text-center">
+                    <ErrorState
+                      title="Failed to load recruitments"
+                      description="Something went wrong while fetching recruitment data. Please check your connection and try again."
+                      onRetry={() => refetch()}
+                    />
+                  </TableCell>
+                </TableRow>
+              ) : recruitments.length === 0 ? (
+                /* 3. Empty state */
                 <TableRow>
                   <TableCell colSpan={7} className="h-64 text-center">
                     <EmptyState
                       title="No recruitments match"
                       description={
-                        search || statusFilter !== "all" || divisionFilter !== "all"
+                        search || statusFilter !== "all"
                           ? "Change keywords or clear filters to view other recruitments."
-                          : "Create your first recruitment to start accepting candidates."
+                          : "No recruitment batches found. Create your first batch to start accepting candidates."
                       }
                       action={
-                        search || statusFilter !== "all" || divisionFilter !== "all" ? (
+                        search || statusFilter !== "all" ? (
                           <Button
                             variant="ghost"
                             size="sm"
                             onClick={handleResetFilters}
-                            className="rounded-full border-0 bg-muted/60 text-foreground hover:bg-muted"
+                            className="rounded-full border-0 bg-muted/60 text-foreground hover:bg-muted cursor-pointer"
                           >
                             Reset filters
                           </Button>
@@ -504,9 +268,10 @@ export function RecruitmentsListPage() {
                   </TableCell>
                 </TableRow>
               ) : (
-                paginatedData.map((recruitment) => {
-                  const statusMeta = recruitmentStatusMeta[recruitment.status]
-                  const activeCountNumber = activeCandidateCount(recruitment)
+                /* 4. Data rows */
+                recruitments.map((recruitment) => {
+                  const statusMeta = getRecruitmentStatusMeta(recruitment.status)
+                  const candidateCount = recruitment.stages ? activeCandidateCount(recruitment) : "—"
 
                   return (
                     <TableRow
@@ -529,7 +294,7 @@ export function RecruitmentsListPage() {
                             {recruitment.name}
                           </button>
                           <span className="text-xs text-muted-foreground mt-0.5">
-                            {recruitment.division}
+                            {recruitment.departmentName || recruitment.division || "—"}
                           </span>
                         </div>
                       </TableCell>
@@ -538,12 +303,15 @@ export function RecruitmentsListPage() {
                         {renderCurrentStage(recruitment)}
                       </TableCell>
 
-                      <TableCell className="text-center tabular-nums text-sm font-normal text-foreground">
-                        {activeCountNumber}
+                      <TableCell className="text-center tabular-nums text-sm font-normal text-muted-foreground">
+                        {candidateCount}
                       </TableCell>
 
-                      <TableCell className="whitespace-nowrap text-sm tabular-nums text-muted-foreground">
-                        {formatPeriod(recruitment.openDate, recruitment.closeDate)}
+                      <TableCell className="whitespace-nowrap text-center text-sm tabular-nums text-muted-foreground">
+                        {formatPeriod(
+                          recruitment.startDate || recruitment.openDate || "",
+                          recruitment.endDate || recruitment.closeDate || ""
+                        )}
                       </TableCell>
 
                       <TableCell className="whitespace-nowrap text-center">
@@ -553,43 +321,16 @@ export function RecruitmentsListPage() {
                       </TableCell>
 
                       <TableCell className="pr-5 text-right whitespace-nowrap">
-                        <DropdownMenu>
-                          <DropdownMenuTrigger
-                            render={
-                              <Button
-                                variant="ghost"
-                                size="icon-sm"
-                                className="size-8 rounded-full text-foreground transition-colors hover:bg-muted"
-                                aria-label={`Actions for ${recruitment.name}`}
-                              />
-                            }
-                          >
-                            <MoreHorizontal className="size-4" aria-hidden />
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end" className="w-36 rounded-xl">
-                            <DropdownMenuItem
-                              onClick={() => handleViewDetail(recruitment.id)}
-                              className="cursor-pointer gap-2 text-xs"
-                            >
-                              <Eye className="size-3.5" aria-hidden />
-                              <span>View</span>
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                              className="cursor-pointer gap-2 text-xs"
-                            >
-                              <Pencil className="size-3.5" aria-hidden />
-                              <span>Edit</span>
-                            </DropdownMenuItem>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem
-                              onClick={() => handleDelete(recruitment.id)}
-                              className="cursor-pointer gap-2 text-xs text-destructive focus:bg-destructive/10 focus:text-destructive"
-                            >
-                              <Trash2 className="size-3.5" aria-hidden />
-                              <span>Delete</span>
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
+                        <Button
+                          variant="ghost"
+                          size="icon-sm"
+                          onClick={() => handleViewDetail(recruitment.id)}
+                          className="size-8 rounded-full text-muted-foreground transition-colors hover:text-foreground hover:bg-muted cursor-pointer"
+                          aria-label={`View details for ${recruitment.name}`}
+                          title="View Detail"
+                        >
+                          <Eye className="size-4" aria-hidden />
+                        </Button>
                       </TableCell>
                     </TableRow>
                   )
@@ -599,27 +340,26 @@ export function RecruitmentsListPage() {
           </Table>
         </div>
 
-        {/* Pagination */}
-        {sortedData.length > 0 && (
-          <DataTablePagination
-            page={safePage}
-            pageSize={PAGE_SIZE}
-            totalItems={totalItems}
-            onPageChange={handlePageChange}
-          />
+        {/* Server Pagination */}
+        {!isLoading && !isError && totalItems > 0 && (
+          <div className="border-t border-border px-5 py-4">
+            <DataTablePagination
+              page={page}
+              pageSize={pageSize}
+              totalItems={totalItems}
+              onPageChange={handlePageChange}
+            />
+          </div>
         )}
       </Panel>
 
-      {/* Create Recruitment Dialog */}
       <CreateRecruitmentDialog
         open={isCreateOpen}
         onOpenChange={setIsCreateOpen}
-        existingCount={data.length}
-        onSuccess={(newRecruitment) => {
-          setData((prev) => [newRecruitment, ...prev])
+        onSuccess={() => {
+          refetch()
         }}
       />
     </div>
   )
 }
-

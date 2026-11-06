@@ -1,5 +1,5 @@
-import { useState, useMemo, useEffect } from "react"
-import type { Recruitment, CandidateApplicationItem } from "../../types"
+import { useNavigate } from "@tanstack/react-router"
+import { cn } from "@/shared/lib/utils"
 import {
   Panel,
   SearchInput,
@@ -8,17 +8,12 @@ import {
   FilterChips,
   TableSortHeader,
   DataTablePagination,
-  type Chip,
-  type SortDirection,
+  TableSkeleton,
+  ErrorState,
 } from "@/shared/components"
 import { safeFormatDate } from "@/shared/lib/format"
-import {
-  getRecruitmentCandidateApplications,
-  filterCandidateApplications,
-  sortCandidateApplications,
-  type CandidateAppSortKey,
-} from "../../utils"
 import { CandidateApplicationDetailDialog } from "./CandidateApplicationDetailDialog"
+import { AddCandidateDialog } from "./AddCandidateDialog"
 import {
   Table,
   TableBody,
@@ -36,196 +31,62 @@ import {
   SelectValue,
 } from "@workspace/ui/components/select"
 import { Button } from "@workspace/ui/components/button"
-import { Eye } from "lucide-react"
+import { Eye, UserPlus, AlertCircle } from "lucide-react"
+import {
+  useCandidatesTab,
+  statusToneMap,
+  statusLabelMap,
+  type UseCandidatesTabProps,
+} from "../../hooks/useCandidatesTab"
 
-export interface CandidatesTabProps {
-  recruitment: Recruitment
-  selectedStageIndex?: number | null
-  onStageChange?: (stageIndex: number | null) => void
-}
-
-const statusToneMap: Record<string, "success" | "warning" | "info" | "danger" | "neutral"> = {
-  passed: "success",
-  accepted: "success",
-  in_progress: "info",
-  pending: "warning",
-  failed: "danger",
-  rejected: "danger",
-  withdrawn: "neutral",
-  upcoming: "neutral",
-}
-
-const statusLabelMap: Record<string, string> = {
-  in_progress: "In Progress",
-  passed: "Passed",
-  failed: "Failed",
-  pending: "Pending",
-  accepted: "Accepted",
-  rejected: "Rejected",
-  withdrawn: "Withdrawn",
-  upcoming: "Upcoming",
-}
-
-const statusItems = [
-  { label: "All Status", value: "all" },
-  { label: "In Progress", value: "in_progress" },
-  { label: "Passed", value: "passed" },
-  { label: "Pending", value: "pending" },
-  { label: "Failed", value: "failed" },
-  { label: "Accepted", value: "accepted" },
-  { label: "Withdrawn", value: "withdrawn" },
-]
+export interface CandidatesTabProps extends UseCandidatesTabProps {}
 
 export function CandidatesTab({
   recruitment,
   selectedStageIndex = null,
   onStageChange,
 }: CandidatesTabProps) {
-  // Search and filter states
-  const [search, setSearch] = useState("")
-  const [stageFilter, setStageFilter] = useState<string>(
-    selectedStageIndex !== null ? String(selectedStageIndex) : "all"
-  )
-  const [statusFilter, setStatusFilter] = useState("all")
+  const navigate = useNavigate()
 
-  // Sorting and pagination states
-  const [sortKey, setSortKey] = useState<CandidateAppSortKey>("appliedAt")
-  const [sortDirection, setSortDirection] = useState<SortDirection>("desc")
-  const [page, setPage] = useState(1)
-  const pageSize = 5
-
-  // Selected application for detail modal
-  const [selectedApplication, setSelectedApplication] =
-    useState<CandidateApplicationItem | null>(null)
-  const [isDetailOpen, setIsDetailOpen] = useState(false)
-
-  // Sync external stage index with internal dropdown state
-  useEffect(() => {
-    if (selectedStageIndex !== null) {
-      setStageFilter(String(selectedStageIndex))
-    }
-  }, [selectedStageIndex])
-
-  // Retrieve CandidateApplicationItems with ERD relations (BatchApplications + ApplicationStage)
-  const allApplications = useMemo(() => {
-    return getRecruitmentCandidateApplications(recruitment)
-  }, [recruitment])
-
-  // Build stage dropdown items
-  const stageItems = useMemo(() => {
-    const items = [{ label: "All Stages", value: "all" }]
-    ;(recruitment.stages || []).forEach((stg, idx) => {
-      items.push({
-        label: `Stage ${idx + 1}: ${stg.name}`,
-        value: String(idx),
-      })
-    })
-    return items
-  }, [recruitment.stages])
+  const {
+    search,
+    setSearch,
+    stageFilter,
+    statusFilter,
+    sortKey,
+    sortDirection,
+    page,
+    pageSize,
+    hasStages,
+    isApiLoading,
+    isApiError,
+    refetchApplications,
+    selectedApplication,
+    isDetailOpen,
+    setIsDetailOpen,
+    isAddOpen,
+    setIsAddOpen,
+    stageItems,
+    statusItems,
+    currentApplications,
+    totalCount,
+    startIndex,
+    activeChips,
+    handleStageChange,
+    handleStatusChange,
+    handleSort,
+    handlePageChange,
+    handleResetFilters,
+    handleOpenDetail,
+    handleAddCandidates,
+    handleUpdateCandidateStatus,
+  } = useCandidatesTab({
+    recruitment,
+    selectedStageIndex,
+    onStageChange,
+  })
 
   const parsedStageIndex = stageFilter !== "all" ? Number(stageFilter) : null
-
-  // Handle stage filter changes
-  const handleStageChange = (val: string | null) => {
-    if (!val) return
-    setStageFilter(val)
-    setPage(1)
-    if (onStageChange) {
-      onStageChange(val === "all" ? null : Number(val))
-    }
-  }
-
-  // Handle status filter changes
-  const handleStatusChange = (val: string | null) => {
-    if (!val) return
-    setStatusFilter(val)
-    setPage(1)
-  }
-
-  // Filter applications
-  const filteredApplications = useMemo(() => {
-    return filterCandidateApplications(
-      allApplications,
-      search,
-      parsedStageIndex,
-      statusFilter
-    )
-  }, [allApplications, search, parsedStageIndex, statusFilter])
-
-  // Sort applications
-  const sortedApplications = useMemo(() => {
-    return sortCandidateApplications(
-      filteredApplications,
-      sortKey,
-      sortDirection,
-      parsedStageIndex
-    )
-  }, [filteredApplications, sortKey, sortDirection, parsedStageIndex])
-
-  // Paginate applications
-  const paginatedApplications = useMemo(() => {
-    const start = (page - 1) * pageSize
-    return sortedApplications.slice(start, start + pageSize)
-  }, [sortedApplications, page, pageSize])
-
-  const handleSort = (key: string) => {
-    const k = key as CandidateAppSortKey
-    if (sortKey === k) {
-      setSortDirection((prev) => (prev === "asc" ? "desc" : "asc"))
-    } else {
-      setSortKey(k)
-      setSortDirection("asc")
-    }
-  }
-
-  const handleResetFilters = () => {
-    setSearch("")
-    setStageFilter("all")
-    setStatusFilter("all")
-    setPage(1)
-    if (onStageChange) {
-      onStageChange(null)
-    }
-  }
-
-  const handleOpenDetail = (app: CandidateApplicationItem) => {
-    setSelectedApplication(app)
-    setIsDetailOpen(true)
-  }
-
-  // Active filter chips
-  const activeChips: Chip[] = useMemo(() => {
-    const chips: Chip[] = []
-    if (search.trim()) {
-      chips.push({
-        key: "search",
-        label: `Search: "${search}"`,
-        onRemove: () => {
-          setSearch("")
-          setPage(1)
-        },
-      })
-    }
-    if (stageFilter !== "all") {
-      const match = stageItems.find((s) => s.value === stageFilter)
-      chips.push({
-        key: "stage",
-        label: match?.label || `Stage ${Number(stageFilter) + 1}`,
-        onRemove: () => handleStageChange("all"),
-      })
-    }
-    if (statusFilter !== "all") {
-      const match = statusItems.find((s) => s.value === statusFilter)
-      chips.push({
-        key: "status",
-        label: `Status: ${match?.label || statusFilter}`,
-        onRemove: () => handleStatusChange("all"),
-      })
-    }
-    return chips
-  }, [search, stageFilter, statusFilter, stageItems])
-
-  const startIndex = (page - 1) * pageSize
 
   return (
     <>
@@ -237,14 +98,18 @@ export function CandidatesTab({
               value={search}
               onChange={(val) => {
                 setSearch(val)
-                setPage(1)
+                handlePageChange(1)
               }}
               placeholder="Search candidate, email, or application code..."
               containerClassName="sm:w-80"
             />
 
             {/* Stage Filter */}
-            <Select value={stageFilter} onValueChange={handleStageChange}>
+            <Select
+              items={stageItems}
+              value={stageFilter}
+              onValueChange={handleStageChange}
+            >
               <SelectTrigger className="h-10 w-48 rounded-full border-0 bg-muted px-4 text-sm text-foreground transition-all duration-150 hover:bg-muted/40 focus-visible:ring-2 focus-visible:ring-primary shadow-none">
                 <SelectValue placeholder="All Stages" />
               </SelectTrigger>
@@ -260,7 +125,11 @@ export function CandidatesTab({
             </Select>
 
             {/* Status Filter */}
-            <Select value={statusFilter} onValueChange={handleStatusChange}>
+            <Select
+              items={statusItems}
+              value={statusFilter}
+              onValueChange={handleStatusChange}
+            >
               <SelectTrigger className="h-10 w-40 rounded-full border-0 bg-muted px-4 text-sm text-foreground transition-all duration-150 hover:bg-muted/40 focus-visible:ring-2 focus-visible:ring-primary shadow-none">
                 <SelectValue placeholder="All Status" />
               </SelectTrigger>
@@ -276,14 +145,53 @@ export function CandidatesTab({
             </Select>
           </div>
 
-          <div className="flex items-center gap-2 text-xs text-muted-foreground self-start sm:self-center shrink-0">
-            <span>Showing</span>
-            <span className="font-semibold text-foreground tabular-nums">
-              {filteredApplications.length}
-            </span>
-            <span>of {allApplications.length} candidates</span>
+          <div className="flex flex-wrap items-center gap-3 self-start sm:self-center shrink-0">
+            <Button
+              type="button"
+              onClick={() => hasStages && setIsAddOpen(true)}
+              disabled={!hasStages}
+              title={
+                !hasStages
+                  ? "Configure selection stages first before adding candidates"
+                  : "Add candidate"
+              }
+              className={cn(
+                "h-10 gap-1.5 rounded-full border-0 px-4 text-sm font-medium shadow-none shrink-0 transition-all",
+                hasStages
+                  ? "bg-primary text-primary-foreground hover:bg-primary/90 focus-visible:ring-2 focus-visible:ring-primary cursor-pointer"
+                  : "bg-muted text-muted-foreground opacity-60 cursor-not-allowed hover:bg-muted"
+              )}
+            >
+              <UserPlus className="size-4" aria-hidden />
+              <span>Add candidate</span>
+            </Button>
           </div>
         </div>
+
+        {/* Warning Banner when recruitment batch has no stages yet */}
+        {!hasStages && (
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-border bg-amber-500/10 px-5 py-3 text-xs text-amber-700 dark:text-amber-400">
+            <div className="flex items-center gap-2.5">
+              <AlertCircle className="size-4 shrink-0 text-amber-600 dark:text-amber-400" />
+              <p>
+                <strong className="font-semibold">Selection stages required:</strong> Candidates can only be added once this recruitment batch has configured selection stages.
+              </p>
+            </div>
+            <Button
+              type="button"
+              size="xs"
+              onClick={() =>
+                navigate({
+                  to: "/recruitments/$id/stages",
+                  params: { id: recruitment.id },
+                })
+              }
+              className="rounded-full bg-amber-600 hover:bg-amber-700 text-white dark:bg-amber-500 dark:hover:bg-amber-600 text-xs font-semibold px-3 py-1 cursor-pointer shrink-0 self-start sm:self-auto"
+            >
+              Configure Stages
+            </Button>
+          </div>
+        )}
 
         {/* Removable Active Filter Chips */}
         <FilterChips chips={activeChips} onReset={handleResetFilters} />
@@ -325,7 +233,7 @@ export function CandidatesTab({
                   currentSortKey={sortKey}
                   currentDirection={sortDirection}
                   onSort={handleSort}
-                  align="center"
+                  className="text-center"
                 />
 
                 <TableSortHeader
@@ -345,39 +253,81 @@ export function CandidatesTab({
                   className="hidden md:table-cell"
                 />
 
-                <TableHead className="w-16 pr-5 text-center whitespace-nowrap">
-                  Action
-                </TableHead>
+                <TableHead className="w-14 pr-5 text-center">Action</TableHead>
               </TableRow>
             </TableHeader>
+
             <TableBody>
-              {paginatedApplications.length === 0 ? (
+              {isApiLoading ? (
+                <TableSkeleton colCount={8} rowCount={pageSize} />
+              ) : isApiError ? (
                 <TableRow>
-                  <TableCell colSpan={8} className="h-64 text-center">
-                    <EmptyState
-                      title="No candidates match"
-                      description={
-                        activeChips.length > 0
-                          ? "Try adjusting your search terms or filters to find candidates."
-                          : "No candidates currently registered in this recruitment batch."
-                      }
-                      action={
-                        activeChips.length > 0 ? (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={handleResetFilters}
-                            className="rounded-full border-0 bg-muted/60 text-foreground hover:bg-muted cursor-pointer"
-                          >
-                            Reset filters
-                          </Button>
-                        ) : undefined
-                      }
+                  <TableCell colSpan={8} className="p-8">
+                    <ErrorState
+                      title="Failed to load candidates"
+                      description="Unable to fetch candidates from server. Please check your connection."
+                      onRetry={() => refetchApplications()}
                     />
                   </TableCell>
                 </TableRow>
+              ) : currentApplications.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={8} className="p-8">
+                    {!hasStages ? (
+                      <EmptyState
+                        title="Selection stages required"
+                        description="This recruitment batch does not have selection stages yet. Please configure the stages first to begin adding candidates."
+                        action={
+                          <Button
+                            variant="default"
+                            size="sm"
+                            onClick={() =>
+                              navigate({
+                                to: "/recruitments/$id/stages",
+                                params: { id: recruitment.id },
+                              })
+                            }
+                            className="rounded-full border-0 bg-primary text-primary-foreground hover:bg-primary/90 cursor-pointer"
+                          >
+                            Configure Stages
+                          </Button>
+                        }
+                      />
+                    ) : (
+                      <EmptyState
+                        title="No candidates match"
+                        description={
+                          activeChips.length > 0
+                            ? "Try adjusting your search terms or filters to find candidates."
+                            : "No candidates currently registered in this recruitment batch."
+                        }
+                        action={
+                          activeChips.length > 0 ? (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={handleResetFilters}
+                              className="rounded-full border-0 bg-muted/60 text-foreground hover:bg-muted cursor-pointer"
+                            >
+                              Reset filters
+                            </Button>
+                          ) : (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => setIsAddOpen(true)}
+                              className="rounded-full border-0 bg-muted/60 text-foreground hover:bg-muted cursor-pointer"
+                            >
+                              Add your first candidate
+                            </Button>
+                          )
+                        }
+                      />
+                    )}
+                  </TableCell>
+                </TableRow>
               ) : (
-                paginatedApplications.map((app, idx) => {
+                currentApplications.map((app, idx) => {
                   const rowNum = startIndex + idx + 1
 
                   // Determine stage name, score, and status based on whether a specific stage is filtered
@@ -405,10 +355,12 @@ export function CandidatesTab({
                       className="border-b border-border transition-colors hover:bg-muted/40 cursor-pointer"
                       onClick={() => handleOpenDetail(app)}
                     >
+                      {/* Row number */}
                       <TableCell className="pl-5 py-3.5 text-center font-semibold text-muted-foreground tabular-nums text-xs">
                         {rowNum}
                       </TableCell>
 
+                      {/* Candidate Profile (Name, Email, Education) */}
                       <TableCell className="py-3.5">
                         <div className="flex items-center gap-3">
                           <div className="min-w-0">
@@ -482,11 +434,11 @@ export function CandidatesTab({
         </div>
 
         {/* Pagination Footer */}
-        <DataTablePagination
+        <DataTablePagination className="border-t border-border px-5 py-4"
           page={page}
           pageSize={pageSize}
-          totalItems={sortedApplications.length}
-          onPageChange={setPage}
+          totalItems={totalCount}
+          onPageChange={handlePageChange}
         />
       </Panel>
 
@@ -496,6 +448,16 @@ export function CandidatesTab({
         recruitment={recruitment}
         open={isDetailOpen}
         onOpenChange={setIsDetailOpen}
+        onUpdateStatus={handleUpdateCandidateStatus}
+      />
+
+      {/* Add Candidate Manual Dialog (Talent Pool & Direct Register) */}
+      <AddCandidateDialog
+        recruitment={recruitment}
+        open={isAddOpen}
+        onOpenChange={setIsAddOpen}
+        onAddCandidates={handleAddCandidates}
+        existingApplicationCount={totalCount}
       />
     </>
   )
