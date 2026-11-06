@@ -1,11 +1,10 @@
-import * as React from "react"
 import type { Recruitment, InterviewSessionItem } from "../../types"
 import { Panel, SearchInput } from "@/shared/components"
-import { mockInterviewSessions, getRecruitmentInterviewSessions } from "../../data/interviewMock"
 import { InterviewMiniCalendar } from "./InterviewMiniCalendar"
 import { InterviewSessionTable } from "./InterviewSessionTable"
 import { ScheduleInterviewDialog } from "./ScheduleInterviewDialog"
 import { ReviewRescheduleDialog } from "./ReviewRescheduleDialog"
+import { useInterviewsTab } from "../../hooks"
 import {
   Select,
   SelectContent,
@@ -30,218 +29,56 @@ export function InterviewsTab({
   onViewSessionDetail,
   onReviewReschedule,
 }: InterviewsTabProps) {
-  // Load recruitment sessions (with fallback to mock sessions)
-  const initialSessions = React.useMemo(() => {
-    const list = getRecruitmentInterviewSessions(recruitment.id)
-    return list.length > 0 ? list : mockInterviewSessions
-  }, [recruitment.id])
+  const {
+    sessions,
+    filteredSessions,
+    pendingReschedules,
 
-  const [sessions, setSessions] = React.useState<InterviewSessionItem[]>(initialSessions)
+    // Filter states & options
+    search,
+    setSearch,
+    stageFilter,
+    setStageFilter,
+    stageFilterItems,
+    statusFilter,
+    setStatusFilter,
+    statusFilterItems,
+    modeFilter,
+    setModeFilter,
+    modeFilterItems,
+    selectedDate,
+    isFilterPendingReschedule,
 
-  // Keep state updated if initialSessions change
-  React.useEffect(() => {
-    setSessions(initialSessions)
-  }, [initialSessions])
+    // Dialog states
+    isScheduleOpen,
+    setIsScheduleOpen,
+    sessionToReschedule,
+    setSessionToReschedule,
+    rescheduleSessionToReview,
+    isReviewRescheduleOpen,
+    setIsReviewRescheduleOpen,
 
-  // Filter States
-  const [search, setSearch] = React.useState("")
-  const [stageFilter, setStageFilter] = React.useState<string>("all")
-  const [statusFilter, setStatusFilter] = React.useState<string>("all")
-  const [modeFilter, setModeFilter] = React.useState<string>("all")
-  const [selectedDate, setSelectedDate] = React.useState<string | null>("2026-03-10")
-  const [isFilterPendingReschedule, setIsFilterPendingReschedule] = React.useState<boolean>(false)
-  const [isScheduleOpen, setIsScheduleOpen] = React.useState<boolean>(false)
-  const [sessionToReschedule, setSessionToReschedule] =
-    React.useState<InterviewSessionItem | null>(null)
-  const [rescheduleSessionToReview, setRescheduleSessionToReview] =
-    React.useState<InterviewSessionItem | null>(null)
-  const [isReviewRescheduleOpen, setIsReviewRescheduleOpen] = React.useState<boolean>(false)
-
-  const handleOpenScheduleNew = () => {
-    setSessionToReschedule(null)
-    setIsScheduleOpen(true)
-    onScheduleInterview?.()
-  }
-
-  const handleOpenAdjustSchedule = (session: InterviewSessionItem) => {
-    setSessionToReschedule(session)
-    setIsScheduleOpen(true)
-  }
-
-  const handleSaveSession = (savedSession: InterviewSessionItem) => {
-    if (sessionToReschedule) {
-      setSessions((prev) =>
-        prev.map((s) => (s.id === savedSession.id ? savedSession : s))
-      )
-      setSessionToReschedule(null)
-    } else {
-      setSessions((prev) => [savedSession, ...prev])
-    }
-    setSelectedDate(savedSession.scheduledStart.slice(0, 10))
-    setIsFilterPendingReschedule(false)
-  }
-
-  const handleOpenReviewReschedule = (session: InterviewSessionItem) => {
-    setRescheduleSessionToReview(session)
-    setIsReviewRescheduleOpen(true)
-    onReviewReschedule?.(session)
-  }
-
-  const handleApproveReschedule = (
-    sessionId: string,
-    proposedStart: string,
-    proposedEnd: string,
-    notes?: string
-  ) => {
-    setSessions((prev) =>
-      prev.map((s) => {
-        if (s.id !== sessionId) return s
-        return {
-          ...s,
-          scheduledStart: proposedStart,
-          scheduledEnd: proposedEnd,
-          status: "rescheduled",
-          rescheduleRequest: s.rescheduleRequest
-            ? {
-                ...s.rescheduleRequest,
-                status: "approved",
-                reviewedAt: new Date().toISOString(),
-                reviewNotes: notes || null,
-              }
-            : null,
-        }
-      })
-    )
-    setSelectedDate(proposedStart.slice(0, 10))
-    setIsFilterPendingReschedule(false)
-  }
-
-  const handleRejectReschedule = (sessionId: string, notes: string) => {
-    setSessions((prev) =>
-      prev.map((s) => {
-        if (s.id !== sessionId) return s
-        return {
-          ...s,
-          rescheduleRequest: s.rescheduleRequest
-            ? {
-                ...s.rescheduleRequest,
-                status: "rejected",
-                reviewedAt: new Date().toISOString(),
-                reviewNotes: notes,
-              }
-            : null,
-        }
-      })
-    )
-    setIsFilterPendingReschedule(false)
-  }
-
-  // Count pending reschedule requests
-  const pendingReschedules = React.useMemo(
-    () => sessions.filter((s) => s.rescheduleRequest?.status === "pending"),
-    [sessions]
-  )
-
-  // Available interview stages in this batch
-  const interviewStages = React.useMemo(() => {
-    return (recruitment.stages || []).filter(
-      (stg) =>
-        stg.type === "interview" ||
-        stg.name.toLowerCase().includes("interview") ||
-        stg.name.toLowerCase().includes("hr") ||
-        stg.name.toLowerCase().includes("user")
-    )
-  }, [recruitment.stages])
-
-  // Filter items matching RecruitmentsListPage pattern for @base-ui/react select
-  const stageFilterItems = React.useMemo(() => {
-    return [
-      { label: "All Stages", value: "all" },
-      ...interviewStages.map((stg) => ({
-        label: stg.name,
-        value: stg.id,
-      })),
-    ]
-  }, [interviewStages])
-
-  const statusFilterItems = React.useMemo(() => {
-    return [
-      { label: "All Status", value: "all" },
-      { label: "Scheduled", value: "scheduled" },
-      { label: "Completed", value: "completed" },
-      { label: "Rescheduled", value: "rescheduled" },
-      { label: "Cancelled", value: "cancelled" },
-    ]
-  }, [])
-
-  const modeFilterItems = React.useMemo(() => {
-    return [
-      { label: "All Modes", value: "all" },
-      { label: "Online Only", value: "online" },
-      { label: "Onsite Only", value: "onsite" },
-    ]
-  }, [])
-
-  // Apply search and dropdown filters
-  const filteredSessions = React.useMemo(() => {
-    let result = [...sessions]
-
-    // Search query
-    if (search.trim()) {
-      const q = search.toLowerCase()
-      result = result.filter(
-        (s) =>
-          s.candidateName.toLowerCase().includes(q) ||
-          s.candidateEmail.toLowerCase().includes(q) ||
-          s.codeApplication.toLowerCase().includes(q) ||
-          s.sessionName.toLowerCase().includes(q) ||
-          (s.location && s.location.toLowerCase().includes(q))
-      )
-    }
-
-    // Stage filter
-    if (stageFilter !== "all") {
-      result = result.filter((s) => s.stageId === stageFilter)
-    }
-
-    // Status filter
-    if (statusFilter !== "all") {
-      result = result.filter((s) => s.status === statusFilter)
-    }
-
-    // Mode filter
-    if (modeFilter === "online") {
-      result = result.filter((s) => s.isOnline)
-    } else if (modeFilter === "onsite") {
-      result = result.filter((s) => !s.isOnline)
-    }
-
-    return result
-  }, [sessions, search, stageFilter, statusFilter, modeFilter])
-
-  // Handlers for mini calendar date selection
-  const handleSelectDate = (date: string | null) => {
-    setSelectedDate(date)
-    setIsFilterPendingReschedule(false)
-  }
-
-  const handleTogglePendingReschedule = () => {
-    setIsFilterPendingReschedule((prev) => !prev)
-    if (!isFilterPendingReschedule) {
-      setSelectedDate(null)
-    }
-  }
-
-  const handleClearDateFilter = () => {
-    setSelectedDate(null)
-    setIsFilterPendingReschedule(false)
-  }
+    // Action handlers
+    handleSelectDate,
+    handleTogglePendingReschedule,
+    handleClearDateFilter,
+    handleOpenScheduleNew,
+    handleOpenAdjustSchedule,
+    handleSaveSession,
+    handleOpenReviewReschedule,
+    handleApproveReschedule,
+    handleRejectReschedule,
+  } = useInterviewsTab({
+    recruitment,
+    onScheduleInterview,
+    onReviewReschedule,
+  })
 
   return (
     <Panel className="p-4 sm:p-6 space-y-6 bg-card border-border">
       {/* Top Pending Reschedule Banner Alert (if any) */}
       {pendingReschedules.length > 0 && !isFilterPendingReschedule && (
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 rounded-2xl bg-amber-50 px-4 py-3 text-xs text-amber-950 ">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 rounded-2xl bg-amber-50 px-4 py-3 text-xs text-amber-950">
           <div className="flex items-center gap-2.5">
             <AlertTriangle className="size-4 text-amber-600 dark:text-amber-400 shrink-0" />
             <div>

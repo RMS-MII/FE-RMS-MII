@@ -4,6 +4,7 @@ import { recruitmentPipeline } from "../data/mock"
 import { getRecruitmentInterviewSessions, mockInterviewSessions } from "../data/interviewMock"
 import { useGetBatchByIdQuery } from "../api/recruitments-api"
 import { useGetBatchApplicationsQuery } from "../api/applications-api"
+import { useGetBatchInterviewSessionsQuery } from "../api/interviews-api"
 
 export type TabKey =
   | "summary"
@@ -18,6 +19,9 @@ export interface UseRecruitmentDetailProps {
   onTabChange?: (tab: TabKey) => void
   onStageChange?: (stageIndex: number | null) => void
 }
+
+const IS_GUID_REGEX =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
 export function useRecruitmentDetail({
   id,
@@ -49,6 +53,8 @@ export function useRecruitmentDetail({
     }
   }
 
+  const isRealBatch = useMemo(() => IS_GUID_REGEX.test(id), [id])
+
   const { data: apiRecruitment, isLoading, isError, refetch } = useGetBatchByIdQuery(id)
   const recruitment = apiRecruitment ?? null
 
@@ -59,10 +65,18 @@ export function useRecruitmentDetail({
 
   const candidatesCount = batchApps?.totalItems ?? 0
 
-  const recruitmentInterviews = useMemo(() => {
+  const { data: batchInterviews } = useGetBatchInterviewSessionsQuery(
+    { batchId: id },
+    { skip: !id || !isRealBatch }
+  )
+
+  const interviewsCount = useMemo(() => {
+    if (isRealBatch) {
+      return batchInterviews?.length ?? 0
+    }
     const list = getRecruitmentInterviewSessions(id)
-    return list.length > 0 ? list : mockInterviewSessions
-  }, [id])
+    return list.length > 0 ? list.length : mockInterviewSessions.length
+  }, [isRealBatch, batchInterviews, id])
 
   const pipelineItems = useMemo(() => {
     if (!recruitment) return []
@@ -83,9 +97,9 @@ export function useRecruitmentDetail({
       { key: "summary", label: "Summary" },
       { key: "stages", label: "Stages", count: (recruitment.batchStages || recruitment.stages || []).length },
       { key: "candidates", label: "Candidates", count: candidatesCount },
-      { key: "interviews", label: "Interviews", count: recruitmentInterviews.length },
+      { key: "interviews", label: "Interviews", count: interviewsCount },
     ]
-  }, [recruitment, candidatesCount, recruitmentInterviews.length])
+  }, [recruitment, candidatesCount, interviewsCount])
 
   const handleCreateStage = () => {
     if (!recruitment) return

@@ -68,6 +68,85 @@ export interface RescheduleRequest {
 }
 
 // ---------------------------------------------------------------------
+// Backend DTOs
+// ---------------------------------------------------------------------
+
+export interface ScheduledInterviewerDto {
+  sessionInterviewId: string
+  stageEmployeeId: string
+  employeeId: string
+  fullName: string
+  email: string
+  jobTitle: string
+  departmentName: string
+  status: number | string
+  statusName?: string
+}
+
+export interface BatchInterviewSessionDto {
+  id: string
+  applicationStageId: string
+  batchStageId?: string
+  recruitmentBatchId?: string
+  candidateId?: string
+  codeApplication?: string
+  candidateName: string
+  candidateEmail: string
+  batchName: string
+  stageName: string
+  sessionName: string
+  scheduledStart: string
+  scheduledEnd: string
+  isOnline: boolean
+  location?: string | null
+  meetingUrl?: string | null
+  status: number | string
+  statusName?: string
+  interviewers: ScheduledInterviewerDto[]
+  hasPendingReschedule: boolean
+  pendingRescheduleId?: string | null
+  proposedStart?: string | null
+  proposedEnd?: string | null
+  rescheduleReason?: string | null
+  createdAt: string
+}
+
+export interface ScheduleInterviewSessionRequest {
+  sessionName: string
+  scheduledStart: string
+  scheduledEnd: string
+  isOnline: boolean
+  location?: string | null
+  meetingUrl?: string | null
+  interviewerEmployeeIds: string[]
+}
+
+export interface RescheduleRequestDto {
+  id: string
+  interviewSessionId: string
+  sessionName: string
+  candidateId?: string
+  candidateName: string
+  originalStart: string
+  originalEnd: string
+  requesterEmail: string
+  proposedStart: string
+  proposedEnd: string
+  reason: string
+  status: number | string
+  statusName?: string
+  reviewedBy?: string | null
+  reviewedAt?: string | null
+  reviewNotes?: string | null
+  createdAt: string
+}
+
+export interface ReviewRescheduleRequest {
+  decision: number // 1 = Approve, 2 = Reject
+  reviewNotes?: string | null
+}
+
+// ---------------------------------------------------------------------
 // UI View Models for Tab Interviews
 // ---------------------------------------------------------------------
 
@@ -144,4 +223,3 @@ export interface InterviewFilterParams {
   mode?: "all" | "online" | "onsite"
   date?: string
 }
-
