@@ -41,8 +41,8 @@ export function AssignInterviewersDialog({
           stage.interviewerIds && stage.interviewerIds.length > 0
             ? stage.interviewerIds
             : stage.ownerId
-            ? [stage.ownerId]
-            : []
+              ? [stage.ownerId]
+              : []
         setAssignments(
           fallbackIds.map((id) => ({
             employeeId: id,
