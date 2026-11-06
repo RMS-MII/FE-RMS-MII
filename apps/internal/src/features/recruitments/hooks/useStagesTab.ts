@@ -32,6 +32,8 @@ export function mapBatchStagesToStages(r: Recruitment): Stage[] {
         batchStageId: bs.id,
         recruitmentBatchId: bs.recruitmentBatchId,
         stageTypeId: bs.stageTypeId,
+        stageTypeName: bs.stageTypeName,
+        stageCategory: bs.stageCategory,
         name: bs.stageName,
         type: (bs.stageCategory?.toLowerCase() ?? "screening") as any,
         durationDays: duration,
@@ -98,20 +100,17 @@ export function useStagesTab({ recruitment }: UseStagesTabProps) {
     )
 
     // 2. Persist in mock recruitment data so changes reflect across pages if legacy mock
-    const rIdx = initialRecruitments.findIndex((r) => r.id === recruitment.id)
-    if (rIdx !== -1) {
-      initialRecruitments[rIdx] = {
-        ...initialRecruitments[rIdx],
-        stages: (initialRecruitments[rIdx].stages ?? []).map((s) => {
-          if (s.id !== stageId) return s
-          return {
-            ...s,
-            assignedInterviewers: assignments,
-            interviewerIds: updatedIds,
-            ownerId: updatedIds[0] || "",
-          }
-        }),
-      }
+    const targetBatch = initialRecruitments.find((b) => b.id === recruitment.id)
+    if (targetBatch && targetBatch.stages) {
+      targetBatch.stages = targetBatch.stages.map((s) => {
+        if (s.id !== stageId) return s
+        return {
+          ...s,
+          assignedInterviewers: assignments,
+          interviewerIds: updatedIds,
+          ownerId: updatedIds[0] || "",
+        }
+      })
     }
 
     // 3. Call backend API if real recruitment batch ID
@@ -124,8 +123,8 @@ export function useStagesTab({ recruitment }: UseStagesTabProps) {
             interviewerEmployeeIds: updatedIds,
           },
         }).unwrap()
-      } catch (err) {
-        console.error("Failed to assign interviewers via API:", err)
+      } catch (err: any) {
+        console.error("Failed to assign interviewers on server:", err)
       }
     }
   }

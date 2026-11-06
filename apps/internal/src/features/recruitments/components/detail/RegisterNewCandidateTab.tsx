@@ -300,9 +300,11 @@ export function RegisterNewCandidateTab({
         <SaveButton
           type="button"
           onClick={handleSubmit}
-          disabled={!hasStages || isSubmitting}
+          disabled={!hasStages}
+          isLoading={isSubmitting}
+          loadingText="Saving..."
         >
-          {isSubmitting ? "Saving..." : "Save Candidate"}
+          Save Candidate
         </SaveButton>
       </DialogFooter>
     </>

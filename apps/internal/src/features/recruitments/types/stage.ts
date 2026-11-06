@@ -8,7 +8,18 @@ import type { Employee } from "./employee"
 export type LegacyStageType = "screening" | "test" | "interview" | "offering"
 export type StageType = LegacyStageType
 
-/** Matches StageType table in ERD.sql */
+/** Matches StageType table in ERD.sql and backend API */
+export interface StageTypeDto {
+  id: string
+  name: string
+  description?: string | null
+  stageCategory: number | string // 1 = Test, 2 = Interview, 3 = Offering (or "Test", "Interview", "Offering")
+  isActive: boolean
+  createdAt?: string
+  updatedAt?: string | null
+}
+
+/** Matches StageType table in ERD.sql (legacy alias for StageTypeDto) */
 export interface StageTypeEntity {
   id: string
   name: string
@@ -35,7 +46,7 @@ export interface BatchStage {
   createdAt?: string
   updatedAt?: string | null
   // UI Relations
-  stageType?: StageTypeEntity
+  stageType?: StageTypeEntity | StageTypeDto
   assignees?: Employee[]
 }
 
@@ -69,7 +80,7 @@ export interface UpdateBatchStageItem {
 }
 
 export interface UpdateBatchStagesRequest {
-  batchId: string
+  batchId?: string
   stages: UpdateBatchStageItem[]
 }
 
@@ -90,6 +101,8 @@ export interface Stage {
   batchStageId?: string
   recruitmentBatchId?: string
   stageTypeId?: string
+  stageTypeName?: string
+  stageCategory?: string | null
   nextStageId?: string | null
   passingScore?: number | null
   startDate?: string | null

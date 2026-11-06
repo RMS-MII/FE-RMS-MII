@@ -59,6 +59,7 @@ export function CreateRecruitmentDialog({
     isLoadingDepts,
     handleSubmit,
   } = useCreateRecruitmentForm({
+    open,
     existingCount,
     onSuccess,
     onOpenChange,
@@ -197,8 +198,13 @@ export function CreateRecruitmentDialog({
 
         <DialogFooter className="px-9 pb-9 border-t border-border bg-card gap-2">
           <CancelButton onClick={() => onOpenChange(false)} disabled={isSubmitting} />
-          <SaveButton type="submit" form={formId} disabled={isSubmitting}>
-            {isSubmitting ? "Saving..." : "Save"}
+          <SaveButton
+            type="submit"
+            form={formId}
+            isLoading={isSubmitting}
+            loadingText="Saving..."
+          >
+            Save
           </SaveButton>
         </DialogFooter>
       </DialogContent>

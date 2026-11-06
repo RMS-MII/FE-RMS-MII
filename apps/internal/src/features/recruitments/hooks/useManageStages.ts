@@ -1,21 +1,15 @@
 import { useState, useMemo, useEffect } from "react"
 import { useNavigate } from "@tanstack/react-router"
 import {
-  initialRecruitments,
-  mockEmployees,
-  mockStageTypes,
-} from "../data/mock"
-import {
   useGetBatchByIdQuery,
   useUpdateBatchStagesMutation,
 } from "../api/recruitments-api"
+import { useGetStageTypesQuery } from "../api/stage-types-api"
 import type { Recruitment } from "../types"
 import type { EditableStage } from "../components/stages"
 import {
   reorderArray,
-  standardStagePresets,
-  mapStageTypeToCategory,
-  buildChainedStages,
+  stageCategoryToLegacyType,
 } from "../utils"
 
 export function getInitialEditableStages(recruitment: Recruitment | null): EditableStage[] {
@@ -37,7 +31,7 @@ export function getInitialEditableStages(recruitment: Recruitment | null): Edita
         id: bs.id,
         stageTypeId: bs.stageTypeId,
         name: bs.stageName,
-        type: (bs.stageCategory?.toLowerCase() ?? "screening") as any,
+        type: stageCategoryToLegacyType(bs.stageCategory),
         durationDays: duration,
         ownerId: "",
         interviewerIds: [],
@@ -49,41 +43,27 @@ export function getInitialEditableStages(recruitment: Recruitment | null): Edita
     })
   }
 
-  // 2. If legacy mock stages exist
+  // 2. If legacy stages exist
   const existingStages = recruitment.stages ?? []
   if (existingStages.length > 0) {
     return existingStages.map((s, index) => ({
       tempId: `stage-${s.id || index}`,
       id: s.id,
-      stageTypeId: s.stageTypeId || mockStageTypes[0].id,
+      stageTypeId: s.stageTypeId || "",
       name: s.name,
       type: s.type || "screening",
       durationDays: s.durationDays || 7,
       ownerId: s.ownerId || recruitment.ownerId || "",
       interviewerIds: s.interviewerIds ?? (s.ownerId ? [s.ownerId] : []),
       passingScore: s.passingScore ?? null,
-      startDate: s.startDate || "",
-      endDate: s.endDate || "",
+      startDate: s.startDate ? s.startDate.slice(0, 10) : "",
+      endDate: s.endDate ? s.endDate.slice(0, 10) : "",
       isActive: s.isActive ?? true,
     }))
   }
 
-  // 3. Default presets for fresh batch without stages
-  const defaultOwner = recruitment.ownerId || mockEmployees[0]?.id || ""
-  return standardStagePresets.map((preset, index) => ({
-    tempId: `preset-${index}`,
-    id: `s-${recruitment.id}-${index + 1}`,
-    stageTypeId: preset.stageTypeId,
-    name: preset.name,
-    type: preset.type,
-    durationDays: preset.durationDays,
-    ownerId: defaultOwner,
-    interviewerIds: defaultOwner ? [defaultOwner] : [],
-    passingScore: preset.passingScore,
-    startDate: recruitment.openDate || "",
-    endDate: recruitment.closeDate || "",
-    isActive: true,
-  }))
+  // 3. Fresh batch without stages starts empty (presets removed)
+  return []
 }
 
 export interface UseManageStagesProps {
@@ -94,11 +74,12 @@ export function useManageStages({ id }: UseManageStagesProps) {
   const navigate = useNavigate()
 
   const { data: apiRecruitment, isLoading, isError, refetch } = useGetBatchByIdQuery(id)
-  const [updateBatchStagesApi] = useUpdateBatchStagesMutation()
+  const [updateBatchStagesApi, { isLoading: isSaving }] = useUpdateBatchStagesMutation()
+  const { data: stageTypes = [], isLoading: isLoadingStageTypes } = useGetStageTypesQuery({ activeOnly: true })
 
   const recruitment = useMemo(() => {
-    return apiRecruitment ?? initialRecruitments.find((r) => r.id === id) ?? null
-  }, [apiRecruitment, id])
+    return apiRecruitment ?? null
+  }, [apiRecruitment])
 
   const [stages, setStages] = useState<EditableStage[]>(() => getInitialEditableStages(recruitment))
 
@@ -116,6 +97,8 @@ export function useManageStages({ id }: UseManageStagesProps) {
   useEffect(() => {
     if (stages.length > 0 && !selectedTempId) {
       setSelectedTempId(stages[0].tempId)
+    } else if (stages.length === 0) {
+      setSelectedTempId(null)
     }
   }, [stages, selectedTempId])
 
@@ -157,7 +140,6 @@ export function useManageStages({ id }: UseManageStagesProps) {
     const targetTempId = stages[index]?.tempId
     setStages((prev) => {
       const updated = prev.filter((_, i) => i !== index)
-      // If removed stage was selected, select adjacent stage
       if (selectedTempId === targetTempId) {
         const nextSelected = updated[index] || updated[index - 1] || null
         setSelectedTempId(nextSelected ? nextSelected.tempId : null)
@@ -168,22 +150,47 @@ export function useManageStages({ id }: UseManageStagesProps) {
 
   const handleAddStage = () => {
     if (!recruitment) return
-    const defaultType = mockStageTypes[Math.min(stages.length, mockStageTypes.length - 1)]
-    const category = mapStageTypeToCategory(defaultType.id)
+
+    const defaultType =
+      stageTypes.length > 0
+        ? stageTypes[Math.min(stages.length, stageTypes.length - 1)]
+        : null
+    const category = defaultType
+      ? stageCategoryToLegacyType(defaultType.stageCategory)
+      : "screening"
+
+    // Compute sensible default dates based on batch or previous stage
+    let defaultStartDate = recruitment.startDate || recruitment.openDate || ""
+    let defaultEndDate = recruitment.endDate || recruitment.closeDate || ""
+
+    if (stages.length > 0) {
+      const lastStage = stages[stages.length - 1]
+      if (lastStage.endDate) {
+        const lastEnd = new Date(lastStage.endDate)
+        if (!isNaN(lastEnd.getTime())) {
+          const nextStart = new Date(lastEnd)
+          nextStart.setDate(nextStart.getDate() + 1)
+          defaultStartDate = nextStart.toISOString().slice(0, 10)
+          const nextEnd = new Date(nextStart)
+          nextEnd.setDate(nextEnd.getDate() + 7)
+          defaultEndDate = nextEnd.toISOString().slice(0, 10)
+        }
+      }
+    }
 
     const newTempId = `stage-new-${Date.now()}-${Math.random()}`
     const newStage: EditableStage = {
       tempId: newTempId,
       id: `s-${recruitment.id}-${stages.length + 1}`,
-      stageTypeId: defaultType.id,
-      name: defaultType.name,
+      stageTypeId: defaultType ? defaultType.id : "",
+      name: defaultType ? defaultType.name : `Stage ${stages.length + 1}`,
       type: category,
       durationDays: 7,
       ownerId: recruitment.ownerId || "",
       interviewerIds: recruitment.ownerId ? [recruitment.ownerId] : [],
       passingScore: 75,
-      startDate: recruitment.openDate || "",
-      endDate: recruitment.closeDate || "",
+      startDate: defaultStartDate ? defaultStartDate.slice(0, 10) : "",
+      endDate: defaultEndDate ? defaultEndDate.slice(0, 10) : "",
       isActive: true,
     }
 
@@ -203,55 +210,103 @@ export function useManageStages({ id }: UseManageStagesProps) {
     if (!recruitment) return
     setErrorMessage(null)
 
-    // Validation
+    if (stages.length === 0) {
+      setErrorMessage("Please add at least one stage before saving.")
+      return
+    }
+
+    if (stages.length > 20) {
+      setErrorMessage("A batch can have at most 20 stages.")
+      return
+    }
+
+    // Validation matching backend validator
+    const stageNames = new Set<string>()
     for (let i = 0; i < stages.length; i++) {
-      if (!stages[i].name.trim()) {
-        setErrorMessage(`Stage ${i + 1} must have a valid stage name.`)
-        setSelectedTempId(stages[i].tempId)
+      const s = stages[i]
+      const name = s.name.trim()
+
+      if (!s.stageTypeId) {
+        setErrorMessage(`Stage ${i + 1} must have a selected Stage Type.`)
+        setSelectedTempId(s.tempId)
         return
+      }
+
+      if (!name) {
+        setErrorMessage(`Stage ${i + 1} must have a valid stage name.`)
+        setSelectedTempId(s.tempId)
+        return
+      }
+
+      if (name.length > 50) {
+        setErrorMessage(`Stage ${i + 1} name cannot exceed 50 characters.`)
+        setSelectedTempId(s.tempId)
+        return
+      }
+
+      if (stageNames.has(name.toLowerCase())) {
+        setErrorMessage(`Stage name "${name}" is duplicated. Stage names must be unique within a batch.`)
+        setSelectedTempId(s.tempId)
+        return
+      }
+      stageNames.add(name.toLowerCase())
+
+      if (!s.startDate) {
+        setErrorMessage(`Stage "${name}" must have a start date.`)
+        setSelectedTempId(s.tempId)
+        return
+      }
+
+      if (!s.endDate) {
+        setErrorMessage(`Stage "${name}" must have an end date.`)
+        setSelectedTempId(s.tempId)
+        return
+      }
+
+      const startDateObj = new Date(s.startDate)
+      const endDateObj = new Date(s.endDate)
+      if (endDateObj <= startDateObj) {
+        setErrorMessage(`Stage "${name}": End date must be after start date.`)
+        setSelectedTempId(s.tempId)
+        return
+      }
+
+      if (i > 0) {
+        const prevStartDateObj = new Date(stages[i - 1].startDate)
+        if (startDateObj < prevStartDateObj) {
+          setErrorMessage(`Stage "${name}": Start date must be on or after the previous stage's start date.`)
+          setSelectedTempId(s.tempId)
+          return
+        }
       }
     }
 
-    // Call backend API if real recruitment batch ID
-    if (recruitment.id && !recruitment.id.startsWith("r")) {
-      try {
-        await updateBatchStagesApi({
-          id: recruitment.id,
-          body: {
-            batchId: recruitment.id,
-            stages: stages.map((s) => ({
-              stageTypeId: s.stageTypeId.replace(/^st-/, ""),
-              stageName: s.name.trim(),
-              isActive: s.isActive ?? true,
-              passingScore:
-                s.passingScore !== null && s.passingScore !== undefined
-                  ? Number(s.passingScore)
-                  : null,
-              startDate: s.startDate
-                ? new Date(s.startDate).toISOString()
-                : new Date().toISOString(),
-              endDate: s.endDate
-                ? new Date(s.endDate).toISOString()
-                : new Date().toISOString(),
-            })),
-          },
-        }).unwrap()
-      } catch (err: any) {
-        setErrorMessage("Failed to save stages to server. Please try again.")
-        return
-      }
-    } else {
-      // Build chained stages matching ERD NextStageId
-      const finalStages = buildChainedStages(stages, recruitment.id)
-
-      // Update in-memory initialRecruitments data
-      const targetIdx = initialRecruitments.findIndex((r) => r.id === recruitment.id)
-      if (targetIdx !== -1) {
-        initialRecruitments[targetIdx] = {
-          ...initialRecruitments[targetIdx],
-          stages: finalStages,
-        }
-      }
+    // Call backend API
+    try {
+      await updateBatchStagesApi({
+        id: recruitment.id,
+        body: {
+          stages: stages.map((s) => ({
+            stageTypeId: s.stageTypeId,
+            stageName: s.name.trim(),
+            isActive: s.isActive ?? true,
+            passingScore:
+              s.passingScore !== null && s.passingScore !== undefined
+                ? Number(s.passingScore)
+                : null,
+            startDate: new Date(s.startDate).toISOString(),
+            endDate: new Date(s.endDate).toISOString(),
+          })),
+        },
+      }).unwrap()
+    } catch (err: any) {
+      const errorMsg =
+        err?.data?.detail ||
+        err?.data?.message ||
+        err?.data?.title ||
+        "Failed to save stages to server. Please verify schedule and details."
+      setErrorMessage(errorMsg)
+      return
     }
 
     setSavedSuccess(true)
@@ -269,12 +324,15 @@ export function useManageStages({ id }: UseManageStagesProps) {
     isError,
     refetch,
     stages,
+    stageTypes,
+    isLoadingStageTypes,
     selectedTempId,
     setSelectedTempId,
     selectedIndex,
     selectedStage,
     nextStage,
     savedSuccess,
+    isSaving,
     errorMessage,
     handleFieldChange,
     handleMoveUp,
@@ -286,4 +344,3 @@ export function useManageStages({ id }: UseManageStagesProps) {
     handleSave,
   }
 }
-

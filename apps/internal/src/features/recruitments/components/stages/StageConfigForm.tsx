@@ -11,9 +11,9 @@ import {
   SelectValue,
 } from "@workspace/ui/components/select"
 import { Panel, PanelHeader, DatePicker } from "@/shared/components"
-import { mockStageTypes } from "../../data/mock"
+import type { StageTypeDto, StageEmployeeStatus, StageInterviewerAssignment } from "../../types"
+import { formatStageCategory, stageCategoryToLegacyType } from "../../utils"
 import type { EditableStage } from "./types"
-import type { LegacyStageType, StageEmployeeStatus, StageInterviewerAssignment } from "../../types"
 import { InterviewerAssignSection } from "../InterviewerAssignSection"
 
 export interface StageConfigFormProps {
@@ -21,6 +21,8 @@ export interface StageConfigFormProps {
   selectedIndex: number
   totalStages: number
   nextStage: EditableStage | null
+  stageTypes?: StageTypeDto[]
+  isLoadingStageTypes?: boolean
   onFieldChange: <K extends keyof EditableStage>(
     field: K,
     value: EditableStage[K]
@@ -32,6 +34,7 @@ export function StageConfigForm({
   selectedStage,
   selectedIndex,
   totalStages,
+  stageTypes = [],
   onFieldChange,
   onRemoveStage,
 }: StageConfigFormProps) {
@@ -72,19 +75,16 @@ export function StageConfigForm({
   }
 
   const handleStageTypeChange = (stageTypeId: string) => {
-    const selectedType = mockStageTypes.find((st) => st.id === stageTypeId)
-    let category: LegacyStageType = "screening"
-    if (selectedType?.stageCategory?.toLowerCase().includes("test")) category = "test"
-    else if (selectedType?.stageCategory?.toLowerCase().includes("interview")) category = "interview"
-    else if (selectedType?.stageCategory?.toLowerCase().includes("offering")) category = "offering"
+    const selectedType = stageTypes.find((st) => st.id === stageTypeId)
+    const category = stageCategoryToLegacyType(selectedType?.stageCategory)
 
     onFieldChange("stageTypeId", stageTypeId)
     onFieldChange("type", category)
 
-    // Update name if name was default
+    // Update name if name was empty or matched a known stage type's name
     if (
       !selectedStage.name.trim() ||
-      mockStageTypes.some((m) => m.name === selectedStage.name)
+      stageTypes.some((m) => m.name === selectedStage.name)
     ) {
       if (selectedType) {
         onFieldChange("name", selectedType.name)
@@ -106,8 +106,8 @@ export function StageConfigForm({
             Stage Type <span className="text-destructive">*</span>
           </label>
           <Select
-            items={mockStageTypes.map((st) => ({
-              label: `${st.name} (${st.stageCategory || "General"})`,
+            items={stageTypes.map((st) => ({
+              label: `${st.name} (${formatStageCategory(st.stageCategory)})`,
               value: st.id,
             }))}
             value={selectedStage.stageTypeId}
@@ -120,9 +120,9 @@ export function StageConfigForm({
             </SelectTrigger>
             <SelectContent className="rounded-xl">
               <SelectGroup>
-                {mockStageTypes.map((st) => (
+                {stageTypes.map((st) => (
                   <SelectItem key={st.id} value={st.id}>
-                    {st.name} ({st.stageCategory})
+                    {st.name} ({formatStageCategory(st.stageCategory)})
                   </SelectItem>
                 ))}
               </SelectGroup>

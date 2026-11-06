@@ -65,7 +65,7 @@ export function StagePipeline({
         </div>
         <div className="flex items-center gap-2">
           <CreateButton onClick={onCreateStage}>
-            Create Stage
+            Configure Stage
           </CreateButton>
         </div>
       </div>

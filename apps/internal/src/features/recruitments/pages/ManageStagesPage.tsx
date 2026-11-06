@@ -16,12 +16,15 @@ export function ManageStagesPage({ id }: ManageStagesPageProps) {
     isError,
     refetch,
     stages,
+    stageTypes,
+    isLoadingStageTypes,
     selectedTempId,
     setSelectedTempId,
     selectedIndex,
     selectedStage,
     nextStage,
     savedSuccess,
+    isSaving,
     errorMessage,
     handleFieldChange,
     handleMoveUp,
@@ -110,6 +113,7 @@ export function ManageStagesPage({ id }: ManageStagesPageProps) {
         onCancel={handleCancel}
         onSave={handleSave}
         isSaved={savedSuccess}
+        isLoading={isSaving}
       />
 
       {errorMessage && (
@@ -121,6 +125,7 @@ export function ManageStagesPage({ id }: ManageStagesPageProps) {
       <div className="grid items-start gap-6 lg:grid-cols-[1fr_380px] xl:grid-cols-[1fr_420px]">
         <StageList
           stages={stages}
+          stageTypes={stageTypes}
           selectedId={selectedTempId}
           onSelect={setSelectedTempId}
           onAddStage={handleAddStage}
@@ -135,6 +140,8 @@ export function ManageStagesPage({ id }: ManageStagesPageProps) {
           selectedIndex={selectedIndex}
           totalStages={stages.length}
           nextStage={nextStage}
+          stageTypes={stageTypes}
+          isLoadingStageTypes={isLoadingStageTypes}
           onFieldChange={handleFieldChange}
           onRemoveStage={handleRemoveStage}
         />

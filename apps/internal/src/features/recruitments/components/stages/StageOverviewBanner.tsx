@@ -8,6 +8,7 @@ export interface StageOverviewBannerProps {
   onCancel: () => void
   onSave: () => void
   isSaved?: boolean
+  isLoading?: boolean
 }
 
 export function StageOverviewBanner({
@@ -16,9 +17,10 @@ export function StageOverviewBanner({
   onCancel,
   onSave,
   isSaved,
+  isLoading,
 }: StageOverviewBannerProps) {
   return (
-    <Panel className="bg-card/70 px-5 py-3.5">
+    <Panel className="bg-card px-5 py-3.5">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between text-xs">
         {/* Batch metadata */}
         <div className="flex flex-wrap items-center gap-4">
@@ -50,7 +52,7 @@ export function StageOverviewBanner({
         {/* Action Buttons in Banner */}
         <div className="flex items-center gap-2.5 self-end sm:self-auto">
           <CancelButton onClick={onCancel} />
-          <SaveButton onClick={onSave} isSaved={isSaved} />
+          <SaveButton onClick={onSave} isSaved={isSaved} isLoading={isLoading} />
         </div>
       </div>
     </Panel>
