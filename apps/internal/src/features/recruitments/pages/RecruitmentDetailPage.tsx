@@ -1,10 +1,8 @@
-import { useMemo, useState } from "react"
-import { useNavigate } from "@tanstack/react-router"
 import { ArrowLeft } from "lucide-react"
 
 import { Button } from "@workspace/ui/components/button"
-import { PageHeader } from "@/shared/components"
-import { initialRecruitments, recruitmentPipeline } from "../data/mock"
+import { Skeleton } from "@workspace/ui/components/skeleton"
+import { PageHeader, BackButton, Panel, ErrorState } from "@/shared/components"
 import { StagePipeline } from "../components/StagePipeline"
 import {
   RecruitmentDetailHeader,
@@ -12,86 +10,107 @@ import {
   StagesTab,
   CandidatesTab,
   InterviewsTab,
-  EvaluationsTab,
-  DecisionsTab,
 } from "../components/detail"
-import { candidates, interviews, evaluations } from "@/data/mock"
 import { cn } from "@/shared/lib/utils"
+import {
+  useRecruitmentDetail,
+  type TabKey,
+  type UseRecruitmentDetailProps,
+} from "../hooks/useRecruitmentDetail"
 
-export type TabKey =
-  | "summary"
-  | "stages"
-  | "candidates"
-  | "interviews"
-  | "evaluations"
-  | "decisions"
+export type { TabKey }
 
-export interface RecruitmentDetailPageProps {
-  id: string
-  activeTab?: TabKey
-  selectedStage?: number | null
-  onTabChange?: (tab: TabKey) => void
-  onStageChange?: (stageIndex: number | null) => void
-}
+export interface RecruitmentDetailPageProps extends UseRecruitmentDetailProps {}
 
-export function RecruitmentDetailPage({
-  id,
-  activeTab: controlledTab,
-  selectedStage: controlledStage,
-  onTabChange,
-  onStageChange,
-}: RecruitmentDetailPageProps) {
-  const navigate = useNavigate()
-  const [internalTab, setInternalTab] = useState<TabKey>("summary")
-  const [internalStage, setInternalStage] = useState<number | null>(null)
+export function RecruitmentDetailPage(props: RecruitmentDetailPageProps) {
+  const { id } = props
+  const {
+    recruitment,
+    isLoading,
+    isError,
+    refetch,
+    activeTab,
+    selectedStage,
+    tabs,
+    pipelineItems,
+    handleTabChange,
+    handleStageChange,
+    handleStageSelect,
+    handleCreateStage,
+    handleEditStage,
+    handleBackToList,
+  } = useRecruitmentDetail(props)
 
-  const activeTab = controlledTab ?? internalTab
-  const selectedStage = controlledStage !== undefined ? controlledStage : internalStage
+  // 1. Loading state with identical layout structure
+  if (isLoading && !recruitment) {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-start gap-3.5">
+          <BackButton to="/recruitments" label="Back to recruitments list" />
+          <div className="min-w-0 flex-1 space-y-2">
+            <div className="flex items-center gap-2.5">
+              <Skeleton className="h-7 w-60 rounded-lg" />
+              <Skeleton className="h-6 w-16 rounded-full" />
+            </div>
+            <Skeleton className="h-4 w-96 max-w-full rounded-md" />
+          </div>
+        </div>
 
-  const handleTabChange = (newTab: TabKey) => {
-    if (onTabChange) {
-      onTabChange(newTab)
-    } else {
-      setInternalTab(newTab)
-    }
-  }
+        <section aria-label="Recruitment stages flow">
+          <Skeleton className="h-14 w-full rounded-2xl" />
+        </section>
 
-  const handleStageChange = (newStage: number | null) => {
-    if (onStageChange) {
-      onStageChange(newStage)
-    } else {
-      setInternalStage(newStage)
-    }
-  }
+        <div>
+          <div className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card p-1 shadow-card">
+            <Skeleton className="h-10 w-24 rounded-full" />
+            <Skeleton className="h-10 w-24 rounded-full" />
+            <Skeleton className="h-10 w-28 rounded-full" />
+            <Skeleton className="h-10 w-28 rounded-full" />
+          </div>
+        </div>
 
-  const recruitment = useMemo(() => {
-    return initialRecruitments.find((r) => r.id === id) ?? null
-  }, [id])
-
-  // Related data counts matching ERD records
-  const recruitmentCandidates = useMemo(() => {
-    return candidates.filter((c) => c.recruitmentId === id)
-  }, [id])
-
-  const recruitmentInterviews = useMemo(() => {
-    return interviews.filter((i) => i.recruitmentId === id)
-  }, [id])
-
-  const recruitmentEvaluations = useMemo(() => {
-    return evaluations.filter((e) =>
-      recruitmentInterviews.some((i) => i.id === e.interviewId)
+        <Panel>
+          <div className="divide-y divide-border">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <div
+                key={i}
+                className="grid gap-1 px-5 py-3.5 sm:grid-cols-[180px_1fr] sm:gap-4 items-baseline"
+              >
+                <Skeleton className="h-4 w-28 rounded-md" />
+                <Skeleton className="h-4 w-64 rounded-md" />
+              </div>
+            ))}
+          </div>
+        </Panel>
+      </div>
     )
-  }, [recruitmentInterviews])
+  }
 
-  const pendingDecisions = useMemo(() => {
-    return recruitmentCandidates.filter((c) => c.status === "pending")
-  }, [recruitmentCandidates])
+  // 2. Error state
+  if (isError && !recruitment) {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-start gap-3.5">
+          <BackButton to="/recruitments" label="Back to recruitments list" />
+          <div className="min-w-0 flex-1 space-y-1">
+            <h1 className="text-2xl font-bold tracking-tight text-foreground">
+              Recruitment Batch
+            </h1>
+          </div>
+        </div>
 
-  const pipelineItems = useMemo(() => {
-    if (!recruitment) return []
-    return recruitmentPipeline(recruitment)
-  }, [recruitment])
+        <Panel className="p-8">
+          <ErrorState
+            title="Failed to load recruitment batch"
+            description="Unable to fetch the recruitment batch details. Please check your connection and try again."
+            onRetry={() => refetch()}
+          />
+        </Panel>
+      </div>
+    )
+  }
 
+  // 3. Not Found state
   if (!recruitment) {
     return (
       <div className="space-y-6">
@@ -102,7 +121,7 @@ export function RecruitmentDetailPage({
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => navigate({ to: "/recruitments" })}
+              onClick={handleBackToList}
               className="gap-2 rounded-full border-0 bg-muted px-4 hover:bg-muted/40 cursor-pointer"
             >
               <ArrowLeft className="size-4" />
@@ -112,37 +131,6 @@ export function RecruitmentDetailPage({
         />
       </div>
     )
-  }
-
-  const handleStageSelect = (index: number) => {
-    if (activeTab === "candidates" && selectedStage === index) {
-      handleStageChange(null)
-    } else {
-      handleStageChange(index)
-    }
-  }
-
-  const tabs: { key: TabKey; label: string; count?: number }[] = [
-    { key: "summary", label: "Summary" },
-    { key: "stages", label: "Stages", count: recruitment.stages.length },
-    { key: "candidates", label: "Candidates", count: recruitmentCandidates.length },
-    { key: "interviews", label: "Interviews", count: recruitmentInterviews.length },
-    { key: "evaluations", label: "Evaluations", count: recruitmentEvaluations.length },
-    { key: "decisions", label: "Decisions", count: pendingDecisions.length },
-  ]
-
-  const handleCreateStage = () => {
-    navigate({
-      to: "/recruitments/$id/stages",
-      params: { id: recruitment.id },
-    })
-  }
-
-  const handleEditStage = () => {
-    navigate({
-      to: "/recruitments/$id/stages",
-      params: { id: recruitment.id },
-    })
   }
 
   return (
@@ -174,24 +162,26 @@ export function RecruitmentDetailPage({
             return (
               <button
                 key={tab.key}
-                role="tab"
                 type="button"
+                role="tab"
                 aria-selected={isActive}
+                aria-controls={`panel-${tab.key}`}
+                id={`tab-${tab.key}`}
                 onClick={() => handleTabChange(tab.key)}
                 className={cn(
-                  "inline-flex h-10 items-center gap-1.5 rounded-full px-4 py-1.5 text-sm font-medium transition-all duration-150 cursor-pointer select-none",
+                  "inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold transition-all duration-200 cursor-pointer",
                   isActive
-                    ? "bg-primary-50 text-primary font-semibold shadow-xs"
-                    : "text-muted-foreground hover:bg-muted/40 hover:text-foreground"
+                    ? "bg-primary text-primary-foreground shadow-sm"
+                    : "text-muted-foreground hover:bg-muted hover:text-foreground"
                 )}
               >
                 <span>{tab.label}</span>
                 {tab.count !== undefined && (
                   <span
                     className={cn(
-                      "rounded-full px-2 py-0.5 text-xs tabular-nums font-semibold",
+                      "inline-flex h-5 min-w-5 items-center justify-center rounded-full px-1.5 text-xs font-semibold tabular-nums",
                       isActive
-                        ? "bg-primary/10 text-primary"
+                        ? "bg-primary-foreground/20 text-primary-foreground"
                         : "bg-muted text-muted-foreground"
                     )}
                   >
@@ -204,7 +194,12 @@ export function RecruitmentDetailPage({
         </div>
       </div>
 
-      <section aria-label={tabs.find((t) => t.key === activeTab)?.label}>
+      <div
+        role="tabpanel"
+        id={`panel-${activeTab}`}
+        aria-labelledby={`tab-${activeTab}`}
+        className="focus-visible:outline-none"
+      >
         {activeTab === "summary" && <SummaryTab recruitment={recruitment} />}
         {activeTab === "stages" && (
           <StagesTab
@@ -223,13 +218,7 @@ export function RecruitmentDetailPage({
         {activeTab === "interviews" && (
           <InterviewsTab recruitment={recruitment} />
         )}
-        {activeTab === "evaluations" && (
-          <EvaluationsTab recruitment={recruitment} />
-        )}
-        {activeTab === "decisions" && (
-          <DecisionsTab recruitment={recruitment} />
-        )}
-      </section>
+      </div>
     </div>
   )
 }

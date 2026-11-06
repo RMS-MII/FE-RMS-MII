@@ -1,5 +1,5 @@
 import { baseApi } from "@/shared/api/base-api"
-import type { AuthUser, LoginRequest, LoginResponse } from "../types"
+import type { CurrentUserDto, LoginRequest, LoginResponse } from "../types"
 
 export const authApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
@@ -11,20 +11,7 @@ export const authApi = baseApi.injectEndpoints({
       }),
       invalidatesTags: ["Auth"],
     }),
-    logout: builder.mutation<void, void>({
-      query: () => ({
-        url: "/auth/logout",
-        method: "POST",
-      }),
-      invalidatesTags: ["Auth"],
-    }),
-    refreshSession: builder.mutation<{ accessToken: string }, void>({
-      query: () => ({
-        url: "/auth/refresh",
-        method: "POST",
-      }),
-    }),
-    getMe: builder.query<AuthUser, void>({
+    getMe: builder.query<CurrentUserDto, void>({
       query: () => "/auth/me",
       providesTags: ["Auth"],
     }),
@@ -33,8 +20,6 @@ export const authApi = baseApi.injectEndpoints({
 
 export const {
   useLoginMutation,
-  useLogoutMutation,
-  useRefreshSessionMutation,
   useGetMeQuery,
+  useLazyGetMeQuery,
 } = authApi
-

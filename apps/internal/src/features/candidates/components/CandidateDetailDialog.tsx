@@ -178,10 +178,10 @@ export function CandidateDetailDialog({
                         b.status === "Accepted"
                           ? "success"
                           : b.status === "In Progress"
-                          ? "info"
-                          : b.status === "Rejected"
-                          ? "danger"
-                          : "neutral"
+                            ? "info"
+                            : b.status === "Rejected"
+                              ? "danger"
+                              : "neutral"
                       }
                     >
                       {b.status}

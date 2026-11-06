@@ -1,8 +1,9 @@
+import { useEffect } from "react"
 import { Outlet, useRouterState, useNavigate } from "@tanstack/react-router"
 import { AppShell } from "./AppShell"
 import type { Crumb } from "./AppShell"
-import { useAppDispatch } from "@/app/store"
-import { logout } from "@/features/auth"
+import { useAppDispatch, useAppSelector } from "@/app/store"
+import { logout, setUser, useGetMeQuery, mapCurrentUserToAuthUser } from "@/features/auth"
 import { initialRecruitments } from "@/features/recruitments/data/mock"
 
 function getCrumbsForPath(path: string): Crumb[] {
@@ -47,6 +48,26 @@ function getCrumbsForPath(path: string): Crumb[] {
   if (path.startsWith("/users")) {
     return [{ label: "Dashboard", to: "/dashboard" }, { label: "Users" }]
   }
+  if (path.startsWith("/interviews/stages")) {
+    return [
+      { label: "Dashboard", to: "/dashboard" },
+      { label: "My Interviews", to: "/interviews/stages" },
+      { label: "Stage Invitations" },
+    ]
+  }
+  if (path.startsWith("/interviews/schedules")) {
+    return [
+      { label: "Dashboard", to: "/dashboard" },
+      { label: "My Interviews", to: "/interviews/schedules" },
+      { label: "Interview Schedules" },
+    ]
+  }
+  if (path.startsWith("/interviews")) {
+    return [
+      { label: "Dashboard", to: "/dashboard" },
+      { label: "My Interviews", to: "/interviews/stages" },
+    ]
+  }
   const cleanPath = path.replace("/", "")
   const capitalized = cleanPath.charAt(0).toUpperCase() + cleanPath.slice(1)
   return [{ label: "Dashboard", to: "/dashboard" }, { label: capitalized }]
@@ -58,6 +79,19 @@ export function AppLayout() {
   const dispatch = useAppDispatch()
   const path = routerState.location.pathname
   const crumbs = getCrumbsForPath(path)
+
+  const isAuthenticated = useAppSelector((state) => state.auth.isAuthenticated)
+
+  // Rehidrasi data profil user via GET /api/auth/me jika authenticated
+  const { data: currentUserData } = useGetMeQuery(undefined, {
+    skip: !isAuthenticated,
+  })
+
+  useEffect(() => {
+    if (currentUserData) {
+      dispatch(setUser(mapCurrentUserToAuthUser(currentUserData)))
+    }
+  }, [currentUserData, dispatch])
 
   const handleLogout = () => {
     dispatch(logout())

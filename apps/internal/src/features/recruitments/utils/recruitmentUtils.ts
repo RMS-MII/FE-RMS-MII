@@ -26,10 +26,24 @@ export function validateRecruitmentFormData(formData: {
 
 /** Format current stage summary label for recruitment list table */
 export function formatCurrentStageText(r: Recruitment): string {
-  if (r.stages.length === 0) {
+  // If batchStages is provided from backend API
+  if (r.batchStages && Array.isArray(r.batchStages)) {
+    if (r.batchStages.length === 0) return "No stages"
+    const statusStr = String(r.status).toLowerCase()
+    if (statusStr === "draft" || statusStr === "1") return "Not started"
+    if (statusStr === "closed" || statusStr === "3") return "All stages completed"
+
+    const activeStage = r.batchStages.find((s) => s.isActive)
+    if (activeStage) return activeStage.stageName || activeStage.stageTypeName || "Active Stage"
+
+    return `${r.batchStages.length} Stages`
+  }
+
+  // Fallback for legacy mock
+  if (!r.stages || r.stages.length === 0) {
     return "No stages"
   }
-  if (r.currentStage < 0 || r.status === "draft") {
+  if (r.currentStage === undefined || r.currentStage < 0 || r.status === "draft") {
     return "Not started"
   }
   if (r.currentStage >= r.stages.length || r.status === "completed") {
@@ -38,4 +52,3 @@ export function formatCurrentStageText(r: Recruitment): string {
   const current = r.stages[r.currentStage]
   return current?.name ?? `Stage ${r.currentStage + 1}`
 }
-

@@ -1,4 +1,4 @@
-import { useState, useId } from "react"
+import { useId } from "react"
 import {
   Dialog,
   DialogContent,
@@ -23,8 +23,7 @@ import { SaveButton } from "@/shared/components"
 import { CancelButton } from "@/shared/components"
 
 import type { Recruitment } from "../types"
-import { mockDepartments } from "../data/mock"
-import { generateBatchCode, validateRecruitmentFormData } from "../utils"
+import { useCreateRecruitmentForm } from "../hooks/useCreateRecruitmentForm"
 
 export interface CreateRecruitmentDialogProps {
   open: boolean
@@ -40,102 +39,48 @@ export function CreateRecruitmentDialog({
   existingCount = 5,
 }: CreateRecruitmentDialogProps) {
   const formId = useId()
-  const generatedCode = generateBatchCode(existingCount)
 
-  const [name, setName] = useState("")
-  const [departmentId, setDepartmentId] = useState("")
-  const [description, setDescription] = useState("")
-  const [openDate, setOpenDate] = useState("")
-  const [closeDate, setCloseDate] = useState("")
-  const [errors, setErrors] = useState<Record<string, string>>({})
-
-  const departmentSelectItems = mockDepartments.map((d) => ({
-    label: d.name,
-    value: d.id,
-  }))
-
-  const validate = () => {
-    const errs = validateRecruitmentFormData({
-      name,
-      departmentId,
-      openDate,
-      closeDate,
-    })
-    setErrors(errs)
-    return Object.keys(errs).length === 0
-  }
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!validate()) return
-
-    const selectedDept = mockDepartments.find((d) => d.id === departmentId)
-
-    const newRecruitmentId = `r-${Date.now()}`
-    const newStageId = `s-${Date.now()}-1`
-
-    const newRecruitment: Recruitment = {
-      id: newRecruitmentId,
-      batchCode: generatedCode,
-      name: name.trim(),
-      division: selectedDept?.name ?? "General",
-      departmentId: selectedDept?.id ?? "",
-      department: selectedDept,
-      location: "Jakarta, APL Tower",
-      quota: 1,
-      openDate,
-      startDate: openDate,
-      closeDate,
-      endDate: closeDate,
-      status: "draft",
-      currentStage: -1,
-      createdBy: "e1000000-0000-4000-8000-000000000001",
-      ownerId: "u1",
-      description: description.trim(),
-      createdAt: new Date().toISOString(),
-      updatedAt: null,
-      stages: [
-        {
-          id: newStageId,
-          batchStageId: `bs-${newStageId}`,
-          recruitmentBatchId: newRecruitmentId,
-          stageTypeId: "st-10000000-0000-4000-8000-000000000001",
-          name: "Document Screening",
-          type: "screening",
-          durationDays: 7,
-          passingScore: 70,
-          ownerId: "u1",
-          startDate: openDate,
-          endDate: closeDate,
-          nextStageId: null,
-          isActive: true,
-        },
-      ],
-    }
-
-    onSuccess(newRecruitment)
-    onOpenChange(false)
-
-    // Reset form
-    setName("")
-    setDepartmentId("")
-    setDescription("")
-    setOpenDate("")
-    setCloseDate("")
-    setErrors({})
-  }
+  const {
+    name,
+    setName,
+    departmentId,
+    setDepartmentId,
+    description,
+    setDescription,
+    openDate,
+    setOpenDate,
+    closeDate,
+    setCloseDate,
+    errors,
+    submitError,
+    isSubmitting,
+    clearFieldError,
+    departmentSelectItems,
+    isLoadingDepts,
+    handleSubmit,
+  } = useCreateRecruitmentForm({
+    existingCount,
+    onSuccess,
+    onOpenChange,
+  })
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md rounded-2xl">
-        <DialogHeader>
+      <DialogContent className="sm:max-w-md rounded-2xl p-0 gap-0 bg-card overflow-hidden">
+        <DialogHeader className="p-6 pb-4 border-b border-border">
           <DialogTitle>Create Recruitment</DialogTitle>
           <DialogDescription>
             Add a new recruitment batch and define its department and schedule.
           </DialogDescription>
         </DialogHeader>
 
-        <form id={formId} onSubmit={handleSubmit} className="space-y-4 py-2">
+        <form id={formId} onSubmit={handleSubmit} className="space-y-4 p-6">
+          {submitError && (
+            <div className="rounded-xl border border-destructive/20 bg-destructive/10 px-4 py-3 text-xs text-destructive font-medium">
+              {submitError}
+            </div>
+          )}
+
           {/* Nama Rekrutmen */}
           <div className="space-y-1.5">
             <Label htmlFor="recruitment-name" className="text-sm font-medium px-1">
@@ -147,7 +92,7 @@ export function CreateRecruitmentDialog({
               value={name}
               onChange={(e) => {
                 setName(e.target.value)
-                if (errors.name) setErrors((prev) => ({ ...prev, name: "" }))
+                clearFieldError("name")
               }}
               aria-invalid={!!errors.name}
               className="h-10 rounded-full border-0 bg-muted px-4 text-sm text-foreground placeholder:text-muted-foreground transition-all duration-150 outline-none focus-visible:bg-card focus-visible:ring-2 focus-visible:ring-primary shadow-none"
@@ -168,7 +113,7 @@ export function CreateRecruitmentDialog({
               onValueChange={(val) => {
                 if (val) {
                   setDepartmentId(val)
-                  if (errors.departmentId) setErrors((prev) => ({ ...prev, departmentId: "" }))
+                  clearFieldError("departmentId")
                 }
               }}
             >
@@ -177,7 +122,7 @@ export function CreateRecruitmentDialog({
                 className="h-10 w-full rounded-full border-0 bg-muted px-4 text-sm text-foreground transition-all duration-150 hover:bg-muted/60 outline-none focus-visible:ring-2 focus-visible:ring-primary shadow-none"
                 aria-invalid={!!errors.departmentId}
               >
-                <SelectValue placeholder="Select department" />
+                <SelectValue placeholder={isLoadingDepts ? "Loading departments..." : "Select department"} />
               </SelectTrigger>
               <SelectContent className="rounded-xl">
                 <SelectGroup>
@@ -218,7 +163,7 @@ export function CreateRecruitmentDialog({
                 value={openDate}
                 onChange={(val) => {
                   setOpenDate(val)
-                  if (errors.openDate) setErrors((prev) => ({ ...prev, openDate: "" }))
+                  clearFieldError("openDate")
                 }}
                 aria-invalid={!!errors.openDate}
                 placeholder="dd/mm/yyyy"
@@ -238,7 +183,7 @@ export function CreateRecruitmentDialog({
                 minDate={openDate || undefined}
                 onChange={(val) => {
                   setCloseDate(val)
-                  if (errors.closeDate) setErrors((prev) => ({ ...prev, closeDate: "" }))
+                  clearFieldError("closeDate")
                 }}
                 aria-invalid={!!errors.closeDate}
                 placeholder="dd/mm/yyyy"
@@ -250,14 +195,13 @@ export function CreateRecruitmentDialog({
           </div>
         </form>
 
-        <DialogFooter className="mt-4 gap-2 sm:gap-2 bg-white">
-          <CancelButton onClick={() => onOpenChange(false)} />
-          <SaveButton type="submit" form={formId}>
-            Save
+        <DialogFooter className="px-9 pb-9 border-t border-border bg-card gap-2">
+          <CancelButton onClick={() => onOpenChange(false)} disabled={isSubmitting} />
+          <SaveButton type="submit" form={formId} disabled={isSubmitting}>
+            {isSubmitting ? "Saving..." : "Save"}
           </SaveButton>
         </DialogFooter>
       </DialogContent>
     </Dialog>
   )
 }
-

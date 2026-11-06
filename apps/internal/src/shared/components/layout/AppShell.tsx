@@ -1,6 +1,7 @@
 import { Fragment, useEffect, useMemo, useState, type ReactNode } from "react"
 import {
   Briefcase,
+  ChevronDown,
   ChevronRight,
   LayoutDashboard,
   LogOut,
@@ -9,14 +10,13 @@ import {
   PanelLeftOpen,
   UserCog,
   Users,
-  Check,
-  Mail
+  Mail,
+  CalendarCheck,
 } from "lucide-react"
 import { Link } from "@tanstack/react-router"
 import { cn } from "@/shared/lib/utils"
-import { useAppDispatch, useAppSelector } from "@/app/store"
-import { setRole, setDataMode } from "@/features/auth"
-import type { DataMode, UserRole } from "@/features/auth"
+import { useAppSelector } from "@/app/store"
+import type { UserRole } from "@/features/auth"
 
 // Import shadcn primitives from @workspace/ui
 import { Button } from "@workspace/ui/components/button"
@@ -24,9 +24,7 @@ import { Avatar, AvatarFallback } from "@workspace/ui/components/avatar"
 import {
   DropdownMenu,
   DropdownMenuContent,
-  DropdownMenuGroup,
   DropdownMenuItem,
-  DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@workspace/ui/components/dropdown-menu"
@@ -50,7 +48,15 @@ export interface Crumb {
   to?: string
 }
 
-type BadgeKey = "interviews" | "offerings"
+type BadgeKey = "interviews" | "stageInvitations" | "offerings"
+
+export interface NavSubItem {
+  to: string
+  label: string
+  roles: UserRole[]
+  match: (path: string) => boolean
+  badge?: BadgeKey
+}
 
 interface NavItem {
   to: string
@@ -59,6 +65,7 @@ interface NavItem {
   roles: UserRole[]
   match: (path: string) => boolean
   badge?: BadgeKey
+  children?: NavSubItem[]
 }
 
 interface NavGroup {
@@ -79,6 +86,30 @@ const NAV: NavGroup[] = [
         icon: LayoutDashboard,
         roles: ["HR", "Interviewer"],
         match: startsWith("/dashboard"),
+      },
+      {
+        to: "/interviews/stages",
+        label: "My Interviews",
+        icon: CalendarCheck,
+        roles: ["Interviewer", "HR"],
+        match: startsWith("/interviews"),
+        badge: "interviews",
+        children: [
+          {
+            to: "/interviews/stages",
+            label: "Stage Invitations",
+            roles: ["Interviewer", "HR"],
+            match: startsWith("/interviews/stages"),
+            badge: "stageInvitations",
+          },
+          {
+            to: "/interviews/schedules",
+            label: "Interview Schedules",
+            roles: ["Interviewer", "HR"],
+            match: startsWith("/interviews/schedules"),
+            badge: "interviews",
+          },
+        ],
       },
       {
         to: "/recruitments",
@@ -120,9 +151,14 @@ const NAV: NavGroup[] = [
 function useBadges(): Record<BadgeKey, number> {
   const role = useAppSelector((state) => state.auth.user?.role) ?? "HR"
   return useMemo(() => {
-    const interviewsCount = role === "HR" ? 3 : 1
+    const stageInvitationsCount = 1
+    const interviewsCount = 1
     const offeringsCount = role === "HR" ? 2 : 0
-    return { interviews: interviewsCount, offerings: offeringsCount }
+    return {
+      interviews: interviewsCount,
+      stageInvitations: stageInvitationsCount,
+      offerings: offeringsCount,
+    }
   }, [role])
 }
 
@@ -223,11 +259,57 @@ function Nav({
                         />
                       )}
                     </span>
-                    {!collapsed && <span className="truncate">{n.label}</span>}
+                    {!collapsed && (
+                      <div className="flex flex-1 items-center justify-between min-w-0">
+                        <span className="truncate">{n.label}</span>
+                        {n.children && (
+                          <ChevronDown
+                            className={cn(
+                              "size-3.5 text-muted-foreground transition-transform duration-200",
+                              active && "rotate-180"
+                            )}
+                          />
+                        )}
+                      </div>
+                    )}
                     {count > 0 && (
                       <span className="sr-only">, {count} pending action</span>
                     )}
                   </Link>
+
+                  {/* Nested Sub-menu Links (when expanded and active) */}
+                  {n.children && !collapsed && active && (
+                    <ul className="ml-6 pl-3 border-l border-border/80 flex flex-col gap-1 mt-1 mb-1">
+                      {n.children
+                        .filter((sub) => sub.roles.includes(role))
+                        .map((sub) => {
+                          const subActive = sub.match(path)
+                          const subCount = sub.badge ? badges[sub.badge] : 0
+
+                          return (
+                            <li key={sub.to + sub.label}>
+                              <Link
+                                to={sub.to}
+                                onClick={onNavigate}
+                                className={cn(
+                                  "flex h-8 items-center justify-between rounded-full px-3 text-xs font-medium transition-colors duration-150",
+                                  subActive
+                                    ? "bg-primary/10 text-primary font-semibold"
+                                    : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                                )}
+                              >
+                                <span className="truncate">{sub.label}</span>
+                                {subCount > 0 && (
+                                  <span className="flex items-center justify-center min-w-4.5 h-4 px-1.5 rounded-full bg-attention text-[10px] font-bold text-white leading-none">
+                                    {subCount}
+                                  </span>
+                                )}
+                              </Link>
+                            </li>
+                          )
+                        })}
+                    </ul>
+                  )}
 
                   {collapsed && (
                     <span
@@ -252,13 +334,6 @@ function Nav({
   )
 }
 
-const MODES: { id: DataMode; label: string }[] = [
-  { id: "normal", label: "Populated" },
-  { id: "loading", label: "Loading" },
-  { id: "empty", label: "Empty" },
-  { id: "error", label: "Error" },
-]
-
 function UserCard({
   collapsed,
   onLogout,
@@ -266,22 +341,19 @@ function UserCard({
   collapsed?: boolean
   onLogout: () => void
 }) {
-  const dispatch = useAppDispatch()
   const user = useAppSelector((state) => state.auth.user)
-  const role = user?.role ?? "HR"
-  const dataMode = useAppSelector((state) => state.auth.dataMode)
+  const name = user?.name || "User"
+  const email = user?.email || ""
+  const role = user?.role || ""
 
-  const me = {
-    name: user?.name ?? "Fajar Mahendra",
-    email: user?.email ?? "fajar.mahendra@metrodata.co.id",
-  }
-
-  const initials = me.name
-    .split(" ")
-    .map((n) => n[0])
-    .join("")
-    .slice(0, 2)
-    .toUpperCase()
+  const initials =
+    name
+      .split(" ")
+      .filter(Boolean)
+      .map((n) => n[0])
+      .join("")
+      .slice(0, 2)
+      .toUpperCase() || "U"
 
   return (
     <DropdownMenu>
@@ -289,7 +361,7 @@ function UserCard({
         render={
           <button
             type="button"
-            aria-label={`User menu, ${me.name}`}
+            aria-label={`User menu, ${name}`}
             className={cn(
               "flex w-full items-center gap-3 rounded-xl p-1.5 text-left transition-colors hover:bg-muted outline-none",
               collapsed && "justify-center"
@@ -310,7 +382,7 @@ function UserCard({
                 Welcome
               </span>
               <span className="mt-0.5 truncate text-sm font-semibold text-foreground">
-                {me.name}
+                {name}
               </span>
             </span>
             <ChevronRight
@@ -328,53 +400,28 @@ function UserCard({
         sideOffset={10}
         className="w-64 p-2 rounded-xl"
       >
-        <div className="flex items-center gap-2.5 border-b border-border px-2 pt-1.5 pb-2.5">
+        <div className="flex items-center gap-2.5 px-2 pt-1.5 pb-2">
           <Avatar className="size-8 bg-[#DCE3F0] text-primary">
             <AvatarFallback className="bg-[#DCE3F0] text-primary font-semibold text-xs">
               {initials}
             </AvatarFallback>
           </Avatar>
-          <div className="min-w-0">
-            <p className="truncate text-sm font-medium">{me.name}</p>
-            <p className="truncate text-xs text-muted-foreground">{me.email}</p>
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center justify-between gap-1">
+              <p className="truncate text-sm font-medium">{name}</p>
+              {role && (
+                <span className="shrink-0 rounded-full bg-primary/10 px-1.5 py-0.5 text-[10px] font-semibold text-primary">
+                  {role}
+                </span>
+              )}
+            </div>
+            {email && (
+              <p className="truncate text-xs text-muted-foreground">{email}</p>
+            )}
           </div>
         </div>
 
-        <DropdownMenuGroup>
-          <DropdownMenuLabel className="px-2 pt-2 pb-1 text-xs font-semibold text-muted-foreground">
-            Sign in as (demo)
-          </DropdownMenuLabel>
-          {(["HR", "Interviewer"] as UserRole[]).map((r) => (
-            <DropdownMenuItem
-              key={r}
-              onClick={() => dispatch(setRole(r))}
-              className="flex items-center justify-between px-2 py-1.5 text-sm rounded-md cursor-pointer"
-            >
-              <span>{r}</span>
-              {role === r && <Check className="size-4 text-primary" />}
-            </DropdownMenuItem>
-          ))}
-        </DropdownMenuGroup>
-
-        <DropdownMenuSeparator className="my-1.5" />
-
-        <DropdownMenuGroup>
-          <DropdownMenuLabel className="px-2 pb-1 text-xs font-semibold text-muted-foreground">
-            Data state preview
-          </DropdownMenuLabel>
-          {MODES.map((m) => (
-            <DropdownMenuItem
-              key={m.id}
-              onClick={() => dispatch(setDataMode(m.id))}
-              className="flex items-center justify-between px-2 py-1.5 text-sm rounded-md cursor-pointer"
-            >
-              <span>{m.label}</span>
-              {dataMode === m.id && <Check className="size-4 text-primary" />}
-            </DropdownMenuItem>
-          ))}
-        </DropdownMenuGroup>
-
-        <DropdownMenuSeparator className="my-1.5" />
+        <DropdownMenuSeparator className="my-1.5 bg-border/60" />
 
         <DropdownMenuItem
           onClick={onLogout}
@@ -409,7 +456,6 @@ export function AppShell({
   children: ReactNode
   onLogout: () => void
 }) {
-  const dataMode = useAppSelector((state) => state.auth.dataMode)
   const [collapsed, setCollapsed] = useState(
     () => localStorage.getItem("rms.sidebar") === "1"
   )
@@ -572,12 +618,6 @@ export function AppShell({
                   })}
                 </BreadcrumbList>
               </Breadcrumb>
-
-              {dataMode !== "normal" && (
-                <span className="hidden rounded-full bg-warning-soft px-3 py-1 text-xs font-medium text-warning md:inline">
-                  Preview state: {MODES.find((m) => m.id === dataMode)?.label}
-                </span>
-              )}
 
               <span className="hidden items-center gap-2 px-3 py-1.5 text-xs font-medium sm:inline-flex">
                 {formatTodayDate()}

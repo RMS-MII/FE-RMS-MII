@@ -73,17 +73,17 @@ export function AssignInterviewersDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md rounded-2xl">
-        <DialogHeader>
+      <DialogContent className="sm:max-w-md rounded-2xl p-0 gap-0 overflow-hidden bg-card">
+        <DialogHeader className="p-6 pb-4 border-b border-border text-left">
           <DialogTitle>Assign Interviewers</DialogTitle>
           <DialogDescription>
             Assign or update interviewers for this selection stage.
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4 py-2">
+        <div className="space-y-4 p-6 pt-4">
           {/* Stage Overview: Nama, Tipe, Tanggal Mulai dan Akhir */}
-          <div className="rounded-2xl border border-border bg-muted/40 p-3.5 space-y-1.5 text-xs">
+          <div className="rounded-2xl bg-muted/60 p-3.5 space-y-1.5 text-xs">
             <div className="flex items-center justify-between gap-2">
               <span className="font-semibold text-foreground text-sm">
                 {stage.name}
@@ -102,7 +102,6 @@ export function AssignInterviewersDialog({
             </div>
           </div>
 
-          {/* Unified Interviewer Assignment Component */}
           <InterviewerAssignSection
             id="dialog-interviewers"
             assignments={assignments}
@@ -110,7 +109,7 @@ export function AssignInterviewersDialog({
           />
         </div>
 
-        <DialogFooter className="mt-4 gap-2 sm:gap-2">
+        <DialogFooter className="px-9 pb-9 border-t border-border bg-card gap-2">
           <CancelButton onClick={() => onOpenChange(false)} />
           <SaveButton onClick={handleSave} isSaved={isSaved}>
             Save
