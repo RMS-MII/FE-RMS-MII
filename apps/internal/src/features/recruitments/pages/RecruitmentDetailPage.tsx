@@ -155,7 +155,7 @@ export function RecruitmentDetailPage(props: RecruitmentDetailPageProps) {
         <div
           role="tablist"
           aria-label="Recruitment detail sections"
-          className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card p-1 shadow-card"
+          className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card p-1"
         >
           {tabs.map((tab) => {
             const isActive = activeTab === tab.key

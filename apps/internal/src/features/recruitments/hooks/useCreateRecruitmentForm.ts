@@ -5,12 +5,14 @@ import { useGetDepartmentsQuery } from "../api/departments-api"
 import { useCreateBatchMutation } from "../api/recruitments-api"
 
 export interface UseCreateRecruitmentFormProps {
+  open?: boolean
   existingCount?: number
   onSuccess: (newRecruitment: Recruitment) => void
   onOpenChange: (open: boolean) => void
 }
 
 export function useCreateRecruitmentForm({
+  open = true,
   onSuccess,
   onOpenChange,
 }: UseCreateRecruitmentFormProps) {
@@ -22,7 +24,11 @@ export function useCreateRecruitmentForm({
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [submitError, setSubmitError] = useState<string | null>(null)
 
-  const { data: departments, isLoading: isLoadingDepts } = useGetDepartmentsQuery()
+  // Hanya fetch data departemen ketika modal dalam kondisi terbuka
+  const { data: departments, isLoading: isLoadingDepts } = useGetDepartmentsQuery(
+    undefined,
+    { skip: !open }
+  )
   const [createBatchApi, { isLoading: isCreating }] = useCreateBatchMutation()
 
   const departmentSelectItems = useMemo(() => {
