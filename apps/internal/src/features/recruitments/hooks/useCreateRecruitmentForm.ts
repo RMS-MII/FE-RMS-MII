@@ -66,7 +66,6 @@ export function useCreateRecruitmentForm({
     try {
       const createdBatch = await createBatchApi({
         departmentId,
-        batchCode: null, // Let backend automatically generate unique format: BATCH-{DEPT}-{YEAR}-{001}
         name: name.trim(),
         description: description.trim() || name.trim(),
         startDate: startIso,

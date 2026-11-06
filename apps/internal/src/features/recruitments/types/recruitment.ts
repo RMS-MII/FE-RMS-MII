@@ -30,7 +30,6 @@ export interface GetBatchesParams {
 
 export interface CreateBatchRequest {
   departmentId: string
-  batchCode?: string | null
   name: string
   description?: string
   startDate: string
@@ -95,7 +94,18 @@ export interface RecruitmentListSearchParams {
 }
 
 export function getRecruitmentStatusMeta(status: any): RecruitmentStatusMeta {
-  const str = String(status).toLowerCase()
+  let val = status
+  if (val && typeof val === "object") {
+    // If the entire recruitment object was passed
+    if ("status" in val) {
+      val = val.status
+    } else if ("name" in val) {
+      // If status is an object like { id: 1, name: "Draft" }
+      val = val.name
+    }
+  }
+
+  const str = String(val ?? "").toLowerCase()
   if (str === "draft" || str === "1") {
     return { label: "Draft", tone: "neutral" }
   }
@@ -105,5 +115,5 @@ export function getRecruitmentStatusMeta(status: any): RecruitmentStatusMeta {
   if (str === "closed" || str === "completed" || str === "3") {
     return { label: "Closed", tone: "danger" }
   }
-  return { label: String(status), tone: "neutral" }
+  return { label: str ? String(val) : "Draft", tone: "neutral" }
 }

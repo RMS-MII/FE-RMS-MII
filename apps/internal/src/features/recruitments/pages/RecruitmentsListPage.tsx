@@ -270,7 +270,7 @@ export function RecruitmentsListPage() {
               ) : (
                 /* 4. Data rows */
                 recruitments.map((recruitment) => {
-                  const statusMeta = getRecruitmentStatusMeta(recruitment)
+                  const statusMeta = getRecruitmentStatusMeta(recruitment.status)
                   const candidateCount = recruitment.stages ? activeCandidateCount(recruitment) : "—"
 
                   return (
