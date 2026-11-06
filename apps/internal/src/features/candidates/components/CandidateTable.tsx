@@ -275,7 +275,7 @@ export function CandidateTable({
       </div>
 
       {/* Pagination Footer */}
-      <DataTablePagination
+      <DataTablePagination className="border-t border-border px-5 py-4"
         page={page}
         pageSize={pageSize}
         totalItems={totalItems}

@@ -28,6 +28,15 @@ export interface GetBatchesParams {
   pageSize?: number
 }
 
+export interface CreateBatchRequest {
+  departmentId: string
+  batchCode: string
+  name: string
+  description?: string
+  startDate: string
+  endDate: string
+}
+
 /**
  * Matches RecruitmentBatch from BE-RMS-MII API
  * Includes convenience aliases for legacy UI compatibility

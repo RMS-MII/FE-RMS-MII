@@ -37,7 +37,7 @@ export function SummaryTab({ recruitment }: SummaryTabProps) {
       "Period",
       `${formatDate(recruitment.startDate || recruitment.openDate || "")} to ${formatDate(recruitment.endDate || recruitment.closeDate || "")}`,
     ],
-    ["Person in Charge", owner?.fullName ?? "Fajar Mahendra"],
+    ["Person in Charge", owner?.fullName ?? (recruitment as any).createdByName ?? "—"],
     [
       "Candidates",
       <span key="cands" className="tabular-nums">

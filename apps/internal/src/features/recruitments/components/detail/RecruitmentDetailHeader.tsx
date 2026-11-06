@@ -1,7 +1,7 @@
 import type { Recruitment } from "../../types"
+import { getRecruitmentStatusMeta } from "../../types"
 import { StatusBadge, BackButton } from "@/shared/components"
 import { formatDate } from "@/shared/lib/format"
-import { recruitmentStatusMeta } from "../../data/mock"
 
 export interface RecruitmentDetailHeaderProps {
   recruitment: Recruitment
@@ -10,7 +10,7 @@ export interface RecruitmentDetailHeaderProps {
 export function RecruitmentDetailHeader({
   recruitment,
 }: RecruitmentDetailHeaderProps) {
-  const statusMeta = recruitmentStatusMeta[recruitment.status]
+  const statusMeta = getRecruitmentStatusMeta(recruitment.status)
 
   return (
     <div className="flex items-start gap-3.5">

@@ -3,10 +3,12 @@ import { useNavigate } from "@tanstack/react-router"
 import { ArrowLeft } from "lucide-react"
 
 import { Button } from "@workspace/ui/components/button"
-import { PageHeader } from "@/shared/components"
+import { Skeleton } from "@workspace/ui/components/skeleton"
+import { PageHeader, BackButton, Panel, ErrorState } from "@/shared/components"
 import { initialRecruitments, recruitmentPipeline } from "../data/mock"
 import { getRecruitmentInterviewSessions, mockInterviewSessions } from "../data/interviewMock"
 import { StagePipeline } from "../components/StagePipeline"
+import { useGetBatchByIdQuery } from "../api/recruitments-api"
 import {
   RecruitmentDetailHeader,
   SummaryTab,
@@ -61,9 +63,11 @@ export function RecruitmentDetailPage({
     }
   }
 
+  const { data: apiRecruitment, isLoading, isError, refetch } = useGetBatchByIdQuery(id)
+
   const recruitment = useMemo(() => {
-    return initialRecruitments.find((r) => r.id === id) ?? null
-  }, [id])
+    return apiRecruitment ?? initialRecruitments.find((r) => r.id === id) ?? null
+  }, [apiRecruitment, id])
 
   // Related data counts matching ERD records
   const recruitmentCandidates = useMemo(() => {
@@ -80,6 +84,76 @@ export function RecruitmentDetailPage({
     return recruitmentPipeline(recruitment)
   }, [recruitment])
 
+  // 1. Loading state with identical layout structure
+  if (isLoading && !recruitment) {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-start gap-3.5">
+          <BackButton to="/recruitments" label="Back to recruitments list" />
+          <div className="min-w-0 flex-1 space-y-2">
+            <div className="flex items-center gap-2.5">
+              <Skeleton className="h-7 w-60 rounded-lg" />
+              <Skeleton className="h-6 w-16 rounded-full" />
+            </div>
+            <Skeleton className="h-4 w-96 max-w-full rounded-md" />
+          </div>
+        </div>
+
+        <section aria-label="Recruitment stages flow">
+          <Skeleton className="h-14 w-full rounded-2xl" />
+        </section>
+
+        <div>
+          <div className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card p-1 shadow-card">
+            <Skeleton className="h-10 w-24 rounded-full" />
+            <Skeleton className="h-10 w-24 rounded-full" />
+            <Skeleton className="h-10 w-28 rounded-full" />
+            <Skeleton className="h-10 w-28 rounded-full" />
+          </div>
+        </div>
+
+        <Panel>
+          <div className="divide-y divide-border">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <div
+                key={i}
+                className="grid gap-1 px-5 py-3.5 sm:grid-cols-[180px_1fr] sm:gap-4 items-baseline"
+              >
+                <Skeleton className="h-4 w-28 rounded-md" />
+                <Skeleton className="h-4 w-64 rounded-md" />
+              </div>
+            ))}
+          </div>
+        </Panel>
+      </div>
+    )
+  }
+
+  // 2. Error state
+  if (isError && !recruitment) {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-start gap-3.5">
+          <BackButton to="/recruitments" label="Back to recruitments list" />
+          <div className="min-w-0 flex-1 space-y-1">
+            <h1 className="text-2xl font-bold tracking-tight text-foreground">
+              Recruitment Batch
+            </h1>
+          </div>
+        </div>
+
+        <Panel className="p-8">
+          <ErrorState
+            title="Failed to load recruitment batch"
+            description="Unable to fetch the recruitment batch details. Please check your connection and try again."
+            onRetry={() => refetch()}
+          />
+        </Panel>
+      </div>
+    )
+  }
+
+  // 3. Not Found state
   if (!recruitment) {
     return (
       <div className="space-y-6">

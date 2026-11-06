@@ -1,4 +1,4 @@
-import { useState, useId } from "react"
+import { useState, useId, useMemo } from "react"
 import {
   Dialog,
   DialogContent,
@@ -25,6 +25,7 @@ import { CancelButton } from "@/shared/components"
 import type { Recruitment } from "../types"
 import { mockDepartments } from "../data/mock"
 import { generateBatchCode, validateRecruitmentFormData } from "../utils"
+import { useGetDepartmentsQuery } from "../api/departments-api"
 
 export interface CreateRecruitmentDialogProps {
   open: boolean
@@ -49,10 +50,15 @@ export function CreateRecruitmentDialog({
   const [closeDate, setCloseDate] = useState("")
   const [errors, setErrors] = useState<Record<string, string>>({})
 
-  const departmentSelectItems = mockDepartments.map((d) => ({
-    label: d.name,
-    value: d.id,
-  }))
+  const { data: departments, isLoading: isLoadingDepts } = useGetDepartmentsQuery()
+
+  const departmentSelectItems = useMemo(() => {
+    const list = departments && departments.length > 0 ? departments : mockDepartments
+    return list.map((d) => ({
+      label: d.name,
+      value: d.id,
+    }))
+  }, [departments])
 
   const validate = () => {
     const errs = validateRecruitmentFormData({
@@ -69,7 +75,8 @@ export function CreateRecruitmentDialog({
     e.preventDefault()
     if (!validate()) return
 
-    const selectedDept = mockDepartments.find((d) => d.id === departmentId)
+    const allDepartments = departments && departments.length > 0 ? departments : mockDepartments
+    const selectedDept = allDepartments.find((d) => d.id === departmentId)
 
     const newRecruitmentId = `r-${Date.now()}`
     const newStageId = `s-${Date.now()}-1`
@@ -178,7 +185,7 @@ export function CreateRecruitmentDialog({
                 className="h-10 w-full rounded-full border-0 bg-muted px-4 text-sm text-foreground transition-all duration-150 hover:bg-muted/60 outline-none focus-visible:ring-2 focus-visible:ring-primary shadow-none"
                 aria-invalid={!!errors.departmentId}
               >
-                <SelectValue placeholder="Select department" />
+                <SelectValue placeholder={isLoadingDepts ? "Loading departments..." : "Select department"} />
               </SelectTrigger>
               <SelectContent className="rounded-xl">
                 <SelectGroup>

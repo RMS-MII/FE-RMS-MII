@@ -62,6 +62,7 @@ export const baseApi = createApi({
   tagTypes: [
     "Auth",
     "Recruitment",
+    "Department",
     "Stage",
     "Candidate",
     "Interview",

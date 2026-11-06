@@ -1,5 +1,5 @@
 import { baseApi } from "@/shared/api/base-api"
-import type { Recruitment, PagedResult, GetBatchesParams } from "../types"
+import type { Recruitment, PagedResult, GetBatchesParams, CreateBatchRequest } from "../types"
 
 export const recruitmentsApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
@@ -29,6 +29,14 @@ export const recruitmentsApi = baseApi.injectEndpoints({
       query: (id) => `/batches/${id}`,
       providesTags: (_result, _err, id) => [{ type: "Recruitment", id }],
     }),
+    createBatch: builder.mutation<Recruitment, CreateBatchRequest>({
+      query: (body) => ({
+        url: "/batches",
+        method: "POST",
+        body,
+      }),
+      invalidatesTags: [{ type: "Recruitment", id: "LIST" }],
+    }),
   }),
 })
 
@@ -37,5 +45,5 @@ export const {
   useGetBatchByIdQuery,
   useLazyGetBatchesQuery,
   useLazyGetBatchByIdQuery,
+  useCreateBatchMutation,
 } = recruitmentsApi
-

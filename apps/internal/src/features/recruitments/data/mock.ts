@@ -8,6 +8,7 @@ import type {
   Stage,
   LegacyStageType,
   PipelineItem,
+  StageState,
 } from "../types"
 import { candidates } from "@/data/mock"
 
@@ -563,6 +564,32 @@ export function activeCandidateCount(r: Recruitment): number {
 }
 
 export function recruitmentPipeline(r: Recruitment): PipelineItem[] {
+  if (r.batchStages && Array.isArray(r.batchStages) && r.batchStages.length > 0) {
+    const activeIndex = r.batchStages.findIndex((s) => s.isActive)
+    return r.batchStages.map((s, i) => {
+      let state: StageState = "upcoming"
+      if (activeIndex === -1) {
+        state = "upcoming"
+      } else if (i < activeIndex) {
+        state = "done"
+      } else if (i === activeIndex) {
+        state = "current"
+      } else {
+        state = "upcoming"
+      }
+      return {
+        name: s.stageName || s.stageTypeName || `Stage ${i + 1}`,
+        count: candidates.filter(
+          (c) =>
+            c.recruitmentId === r.id &&
+            c.stageIndex === i &&
+            (c.status === "in_progress" || c.status === "pending" || c.status === "accepted")
+        ).length,
+        state,
+      }
+    })
+  }
+
   return (r.stages ?? []).map((s, i) => ({
     name: s.name,
     count: candidates.filter(
