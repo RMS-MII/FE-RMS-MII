@@ -12,6 +12,8 @@ import {
   EmptyState,
   TableSortHeader,
   DataTablePagination,
+  TableSkeleton,
+  ErrorState,
   type SortDirection,
 } from "@/shared/components"
 import { formatCurrency, safeFormatDate } from "@/shared/lib/format"
@@ -29,6 +31,9 @@ export interface CandidateTableProps {
   onSelectCandidate: (candidate: Candidate) => void
   hasActiveFilters?: boolean
   onResetFilters?: () => void
+  isLoading?: boolean
+  isError?: boolean
+  onRetry?: () => void
 }
 
 export function CandidateTable({
@@ -43,6 +48,9 @@ export function CandidateTable({
   onSelectCandidate,
   hasActiveFilters,
   onResetFilters,
+  isLoading,
+  isError,
+  onRetry,
 }: CandidateTableProps) {
   const startIndex = (page - 1) * pageSize
 
@@ -114,7 +122,19 @@ export function CandidateTable({
             </TableRow>
           </TableHeader>
           <TableBody>
-            {candidates.length === 0 ? (
+            {isLoading ? (
+              <TableSkeleton colCount={9} rowCount={pageSize} />
+            ) : isError ? (
+              <TableRow>
+                <TableCell colSpan={9} className="p-8">
+                  <ErrorState
+                    title="Failed to load candidates"
+                    description="Unable to fetch candidates from server. Please check your connection."
+                    onRetry={onRetry}
+                  />
+                </TableCell>
+              </TableRow>
+            ) : candidates.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={9} className="h-64 text-center">
                   <EmptyState
@@ -221,7 +241,9 @@ export function CandidateTable({
                       <div className="flex items-center justify-center gap-1">
                         {c.cv ? (
                           <a
-                            href={`#${c.cv}`}
+                            href={c.cv.startsWith("http") ? c.cv : `#${c.cv}`}
+                            target={c.cv.startsWith("http") ? "_blank" : undefined}
+                            rel="noreferrer"
                             title={`CV: ${c.cv}`}
                             className="flex size-7 items-center justify-center rounded-full bg-muted/60 text-muted-foreground hover:bg-muted hover:text-primary transition-colors"
                           >

@@ -1,5 +1,3 @@
-import { useState, useMemo, useEffect } from "react"
-import { useNavigate, useSearch } from "@tanstack/react-router"
 import {
   Select,
   SelectContent,
@@ -13,163 +11,39 @@ import {
   PageHeader,
   SearchInput,
   FilterChips,
-  type Chip,
-  type SortDirection,
 } from "@/shared/components"
-import { mockCandidates } from "../data/mock"
-import { filterCandidates, sortCandidates } from "../utils"
 import {
   CandidateTable,
   CandidateDetailDialog,
 } from "../components"
-import type { Candidate, CandidateSearchParams, CandidateSortKey } from "../types"
-
-const genderItems = [
-  { label: "All Genders", value: "all" },
-  { label: "Male", value: "male" },
-  { label: "Female", value: "female" },
-]
-
-const batchStatusItems = [
-  { label: "All Applications", value: "all" },
-  { label: "Has Applications", value: "applied" },
-  { label: "Talent Pool", value: "pool" },
-]
+import { useCandidatesList } from "../hooks"
 
 export function CandidatesListPage() {
-  const navigate = useNavigate()
-  const searchParams = useSearch({ from: "/_auth/candidates/" })
-
-  // Search parameters from URL with defaults
-  const search = searchParams.search ?? ""
-  const gender = searchParams.gender ?? "all"
-  const batchStatus = searchParams.batchStatus ?? "all"
-  const sortKey = (searchParams.sort as CandidateSortKey) ?? "createdAt"
-  const sortDirection = (searchParams.order as SortDirection) ?? "desc"
-  const page = searchParams.page ? Number(searchParams.page) : 1
-  const pageSize = searchParams.pageSize ? Number(searchParams.pageSize) : 5
-
-  const [selectedCandidate, setSelectedCandidate] = useState<Candidate | null>(null)
-  const [isDetailOpen, setIsDetailOpen] = useState(false)
-
-  // Local state for smooth typing in SearchInput
-  const [searchTerm, setSearchTerm] = useState(search)
-
-  useEffect(() => {
-    setSearchTerm(search)
-  }, [search])
-
-  useEffect(() => {
-    if (searchTerm === search) return
-
-    const timer = setTimeout(() => {
-      handleUpdateSearch({
-        search: searchTerm.trim() ? searchTerm.trim() : "",
-        page: 1,
-      })
-    }, 300)
-
-    return () => clearTimeout(timer)
-  }, [searchTerm, search])
-
-  const handleUpdateSearch = (updates: Partial<CandidateSearchParams>) => {
-    navigate({
-      to: "/candidates",
-      search: (prev) => ({
-        ...prev,
-        search: updates.search !== undefined ? (updates.search.trim() ? updates.search.trim() : undefined) : prev.search,
-        gender: updates.gender !== undefined ? (updates.gender === "all" ? undefined : updates.gender) : prev.gender,
-        batchStatus:
-          updates.batchStatus !== undefined
-            ? updates.batchStatus === "all"
-              ? undefined
-              : updates.batchStatus
-            : prev.batchStatus,
-        sort: updates.sort !== undefined ? updates.sort : prev.sort,
-        order: updates.order !== undefined ? updates.order : prev.order,
-        page: updates.page !== undefined ? (updates.page === 1 ? undefined : updates.page) : prev.page,
-        pageSize: updates.pageSize !== undefined ? (updates.pageSize === 5 ? undefined : updates.pageSize) : prev.pageSize,
-      }),
-    })
-  }
-
-  // Filter & Sort candidates
-  const filteredCandidates = useMemo(() => {
-    return filterCandidates(mockCandidates, search, gender, batchStatus)
-  }, [search, gender, batchStatus])
-
-  const sortedCandidates = useMemo(() => {
-    return sortCandidates(filteredCandidates, sortKey, sortDirection)
-  }, [filteredCandidates, sortKey, sortDirection])
-
-  // Paginated slice
-  const paginatedCandidates = useMemo(() => {
-    const start = (page - 1) * pageSize
-    return sortedCandidates.slice(start, start + pageSize)
-  }, [sortedCandidates, page, pageSize])
-
-  const handleSortChange = (key: CandidateSortKey) => {
-    if (sortKey === key) {
-      handleUpdateSearch({
-        sort: key,
-        order: sortDirection === "asc" ? "desc" : "asc",
-        page: 1,
-      })
-    } else {
-      handleUpdateSearch({
-        sort: key,
-        order: "asc",
-        page: 1,
-      })
-    }
-  }
-
-  const handleOpenDetail = (candidate: Candidate) => {
-    setSelectedCandidate(candidate)
-    setIsDetailOpen(true)
-  }
-
-  // Active filter chips for easy reset
-  const activeChips: Chip[] = useMemo(() => {
-    const chips: Chip[] = []
-    if (search.trim()) {
-      chips.push({
-        key: "search",
-        label: `Search: "${search}"`,
-        onRemove: () => {
-          setSearchTerm("")
-          handleUpdateSearch({ search: "", page: 1 })
-        },
-      })
-    }
-    if (gender && gender !== "all") {
-      const match = genderItems.find((g) => g.value === gender)
-      chips.push({
-        key: "gender",
-        label: `Gender: ${match?.label || gender}`,
-        onRemove: () => handleUpdateSearch({ gender: "all", page: 1 }),
-      })
-    }
-    if (batchStatus && batchStatus !== "all") {
-      const match = batchStatusItems.find((b) => b.value === batchStatus)
-      chips.push({
-        key: "batchStatus",
-        label: `Application: ${match?.label || batchStatus}`,
-        onRemove: () => handleUpdateSearch({ batchStatus: "all", page: 1 }),
-      })
-    }
-    return chips
-  }, [search, gender, batchStatus])
-
-  const handleResetFilters = () => {
-    setSearchTerm("")
-    handleUpdateSearch({
-      search: "",
-      gender: "all",
-      batchStatus: "all",
-      page: 1,
-    })
-  }
+  const {
+    searchTerm,
+    setSearchTerm,
+    gender,
+    batchStatus,
+    sortKey,
+    sortDirection,
+    page,
+    pageSize,
+    candidates,
+    totalItems,
+    isLoading,
+    isError,
+    refetch,
+    selectedCandidate,
+    isDetailOpen,
+    setIsDetailOpen,
+    activeChips,
+    genderItems,
+    batchStatusItems,
+    handleUpdateSearch,
+    handleSortChange,
+    handleOpenDetail,
+    handleResetFilters,
+  } = useCandidatesList()
 
   return (
     <div className="space-y-6 pb-12">
@@ -235,8 +109,8 @@ export function CandidatesListPage() {
         <FilterChips chips={activeChips} onReset={handleResetFilters} />
 
         <CandidateTable
-          candidates={paginatedCandidates}
-          totalItems={sortedCandidates.length}
+          candidates={candidates}
+          totalItems={totalItems}
           page={page}
           pageSize={pageSize}
           onPageChange={(p) => handleUpdateSearch({ page: p })}
@@ -246,6 +120,9 @@ export function CandidatesListPage() {
           onSelectCandidate={handleOpenDetail}
           hasActiveFilters={activeChips.length > 0}
           onResetFilters={handleResetFilters}
+          isLoading={isLoading}
+          isError={isError}
+          onRetry={() => refetch()}
         />
       </Panel>
 

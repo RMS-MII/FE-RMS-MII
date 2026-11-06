@@ -177,19 +177,6 @@ export function CandidatesTab({
                 <strong className="font-semibold">Selection stages required:</strong> Candidates can only be added once this recruitment batch has configured selection stages.
               </p>
             </div>
-            <Button
-              type="button"
-              size="xs"
-              onClick={() =>
-                navigate({
-                  to: "/recruitments/$id/stages",
-                  params: { id: recruitment.id },
-                })
-              }
-              className="rounded-full bg-amber-600 hover:bg-amber-700 text-white dark:bg-amber-500 dark:hover:bg-amber-600 text-xs font-semibold px-3 py-1 cursor-pointer shrink-0 self-start sm:self-auto"
-            >
-              Configure Stages
-            </Button>
           </div>
         )}
 
