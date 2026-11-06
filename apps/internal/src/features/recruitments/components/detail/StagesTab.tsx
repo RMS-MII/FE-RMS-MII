@@ -1,4 +1,3 @@
-import { useState, useEffect } from "react"
 import { Layers, Pencil, UserPlus } from "lucide-react"
 import {
   Table,
@@ -24,15 +23,13 @@ import {
 } from "@/shared/components"
 import { safeFormatDate } from "@/shared/lib/format"
 import { cn } from "@/shared/lib/utils"
-import { initialRecruitments, mockEmployees, mockStageTypes } from "../../data/mock"
-import { useAssignStageInterviewersMutation } from "../../api/recruitments-api"
+import { mockEmployees, mockStageTypes } from "../../data/mock"
 import type {
   Recruitment,
-  Stage,
   StageEmployeeStatus,
-  StageInterviewerAssignment,
 } from "../../types"
 import { AssignInterviewersDialog } from "./AssignInterviewersDialog"
+import { useStagesTab } from "../../hooks/useStagesTab"
 
 export interface StagesTabProps {
   recruitment: Recruitment
@@ -55,59 +52,17 @@ const statusDescriptions: Record<StageEmployeeStatus, string> = {
   declined: "Declined (Menolak)",
 }
 
-function mapBatchStagesToStages(r: Recruitment): Stage[] {
-  if (r.batchStages && Array.isArray(r.batchStages) && r.batchStages.length > 0) {
-    return r.batchStages.map((bs) => {
-      let duration = 0
-      if (bs.startDate && bs.endDate) {
-        const start = new Date(bs.startDate).getTime()
-        const end = new Date(bs.endDate).getTime()
-        if (!isNaN(start) && !isNaN(end) && end >= start) {
-          duration = Math.max(1, Math.round((end - start) / (1000 * 60 * 60 * 24)))
-        }
-      }
-
-      // Check if backend returned interviewers on the batch stage
-      const assignedList: StageInterviewerAssignment[] =
-        (bs as any).interviewers?.map((inv: any) => ({
-          employeeId: inv.employeeId,
-          status: (inv.statusName?.toLowerCase() === "accepted" ? "accepted" : "pending") as StageEmployeeStatus,
-        })) ?? []
-
-      return {
-        id: bs.id,
-        batchStageId: bs.id,
-        recruitmentBatchId: bs.recruitmentBatchId,
-        stageTypeId: bs.stageTypeId,
-        name: bs.stageName,
-        type: (bs.stageCategory?.toLowerCase() ?? "screening") as any,
-        durationDays: duration,
-        passingScore: bs.passingScore ?? null,
-        startDate: bs.startDate ?? null,
-        endDate: bs.endDate ?? null,
-        isActive: bs.isActive,
-        nextStageId: bs.nextStageId,
-        assignedInterviewers: assignedList,
-        interviewerIds: assignedList.map((a) => a.employeeId),
-        ownerId: assignedList[0]?.employeeId,
-      }
-    })
-  }
-  return r.stages ?? []
-}
-
 export function StagesTab({ recruitment, onCreateStage, onEditStage }: StagesTabProps) {
-  const [stages, setStages] = useState<Stage[]>(() => mapBatchStagesToStages(recruitment))
-  const [assignStage, setAssignStage] = useState<Stage | null>(null)
-  const [assignIndex, setAssignIndex] = useState<number>(0)
-  const [isDialogOpen, setIsDialogOpen] = useState(false)
-
-  const [assignInterviewersApi] = useAssignStageInterviewersMutation()
-
-  // Sync state if parent recruitment stages update
-  useEffect(() => {
-    setStages(mapBatchStagesToStages(recruitment))
-  }, [recruitment.batchStages, recruitment.stages])
+  const {
+    stages,
+    totalDays,
+    assignStage,
+    assignIndex,
+    isDialogOpen,
+    setIsDialogOpen,
+    handleOpenAssignDialog,
+    handleSaveInterviewers,
+  } = useStagesTab({ recruitment })
 
   if (stages.length === 0) {
     return (
@@ -124,66 +79,6 @@ export function StagesTab({ recruitment, onCreateStage, onEditStage }: StagesTab
         />
       </Panel>
     )
-  }
-
-  const totalDays = stages.reduce((acc, s) => acc + (s.durationDays || 0), 0)
-
-  const handleOpenAssignDialog = (stage: Stage, index: number) => {
-    setAssignStage(stage)
-    setAssignIndex(index)
-    setIsDialogOpen(true)
-  }
-
-  const handleSaveInterviewers = async (
-    stageId: string,
-    assignments: StageInterviewerAssignment[]
-  ) => {
-    const updatedIds = assignments.map((a) => a.employeeId)
-
-    // 1. Update local component state
-    setStages((prev) =>
-      prev.map((s) => {
-        if (s.id !== stageId) return s
-        return {
-          ...s,
-          assignedInterviewers: assignments,
-          interviewerIds: updatedIds,
-          ownerId: updatedIds[0] || "",
-        }
-      })
-    )
-
-    // 2. Persist in mock recruitment data so changes reflect across pages if legacy mock
-    const rIdx = initialRecruitments.findIndex((r) => r.id === recruitment.id)
-    if (rIdx !== -1) {
-      initialRecruitments[rIdx] = {
-        ...initialRecruitments[rIdx],
-        stages: (initialRecruitments[rIdx].stages ?? []).map((s) => {
-          if (s.id !== stageId) return s
-          return {
-            ...s,
-            assignedInterviewers: assignments,
-            interviewerIds: updatedIds,
-            ownerId: updatedIds[0] || "",
-          }
-        }),
-      }
-    }
-
-    // 3. Call backend API if real recruitment batch ID
-    if (recruitment.id && !recruitment.id.startsWith("r")) {
-      try {
-        await assignInterviewersApi({
-          batchId: recruitment.id,
-          stageId,
-          body: {
-            interviewerEmployeeIds: updatedIds,
-          },
-        }).unwrap()
-      } catch (err) {
-        console.error("Failed to assign interviewers via API:", err)
-      }
-    }
   }
 
   return (
@@ -220,81 +115,61 @@ export function StagesTab({ recruitment, onCreateStage, onEditStage }: StagesTab
                   index === currentStageIdx && recruitment.status === "running"
 
                 const stateMeta = isDone
-                  ? { label: "Completed", tone: "success" as const }
+                  ? { label: "Completed", tone: "neutral" as const }
                   : isCurrent
-                  ? { label: "Running", tone: "info" as const }
+                  ? { label: "In Progress", tone: "info" as const }
                   : { label: "Upcoming", tone: "neutral" as const }
 
-                const stageType = mockStageTypes.find((st) => st.id === stage.stageTypeId)
+                const typeMeta = mockStageTypes.find((t) => t.id === stage.stageTypeId)
 
-                // Resolve assigned interviewers with their ERD invitation status
-                const assignedList: StageInterviewerAssignment[] =
-                  stage.assignedInterviewers && stage.assignedInterviewers.length > 0
-                    ? stage.assignedInterviewers
-                    : (stage.interviewerIds || (stage.ownerId ? [stage.ownerId] : [])).map(
-                        (id) => ({
-                          employeeId: id,
-                          status: "pending" as StageEmployeeStatus,
-                        })
-                      )
-
-                const stageInterviewers = assignedList
-                  .map((item) => {
-                    const emp = mockEmployees.find((e) => e.id === item.employeeId)
-                    if (!emp) return null
-                    return {
-                      employee: emp,
-                      status: item.status,
+                // Detailed interviewers with status
+                const stageInterviewers = (stage.assignedInterviewers ?? []).map((assignment) => {
+                  const emp =
+                    mockEmployees.find((e) => e.id === assignment.employeeId) || {
+                      id: assignment.employeeId,
+                      fullName: `Employee (${assignment.employeeId.slice(0, 6)}...)`,
+                      email: "interviewer@mii.co.id",
+                      jobTitle: "Interviewer",
+                      department: "Technical",
                     }
-                  })
-                  .filter(Boolean) as {
-                  employee: (typeof mockEmployees)[number]
-                  status: StageEmployeeStatus
-                }[]
+                  return {
+                    employee: emp,
+                    status: assignment.status,
+                  }
+                })
 
                 return (
-                  <TableRow
-                    key={stage.id}
-                    className="border-b border-border transition-colors hover:bg-muted/40"
-                  >
-                    <TableCell className="pl-5 py-3.5 text-center font-semibold text-muted-foreground tabular-nums">
+                  <TableRow key={stage.id} className="hover:bg-muted/40 transition-colors">
+                    <TableCell className="w-14 pl-5 text-center font-mono text-xs font-semibold text-muted-foreground">
                       {index + 1}
                     </TableCell>
 
                     <TableCell className="py-3.5">
-                      <div>
-                        <p className="font-semibold text-foreground text-sm">{stage.name}</p>
-                        <p className="text-xs text-muted-foreground mt-0.5">
-                          {stageType?.name ?? stage.type}
-                          {stageType?.stageCategory ? ` • ${stageType.stageCategory}` : ""}
-                        </p>
+                      <div className="flex flex-col">
+                        <span className="font-medium text-foreground">{stage.name}</span>
+                        <span className="text-xs text-muted-foreground capitalize">
+                          {typeMeta?.stageCategory || stage.type} Stage
+                        </span>
                       </div>
                     </TableCell>
 
-                    <TableCell className="py-3.5 whitespace-nowrap">
+                    <TableCell className="py-3.5 text-xs text-muted-foreground whitespace-nowrap">
                       {stage.startDate && stage.endDate ? (
-                        <div className="text-xs">
-                          <span className="font-medium text-foreground">
-                            {safeFormatDate(stage.startDate)} – {safeFormatDate(stage.endDate)}
-                          </span>
-                          {stage.durationDays > 0 && (
-                            <span className="block text-muted-foreground mt-0.5">
-                              ({stage.durationDays} days)
-                            </span>
-                          )}
-                        </div>
+                        <span>
+                          {safeFormatDate(stage.startDate)} - {safeFormatDate(stage.endDate)}
+                        </span>
                       ) : (
-                        <span className="text-xs text-muted-foreground">-</span>
+                        <span>{stage.durationDays} days duration</span>
                       )}
                     </TableCell>
 
-                    <TableCell className="py-3.5 text-center whitespace-nowrap">
-                      {stage.passingScore !== null && stage.passingScore !== undefined ? (
-                        <span className="inline-flex items-center rounded-full bg-primary/10 px-2.5 py-0.5 text-xs font-semibold text-primary tabular-nums">
-                          {stage.passingScore}%
+                    <TableCell className="py-3.5 text-center font-mono text-sm">
+                      {stage.passingScore !== null ? (
+                        <span className="font-semibold text-foreground">
+                          {stage.passingScore}
                         </span>
                       ) : (
-                        <span className="text-xs text-muted-foreground">-</span>
+                        <span className="text-muted-foreground">—</span>
                       )}
                     </TableCell>
 

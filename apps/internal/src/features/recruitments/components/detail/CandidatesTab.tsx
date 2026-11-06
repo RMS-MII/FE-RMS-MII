@@ -1,5 +1,3 @@
-import { useState, useMemo, useEffect } from "react"
-import type { Recruitment, CandidateApplicationItem } from "../../types"
 import {
   Panel,
   SearchInput,
@@ -8,16 +6,10 @@ import {
   FilterChips,
   TableSortHeader,
   DataTablePagination,
-  type Chip,
-  type SortDirection,
+  TableSkeleton,
+  ErrorState,
 } from "@/shared/components"
 import { safeFormatDate } from "@/shared/lib/format"
-import {
-  getRecruitmentCandidateApplications,
-  filterCandidateApplications,
-  sortCandidateApplications,
-  type CandidateAppSortKey,
-} from "../../utils"
 import { CandidateApplicationDetailDialog } from "./CandidateApplicationDetailDialog"
 import { AddCandidateDialog } from "./AddCandidateDialog"
 import {
@@ -38,307 +30,59 @@ import {
 } from "@workspace/ui/components/select"
 import { Button } from "@workspace/ui/components/button"
 import { Eye, UserPlus } from "lucide-react"
+import {
+  useCandidatesTab,
+  statusToneMap,
+  statusLabelMap,
+  type UseCandidatesTabProps,
+} from "../../hooks/useCandidatesTab"
 
-export interface CandidatesTabProps {
-  recruitment: Recruitment
-  selectedStageIndex?: number | null
-  onStageChange?: (stageIndex: number | null) => void
-}
-
-const statusToneMap: Record<string, "success" | "warning" | "info" | "danger" | "neutral"> = {
-  passed: "success",
-  accepted: "success",
-  in_progress: "info",
-  pending: "warning",
-  failed: "danger",
-  rejected: "danger",
-  withdrawn: "neutral",
-  upcoming: "neutral",
-}
-
-const statusLabelMap: Record<string, string> = {
-  in_progress: "In Progress",
-  passed: "Passed",
-  failed: "Failed",
-  pending: "Pending",
-  accepted: "Accepted",
-  rejected: "Rejected",
-  withdrawn: "Withdrawn",
-  upcoming: "Upcoming",
-}
-
-const statusItems = [
-  { label: "All Status", value: "all" },
-  { label: "In Progress", value: "in_progress" },
-  { label: "Passed", value: "passed" },
-  { label: "Pending", value: "pending" },
-  { label: "Failed", value: "failed" },
-  { label: "Accepted", value: "accepted" },
-  { label: "Withdrawn", value: "withdrawn" },
-]
+export interface CandidatesTabProps extends UseCandidatesTabProps {}
 
 export function CandidatesTab({
   recruitment,
   selectedStageIndex = null,
   onStageChange,
 }: CandidatesTabProps) {
-  // Search and filter states
-  const [search, setSearch] = useState("")
-  const [stageFilter, setStageFilter] = useState<string>(
-    selectedStageIndex !== null ? String(selectedStageIndex) : "all"
-  )
-  const [statusFilter, setStatusFilter] = useState("all")
-
-  // Sorting and pagination states
-  const [sortKey, setSortKey] = useState<CandidateAppSortKey>("appliedAt")
-  const [sortDirection, setSortDirection] = useState<SortDirection>("desc")
-  const [page, setPage] = useState(1)
-  const pageSize = 5
-
-  // Applications state (allows adding candidates manually)
-  const [applications, setApplications] = useState<CandidateApplicationItem[]>(() =>
-    getRecruitmentCandidateApplications(recruitment)
-  )
-
-  useEffect(() => {
-    setApplications(getRecruitmentCandidateApplications(recruitment))
-  }, [recruitment])
-
-  // Selected application for detail modal
-  const [selectedApplication, setSelectedApplication] =
-    useState<CandidateApplicationItem | null>(null)
-  const [isDetailOpen, setIsDetailOpen] = useState(false)
-  const [isAddOpen, setIsAddOpen] = useState(false)
-
-  // Sync external stage index with internal dropdown state
-  useEffect(() => {
-    if (selectedStageIndex !== null) {
-      setStageFilter(String(selectedStageIndex))
-    }
-  }, [selectedStageIndex])
-
-  // Build stage dropdown items
-  const stageItems = useMemo(() => {
-    const items = [{ label: "All Stages", value: "all" }]
-    ;(recruitment.stages || []).forEach((stg, idx) => {
-      items.push({
-        label: `Stage ${idx + 1}: ${stg.name}`,
-        value: String(idx),
-      })
-    })
-    return items
-  }, [recruitment.stages])
+  const {
+    search,
+    setSearch,
+    stageFilter,
+    statusFilter,
+    sortKey,
+    sortDirection,
+    page,
+    pageSize,
+    isRealBatch,
+    isApiLoading,
+    isApiError,
+    refetchApplications,
+    selectedApplication,
+    isDetailOpen,
+    setIsDetailOpen,
+    isAddOpen,
+    setIsAddOpen,
+    stageItems,
+    statusItems,
+    currentApplications,
+    totalCount,
+    startIndex,
+    activeChips,
+    handleStageChange,
+    handleStatusChange,
+    handleSort,
+    handlePageChange,
+    handleResetFilters,
+    handleOpenDetail,
+    handleAddCandidates,
+    handleUpdateCandidateStatus,
+  } = useCandidatesTab({
+    recruitment,
+    selectedStageIndex,
+    onStageChange,
+  })
 
   const parsedStageIndex = stageFilter !== "all" ? Number(stageFilter) : null
-
-  // Handle stage filter changes
-  const handleStageChange = (val: string | null) => {
-    if (!val) return
-    setStageFilter(val)
-    setPage(1)
-    if (onStageChange) {
-      onStageChange(val === "all" ? null : Number(val))
-    }
-  }
-
-  // Handle status filter changes
-  const handleStatusChange = (val: string | null) => {
-    if (!val) return
-    setStatusFilter(val)
-    setPage(1)
-  }
-
-  // Filter applications
-  const filteredApplications = useMemo(() => {
-    return filterCandidateApplications(
-      applications,
-      search,
-      parsedStageIndex,
-      statusFilter
-    )
-  }, [applications, search, parsedStageIndex, statusFilter])
-
-  // Sort applications
-  const sortedApplications = useMemo(() => {
-    return sortCandidateApplications(
-      filteredApplications,
-      sortKey,
-      sortDirection,
-      parsedStageIndex
-    )
-  }, [filteredApplications, sortKey, sortDirection, parsedStageIndex])
-
-  // Paginate applications
-  const paginatedApplications = useMemo(() => {
-    const start = (page - 1) * pageSize
-    return sortedApplications.slice(start, start + pageSize)
-  }, [sortedApplications, page, pageSize])
-
-  const handleSort = (key: string) => {
-    const k = key as CandidateAppSortKey
-    if (sortKey === k) {
-      setSortDirection((prev) => (prev === "asc" ? "desc" : "asc"))
-    } else {
-      setSortKey(k)
-      setSortDirection("asc")
-    }
-  }
-
-  const handleResetFilters = () => {
-    setSearch("")
-    setStageFilter("all")
-    setStatusFilter("all")
-    setPage(1)
-    if (onStageChange) {
-      onStageChange(null)
-    }
-  }
-
-  const handleOpenDetail = (app: CandidateApplicationItem) => {
-    setSelectedApplication(app)
-    setIsDetailOpen(true)
-  }
-
-  const handleAddCandidates = (newApps: CandidateApplicationItem[]) => {
-    setApplications((prev) => [...newApps, ...prev])
-  }
-
-  const handleUpdateCandidateStatus = (
-    applicationId: string,
-    action: "advance" | "reject" | "reopen",
-    payload?: { reason?: string; notes?: string }
-  ) => {
-    setApplications((prev) =>
-      prev.map((app) => {
-        if (app.id !== applicationId) return app
-
-        const now = new Date().toISOString()
-        const stages = [...app.applicationStages]
-        const currentIdx = app.currentStageIndex
-        const currentStage = stages[currentIdx]
-
-        if (action === "advance") {
-          // Mark current stage passed
-          if (currentStage) {
-            stages[currentIdx] = {
-              ...currentStage,
-              status: "passed",
-              completedAt: now,
-              feedback: payload?.notes || currentStage.feedback || "Passed by HR evaluation",
-            }
-          }
-
-          const isLastStage = currentIdx >= stages.length - 1
-          if (isLastStage) {
-            const updated: CandidateApplicationItem = {
-              ...app,
-              status: "accepted",
-              finalStatus: "accepted",
-              applicationStages: stages,
-            }
-            if (selectedApplication?.id === applicationId) {
-              setSelectedApplication(updated)
-            }
-            return updated
-          } else {
-            const nextIdx = currentIdx + 1
-            if (stages[nextIdx]) {
-              stages[nextIdx] = {
-                ...stages[nextIdx],
-                status: "in_progress",
-                startedAt: now,
-              }
-            }
-            const updated: CandidateApplicationItem = {
-              ...app,
-              status: "in_progress",
-              currentStageIndex: nextIdx,
-              applicationStages: stages,
-            }
-            if (selectedApplication?.id === applicationId) {
-              setSelectedApplication(updated)
-            }
-            return updated
-          }
-        } else if (action === "reject") {
-          if (currentStage) {
-            stages[currentIdx] = {
-              ...currentStage,
-              status: "failed",
-              completedAt: now,
-              feedback: payload?.notes || payload?.reason || "Disqualified",
-            }
-          }
-          const updated: CandidateApplicationItem = {
-            ...app,
-            status: "rejected",
-            finalStatus: "rejected",
-            rejectReason: payload?.reason,
-            applicationStages: stages,
-          }
-          if (selectedApplication?.id === applicationId) {
-            setSelectedApplication(updated)
-          }
-          return updated
-        } else if (action === "reopen") {
-          if (currentStage) {
-            stages[currentIdx] = {
-              ...currentStage,
-              status: "in_progress",
-              completedAt: null,
-            }
-          }
-          const updated: CandidateApplicationItem = {
-            ...app,
-            status: "in_progress",
-            finalStatus: undefined,
-            rejectReason: undefined,
-            applicationStages: stages,
-          }
-          if (selectedApplication?.id === applicationId) {
-            setSelectedApplication(updated)
-          }
-          return updated
-        }
-
-        return app
-      })
-    )
-  }
-
-  // Active filter chips
-  const activeChips: Chip[] = useMemo(() => {
-    const chips: Chip[] = []
-    if (search.trim()) {
-      chips.push({
-        key: "search",
-        label: `Search: "${search}"`,
-        onRemove: () => {
-          setSearch("")
-          setPage(1)
-        },
-      })
-    }
-    if (stageFilter !== "all") {
-      const match = stageItems.find((s) => s.value === stageFilter)
-      chips.push({
-        key: "stage",
-        label: match?.label || `Stage ${Number(stageFilter) + 1}`,
-        onRemove: () => handleStageChange("all"),
-      })
-    }
-    if (statusFilter !== "all") {
-      const match = statusItems.find((s) => s.value === statusFilter)
-      chips.push({
-        key: "status",
-        label: `Status: ${match?.label || statusFilter}`,
-        onRemove: () => handleStatusChange("all"),
-      })
-    }
-    return chips
-  }, [search, stageFilter, statusFilter, stageItems])
-
-  const startIndex = (page - 1) * pageSize
 
   return (
     <>
@@ -350,7 +94,7 @@ export function CandidatesTab({
               value={search}
               onChange={(val) => {
                 setSearch(val)
-                setPage(1)
+                handlePageChange(1)
               }}
               placeholder="Search candidate, email, or application code..."
               containerClassName="sm:w-80"
@@ -475,7 +219,42 @@ export function CandidatesTab({
               </TableRow>
             </TableHeader>
             <TableBody>
-              {paginatedApplications.length === 0 ? (
+              {isRealBatch && isApiLoading ? (
+                <TableSkeleton
+                  rowCount={pageSize}
+                  colCount={8}
+                  colWidths={[
+                    "w-6 mx-auto",
+                    ["w-36", "w-24"],
+                    "w-20",
+                    "w-28",
+                    "w-10 mx-auto",
+                    "w-20",
+                    "w-24",
+                    "w-8 mx-auto",
+                  ]}
+                  cellClassNames={[
+                    "pl-5 text-center",
+                    "py-3.5",
+                    "py-3.5",
+                    "py-3.5",
+                    "text-center",
+                    "py-3.5",
+                    "hidden md:table-cell",
+                    "pr-5 text-center",
+                  ]}
+                />
+              ) : isRealBatch && isApiError ? (
+                <TableRow>
+                  <TableCell colSpan={8} className="h-64 text-center">
+                    <ErrorState
+                      title="Failed to load candidates"
+                      description="Unable to fetch candidate applications for this batch. Please check your connection and try again."
+                      onRetry={() => refetchApplications()}
+                    />
+                  </TableCell>
+                </TableRow>
+              ) : currentApplications.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={8} className="h-64 text-center">
                     <EmptyState
@@ -510,7 +289,7 @@ export function CandidatesTab({
                   </TableCell>
                 </TableRow>
               ) : (
-                paginatedApplications.map((app, idx) => {
+                currentApplications.map((app, idx) => {
                   const rowNum = startIndex + idx + 1
 
                   // Determine stage name, score, and status based on whether a specific stage is filtered
@@ -617,11 +396,11 @@ export function CandidatesTab({
         </div>
 
         {/* Pagination Footer */}
-        <DataTablePagination
+        <DataTablePagination className="border-t border-border px-5 py-4"
           page={page}
           pageSize={pageSize}
-          totalItems={sortedApplications.length}
-          onPageChange={setPage}
+          totalItems={totalCount}
+          onPageChange={handlePageChange}
         />
       </Panel>
 
@@ -640,7 +419,7 @@ export function CandidatesTab({
         open={isAddOpen}
         onOpenChange={setIsAddOpen}
         onAddCandidates={handleAddCandidates}
-        existingApplicationCount={applications.length}
+        existingApplicationCount={totalCount}
       />
     </>
   )

@@ -1,4 +1,4 @@
-import { useState, useId, useMemo } from "react"
+import { useId } from "react"
 import {
   Dialog,
   DialogContent,
@@ -23,9 +23,7 @@ import { SaveButton } from "@/shared/components"
 import { CancelButton } from "@/shared/components"
 
 import type { Recruitment } from "../types"
-import { mockDepartments } from "../data/mock"
-import { generateBatchCode, validateRecruitmentFormData } from "../utils"
-import { useGetDepartmentsQuery } from "../api/departments-api"
+import { useCreateRecruitmentForm } from "../hooks/useCreateRecruitmentForm"
 
 export interface CreateRecruitmentDialogProps {
   open: boolean
@@ -41,97 +39,28 @@ export function CreateRecruitmentDialog({
   existingCount = 5,
 }: CreateRecruitmentDialogProps) {
   const formId = useId()
-  const generatedCode = generateBatchCode(existingCount)
 
-  const [name, setName] = useState("")
-  const [departmentId, setDepartmentId] = useState("")
-  const [description, setDescription] = useState("")
-  const [openDate, setOpenDate] = useState("")
-  const [closeDate, setCloseDate] = useState("")
-  const [errors, setErrors] = useState<Record<string, string>>({})
-
-  const { data: departments, isLoading: isLoadingDepts } = useGetDepartmentsQuery()
-
-  const departmentSelectItems = useMemo(() => {
-    const list = departments && departments.length > 0 ? departments : mockDepartments
-    return list.map((d) => ({
-      label: d.name,
-      value: d.id,
-    }))
-  }, [departments])
-
-  const validate = () => {
-    const errs = validateRecruitmentFormData({
-      name,
-      departmentId,
-      openDate,
-      closeDate,
-    })
-    setErrors(errs)
-    return Object.keys(errs).length === 0
-  }
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!validate()) return
-
-    const allDepartments = departments && departments.length > 0 ? departments : mockDepartments
-    const selectedDept = allDepartments.find((d) => d.id === departmentId)
-
-    const newRecruitmentId = `r-${Date.now()}`
-    const newStageId = `s-${Date.now()}-1`
-
-    const newRecruitment: Recruitment = {
-      id: newRecruitmentId,
-      batchCode: generatedCode,
-      name: name.trim(),
-      division: selectedDept?.name ?? "General",
-      departmentId: selectedDept?.id ?? "",
-      department: selectedDept,
-      location: "Jakarta, APL Tower",
-      quota: 1,
-      openDate,
-      startDate: openDate,
-      closeDate,
-      endDate: closeDate,
-      status: "draft",
-      currentStage: -1,
-      createdBy: "e1000000-0000-4000-8000-000000000001",
-      ownerId: "u1",
-      description: description.trim(),
-      createdAt: new Date().toISOString(),
-      updatedAt: null,
-      batchStages: [],
-      stages: [
-        {
-          id: newStageId,
-          batchStageId: `bs-${newStageId}`,
-          recruitmentBatchId: newRecruitmentId,
-          stageTypeId: "st-10000000-0000-4000-8000-000000000001",
-          name: "Document Screening",
-          type: "screening",
-          durationDays: 7,
-          passingScore: 70,
-          ownerId: "u1",
-          startDate: openDate,
-          endDate: closeDate,
-          nextStageId: null,
-          isActive: true,
-        },
-      ],
-    }
-
-    onSuccess(newRecruitment)
-    onOpenChange(false)
-
-    // Reset form
-    setName("")
-    setDepartmentId("")
-    setDescription("")
-    setOpenDate("")
-    setCloseDate("")
-    setErrors({})
-  }
+  const {
+    name,
+    setName,
+    departmentId,
+    setDepartmentId,
+    description,
+    setDescription,
+    openDate,
+    setOpenDate,
+    closeDate,
+    setCloseDate,
+    errors,
+    clearFieldError,
+    departmentSelectItems,
+    isLoadingDepts,
+    handleSubmit,
+  } = useCreateRecruitmentForm({
+    existingCount,
+    onSuccess,
+    onOpenChange,
+  })
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -155,7 +84,7 @@ export function CreateRecruitmentDialog({
               value={name}
               onChange={(e) => {
                 setName(e.target.value)
-                if (errors.name) setErrors((prev) => ({ ...prev, name: "" }))
+                clearFieldError("name")
               }}
               aria-invalid={!!errors.name}
               className="h-10 rounded-full border-0 bg-muted px-4 text-sm text-foreground placeholder:text-muted-foreground transition-all duration-150 outline-none focus-visible:bg-card focus-visible:ring-2 focus-visible:ring-primary shadow-none"
@@ -176,7 +105,7 @@ export function CreateRecruitmentDialog({
               onValueChange={(val) => {
                 if (val) {
                   setDepartmentId(val)
-                  if (errors.departmentId) setErrors((prev) => ({ ...prev, departmentId: "" }))
+                  clearFieldError("departmentId")
                 }
               }}
             >
@@ -226,7 +155,7 @@ export function CreateRecruitmentDialog({
                 value={openDate}
                 onChange={(val) => {
                   setOpenDate(val)
-                  if (errors.openDate) setErrors((prev) => ({ ...prev, openDate: "" }))
+                  clearFieldError("openDate")
                 }}
                 aria-invalid={!!errors.openDate}
                 placeholder="dd/mm/yyyy"
@@ -246,7 +175,7 @@ export function CreateRecruitmentDialog({
                 minDate={openDate || undefined}
                 onChange={(val) => {
                   setCloseDate(val)
-                  if (errors.closeDate) setErrors((prev) => ({ ...prev, closeDate: "" }))
+                  clearFieldError("closeDate")
                 }}
                 aria-invalid={!!errors.closeDate}
                 placeholder="dd/mm/yyyy"
@@ -268,4 +197,3 @@ export function CreateRecruitmentDialog({
     </Dialog>
   )
 }
-

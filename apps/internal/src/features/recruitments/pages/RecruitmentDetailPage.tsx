@@ -1,14 +1,9 @@
-import { useMemo, useState } from "react"
-import { useNavigate } from "@tanstack/react-router"
 import { ArrowLeft } from "lucide-react"
 
 import { Button } from "@workspace/ui/components/button"
 import { Skeleton } from "@workspace/ui/components/skeleton"
 import { PageHeader, BackButton, Panel, ErrorState } from "@/shared/components"
-import { initialRecruitments, recruitmentPipeline } from "../data/mock"
-import { getRecruitmentInterviewSessions, mockInterviewSessions } from "../data/interviewMock"
 import { StagePipeline } from "../components/StagePipeline"
-import { useGetBatchByIdQuery } from "../api/recruitments-api"
 import {
   RecruitmentDetailHeader,
   SummaryTab,
@@ -16,73 +11,35 @@ import {
   CandidatesTab,
   InterviewsTab,
 } from "../components/detail"
-import { candidates } from "@/data/mock"
 import { cn } from "@/shared/lib/utils"
+import {
+  useRecruitmentDetail,
+  type TabKey,
+  type UseRecruitmentDetailProps,
+} from "../hooks/useRecruitmentDetail"
 
-export type TabKey =
-  | "summary"
-  | "stages"
-  | "candidates"
-  | "interviews"
+export type { TabKey }
 
-export interface RecruitmentDetailPageProps {
-  id: string
-  activeTab?: TabKey
-  selectedStage?: number | null
-  onTabChange?: (tab: TabKey) => void
-  onStageChange?: (stageIndex: number | null) => void
-}
+export interface RecruitmentDetailPageProps extends UseRecruitmentDetailProps {}
 
-export function RecruitmentDetailPage({
-  id,
-  activeTab: controlledTab,
-  selectedStage: controlledStage,
-  onTabChange,
-  onStageChange,
-}: RecruitmentDetailPageProps) {
-  const navigate = useNavigate()
-  const [internalTab, setInternalTab] = useState<TabKey>("summary")
-  const [internalStage, setInternalStage] = useState<number | null>(null)
-
-  const activeTab = controlledTab ?? internalTab
-  const selectedStage = controlledStage !== undefined ? controlledStage : internalStage
-
-  const handleTabChange = (newTab: TabKey) => {
-    if (onTabChange) {
-      onTabChange(newTab)
-    } else {
-      setInternalTab(newTab)
-    }
-  }
-
-  const handleStageChange = (newStage: number | null) => {
-    if (onStageChange) {
-      onStageChange(newStage)
-    } else {
-      setInternalStage(newStage)
-    }
-  }
-
-  const { data: apiRecruitment, isLoading, isError, refetch } = useGetBatchByIdQuery(id)
-
-  const recruitment = useMemo(() => {
-    return apiRecruitment ?? initialRecruitments.find((r) => r.id === id) ?? null
-  }, [apiRecruitment, id])
-
-  // Related data counts matching ERD records
-  const recruitmentCandidates = useMemo(() => {
-    return candidates.filter((c) => c.recruitmentId === id)
-  }, [id])
-
-  const recruitmentInterviews = useMemo(() => {
-    const list = getRecruitmentInterviewSessions(id)
-    return list.length > 0 ? list : mockInterviewSessions
-  }, [id])
-
-  const pipelineItems = useMemo(() => {
-    if (!recruitment) return []
-    return recruitmentPipeline(recruitment)
-  }, [recruitment])
+export function RecruitmentDetailPage(props: RecruitmentDetailPageProps) {
+  const { id } = props
+  const {
+    recruitment,
+    isLoading,
+    isError,
+    refetch,
+    activeTab,
+    selectedStage,
+    tabs,
+    pipelineItems,
+    handleTabChange,
+    handleStageChange,
+    handleStageSelect,
+    handleCreateStage,
+    handleEditStage,
+    handleBackToList,
+  } = useRecruitmentDetail(props)
 
   // 1. Loading state with identical layout structure
   if (isLoading && !recruitment) {
@@ -164,7 +121,7 @@ export function RecruitmentDetailPage({
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => navigate({ to: "/recruitments" })}
+              onClick={handleBackToList}
               className="gap-2 rounded-full border-0 bg-muted px-4 hover:bg-muted/40 cursor-pointer"
             >
               <ArrowLeft className="size-4" />
@@ -174,35 +131,6 @@ export function RecruitmentDetailPage({
         />
       </div>
     )
-  }
-
-  const handleStageSelect = (index: number) => {
-    if (activeTab === "candidates" && selectedStage === index) {
-      handleStageChange(null)
-    } else {
-      handleStageChange(index)
-    }
-  }
-
-  const tabs: { key: TabKey; label: string; count?: number }[] = [
-    { key: "summary", label: "Summary" },
-    { key: "stages", label: "Stages", count: (recruitment.batchStages || recruitment.stages || []).length },
-    { key: "candidates", label: "Candidates", count: recruitmentCandidates.length },
-    { key: "interviews", label: "Interviews", count: recruitmentInterviews.length },
-  ]
-
-  const handleCreateStage = () => {
-    navigate({
-      to: "/recruitments/$id/stages",
-      params: { id: recruitment.id },
-    })
-  }
-
-  const handleEditStage = () => {
-    navigate({
-      to: "/recruitments/$id/stages",
-      params: { id: recruitment.id },
-    })
   }
 
   return (
@@ -234,24 +162,26 @@ export function RecruitmentDetailPage({
             return (
               <button
                 key={tab.key}
-                role="tab"
                 type="button"
+                role="tab"
                 aria-selected={isActive}
+                aria-controls={`panel-${tab.key}`}
+                id={`tab-${tab.key}`}
                 onClick={() => handleTabChange(tab.key)}
                 className={cn(
-                  "inline-flex h-10 items-center gap-1.5 rounded-full px-4 py-1.5 text-sm font-medium transition-all duration-150 cursor-pointer select-none",
+                  "inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold transition-all duration-200 cursor-pointer",
                   isActive
-                    ? "bg-primary-50 text-primary font-semibold shadow-xs"
-                    : "text-muted-foreground hover:bg-muted/40 hover:text-foreground"
+                    ? "bg-primary text-primary-foreground shadow-sm"
+                    : "text-muted-foreground hover:bg-muted hover:text-foreground"
                 )}
               >
                 <span>{tab.label}</span>
                 {tab.count !== undefined && (
                   <span
                     className={cn(
-                      "rounded-full px-2 py-0.5 text-xs tabular-nums font-semibold",
+                      "inline-flex h-5 min-w-5 items-center justify-center rounded-full px-1.5 text-xs font-semibold tabular-nums",
                       isActive
-                        ? "bg-primary/10 text-primary"
+                        ? "bg-primary-foreground/20 text-primary-foreground"
                         : "bg-muted text-muted-foreground"
                     )}
                   >
@@ -264,7 +194,12 @@ export function RecruitmentDetailPage({
         </div>
       </div>
 
-      <section aria-label={tabs.find((t) => t.key === activeTab)?.label}>
+      <div
+        role="tabpanel"
+        id={`panel-${activeTab}`}
+        aria-labelledby={`tab-${activeTab}`}
+        className="focus-visible:outline-none"
+      >
         {activeTab === "summary" && <SummaryTab recruitment={recruitment} />}
         {activeTab === "stages" && (
           <StagesTab
@@ -283,7 +218,7 @@ export function RecruitmentDetailPage({
         {activeTab === "interviews" && (
           <InterviewsTab recruitment={recruitment} />
         )}
-      </section>
+      </div>
     </div>
   )
 }
