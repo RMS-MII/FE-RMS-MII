@@ -65,7 +65,7 @@ export function StagePipeline({
         </div>
         <div className="flex items-center gap-2">
           <CreateButton onClick={onCreateStage}>
-            Create Stage
+            Configure Stage
           </CreateButton>
         </div>
       </div>
@@ -125,7 +125,7 @@ export function StagePipeline({
     <div className={cn("w-full", className)}>
       <ol
         aria-label={label}
-        className="hidden overflow-hidden rounded-xl md:flex select-none"
+        className="hidden overflow-hidden rounded-xl md:flex select-none gap-2"
       >
         {items.map((it, i) => (
           <li

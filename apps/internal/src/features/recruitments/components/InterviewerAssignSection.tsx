@@ -1,10 +1,12 @@
 import { useMemo } from "react"
-import { Trash2, Users } from "lucide-react"
+import { Trash2, Users, Loader2 } from "lucide-react"
 import { Label } from "@workspace/ui/components/label"
 import { Button } from "@workspace/ui/components/button"
 import { SearchCombobox, type SearchComboboxOption } from "@/shared/components"
 import { mockDepartments, mockEmployees } from "../data/mock"
-import type { StageEmployeeStatus, StageInterviewerAssignment } from "../types"
+import type { StageEmployeeStatus, StageInterviewerAssignment, Employee } from "../types"
+import { useGetEmployeesQuery } from "../api/employees-api"
+import { useGetDepartmentsQuery } from "../api/departments-api"
 
 export interface InterviewerAssignSectionProps {
   id?: string
@@ -14,6 +16,8 @@ export interface InterviewerAssignSectionProps {
   optional?: boolean
   helperText?: string
   className?: string
+  employees?: Employee[]
+  isLoadingEmployees?: boolean
 }
 
 const statusBadgeStyles: Record<StageEmployeeStatus, string> = {
@@ -36,27 +40,53 @@ export function InterviewerAssignSection({
   optional = false,
   helperText = "Newly assigned interviewers will have Pending status until confirmed.",
   className,
+  employees: propEmployees,
+  isLoadingEmployees: propIsLoadingEmployees,
 }: InterviewerAssignSectionProps) {
+  // Query employees if not passed from parent
+  const {
+    data: apiEmployees,
+    isLoading: isFetchingEmployees,
+  } = useGetEmployeesQuery(undefined, {
+    skip: Boolean(propEmployees),
+  })
+
+  // Query departments for grouping in combobox
+  const { data: apiDepartments } = useGetDepartmentsQuery()
+
+  const finalEmployees = useMemo(() => {
+    if (propEmployees && propEmployees.length > 0) return propEmployees
+    if (apiEmployees && apiEmployees.length > 0) return apiEmployees
+    return mockEmployees
+  }, [propEmployees, apiEmployees])
+
+  const finalDepartments = useMemo(() => {
+    if (apiDepartments && apiDepartments.length > 0) return apiDepartments
+    return mockDepartments
+  }, [apiDepartments])
+
+  const isLoading = propIsLoadingEmployees ?? isFetchingEmployees
+
   const departmentCategories = useMemo(() => {
-    return mockDepartments.map((d) => ({
+    return finalDepartments.map((d) => ({
       label: d.name,
       value: d.id,
     }))
-  }, [])
+  }, [finalDepartments])
 
   const employeeOptions = useMemo<SearchComboboxOption[]>(() => {
-    return mockEmployees.map((e) => {
-      const dept = mockDepartments.find((d) => d.id === e.departmentId)
+    return finalEmployees.map((e) => {
+      const dept = finalDepartments.find((d) => d.id === e.departmentId)
       return {
         id: e.id,
         label: e.fullName,
         subLabel: e.jobTitle || "Employee",
         category: e.departmentId,
-        categoryLabel: dept?.name || "General",
+        categoryLabel: e.departmentName || dept?.name || "General",
         meta: e.employeeNumber,
       }
     })
-  }, [])
+  }, [finalEmployees, finalDepartments])
 
   const selectedIds = useMemo(() => {
     return assignments.map((a) => a.employeeId)
@@ -65,20 +95,20 @@ export function InterviewerAssignSection({
   const assignedEmployees = useMemo(() => {
     return assignments
       .map((item) => {
-        const emp = mockEmployees.find((e) => e.id === item.employeeId)
+        const emp = finalEmployees.find((e) => e.id === item.employeeId)
         if (!emp) return null
-        const dept = mockDepartments.find((d) => d.id === emp.departmentId)
+        const dept = finalDepartments.find((d) => d.id === emp.departmentId)
         return {
           ...emp,
           status: item.status,
-          departmentName: dept?.name ?? "General",
+          departmentName: (emp.departmentName || dept?.name) ?? "General",
         }
       })
-      .filter(Boolean) as (typeof mockEmployees[number] & {
+      .filter(Boolean) as (Employee & {
         status: StageEmployeeStatus
         departmentName: string
       })[]
-  }, [assignments])
+  }, [assignments, finalEmployees, finalDepartments])
 
   const handleAdd = (employeeId: string) => {
     if (!employeeId || assignments.some((a) => a.employeeId === employeeId)) return
@@ -105,22 +135,31 @@ export function InterviewerAssignSection({
             <span className="text-muted-foreground font-normal text-xs">(Optional)</span>
           )}
         </Label>
-        {assignedEmployees.length > 0 && (
-          <span className="text-xs text-muted-foreground tabular-nums font-normal">
-            {assignedEmployees.length} assigned
-          </span>
-        )}
+        <div className="flex items-center gap-2">
+          {isLoading && (
+            <span className="flex items-center gap-1 text-[11px] text-muted-foreground">
+              <Loader2 className="size-3 animate-spin" />
+              Loading...
+            </span>
+          )}
+          {assignedEmployees.length > 0 && (
+            <span className="text-xs text-muted-foreground tabular-nums font-normal">
+              {assignedEmployees.length} assigned
+            </span>
+          )}
+        </div>
       </div>
 
       <SearchCombobox
         id={id}
         options={employeeOptions}
         categories={departmentCategories}
-        placeholder="+ Add interviewer..."
+        placeholder={isLoading ? "Loading interviewers..." : "+ Add interviewer..."}
         searchPlaceholder="Search by name, title, or employee ID..."
         emptyText="No interviewers found in this department."
         selectedIds={selectedIds}
         onSelect={(opt) => handleAdd(opt.id)}
+        disabled={isLoading}
         closeOnSelect={false}
       />
 
@@ -173,4 +212,3 @@ export function InterviewerAssignSection({
     </div>
   )
 }
-

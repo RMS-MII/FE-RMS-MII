@@ -20,11 +20,14 @@ export function mapBatchStagesToStages(r: Recruitment): Stage[] {
         }
       }
 
-      // Check if backend returned interviewers on the batch stage
+      // Extract existing interviewers with name & title from API batch stage
       const assignedList: StageInterviewerAssignment[] =
         (bs as any).interviewers?.map((inv: any) => ({
           employeeId: inv.employeeId,
           status: (inv.statusName?.toLowerCase() === "accepted" ? "accepted" : "pending") as StageEmployeeStatus,
+          employeeName: inv.fullName,
+          employeeEmail: inv.email,
+          jobTitle: inv.jobTitle,
         })) ?? []
 
       return {
@@ -32,6 +35,8 @@ export function mapBatchStagesToStages(r: Recruitment): Stage[] {
         batchStageId: bs.id,
         recruitmentBatchId: bs.recruitmentBatchId,
         stageTypeId: bs.stageTypeId,
+        stageTypeName: bs.stageTypeName,
+        stageCategory: bs.stageCategory,
         name: bs.stageName,
         type: (bs.stageCategory?.toLowerCase() ?? "screening") as any,
         durationDays: duration,
@@ -56,17 +61,18 @@ export interface UseStagesTabProps {
 export function useStagesTab({ recruitment }: UseStagesTabProps) {
   const [stages, setStages] = useState<Stage[]>(() => mapBatchStagesToStages(recruitment))
   const [assignStage, setAssignStage] = useState<Stage | null>(null)
-  const [assignIndex, setAssignIndex] = useState<number>(0)
+  const [assignIndex, setAssignIndex] = useState<number | undefined>(undefined)
   const [isDialogOpen, setIsDialogOpen] = useState(false)
 
   const [assignInterviewersApi] = useAssignStageInterviewersMutation()
 
-  // Sync state if parent recruitment stages update
+  // Keep stages updated when recruitment data changes
   useEffect(() => {
     setStages(mapBatchStagesToStages(recruitment))
-  }, [recruitment.batchStages, recruitment.stages])
+  }, [recruitment])
 
-  const totalDays = stages.reduce((acc, s) => acc + (s.durationDays || 0), 0)
+  // Compute total duration across all stages
+  const totalDays = stages.reduce((acc, curr) => acc + (curr.durationDays || 0), 0)
 
   const handleOpenAssignDialog = (stage: Stage, index: number) => {
     setAssignStage(stage)
@@ -76,6 +82,8 @@ export function useStagesTab({ recruitment }: UseStagesTabProps) {
 
   const handleCloseAssignDialog = () => {
     setIsDialogOpen(false)
+    setAssignStage(null)
+    setAssignIndex(undefined)
   }
 
   const handleSaveInterviewers = async (
@@ -84,7 +92,7 @@ export function useStagesTab({ recruitment }: UseStagesTabProps) {
   ) => {
     const updatedIds = assignments.map((a) => a.employeeId)
 
-    // 1. Update local component state
+    // 1. Optimistic update
     setStages((prev) =>
       prev.map((s) => {
         if (s.id !== stageId) return s
@@ -98,20 +106,17 @@ export function useStagesTab({ recruitment }: UseStagesTabProps) {
     )
 
     // 2. Persist in mock recruitment data so changes reflect across pages if legacy mock
-    const rIdx = initialRecruitments.findIndex((r) => r.id === recruitment.id)
-    if (rIdx !== -1) {
-      initialRecruitments[rIdx] = {
-        ...initialRecruitments[rIdx],
-        stages: (initialRecruitments[rIdx].stages ?? []).map((s) => {
-          if (s.id !== stageId) return s
-          return {
-            ...s,
-            assignedInterviewers: assignments,
-            interviewerIds: updatedIds,
-            ownerId: updatedIds[0] || "",
-          }
-        }),
-      }
+    const targetBatch = initialRecruitments.find((b) => b.id === recruitment.id)
+    if (targetBatch && targetBatch.stages) {
+      targetBatch.stages = targetBatch.stages.map((s) => {
+        if (s.id !== stageId) return s
+        return {
+          ...s,
+          assignedInterviewers: assignments,
+          interviewerIds: updatedIds,
+          ownerId: updatedIds[0] || "",
+        }
+      })
     }
 
     // 3. Call backend API if real recruitment batch ID
@@ -124,8 +129,8 @@ export function useStagesTab({ recruitment }: UseStagesTabProps) {
             interviewerEmployeeIds: updatedIds,
           },
         }).unwrap()
-      } catch (err) {
-        console.error("Failed to assign interviewers via API:", err)
+      } catch (err: any) {
+        console.error("Failed to assign interviewers on server:", err)
       }
     }
   }

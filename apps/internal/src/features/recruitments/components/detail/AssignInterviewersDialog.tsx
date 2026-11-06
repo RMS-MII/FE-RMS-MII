@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react"
+import { useState, useEffect } from "react"
 import {
   Dialog,
   DialogContent,
@@ -9,7 +9,6 @@ import {
 } from "@workspace/ui/components/dialog"
 import { CancelButton, SaveButton } from "@/shared/components"
 import { safeFormatDate } from "@/shared/lib/format"
-import { mockStageTypes } from "../../data/mock"
 import type { Stage, StageEmployeeStatus, StageInterviewerAssignment } from "../../types"
 import { InterviewerAssignSection } from "../InterviewerAssignSection"
 
@@ -54,11 +53,6 @@ export function AssignInterviewersDialog({
     }
   }, [stage, open])
 
-  const stageType = useMemo(() => {
-    if (!stage?.stageTypeId) return null
-    return mockStageTypes.find((st) => st.id === stage.stageTypeId)
-  }, [stage?.stageTypeId])
-
   const handleSave = () => {
     if (!stage) return
     onSave(stage.id, assignments)
@@ -88,8 +82,8 @@ export function AssignInterviewersDialog({
               <span className="font-semibold text-foreground text-sm">
                 {stage.name}
               </span>
-              <span className="shrink-0 rounded-full bg-primary/10 px-2.5 py-0.5 text-[11px] font-semibold text-primary">
-                {stageType?.name ?? stage.type}
+              <span className="shrink-0 rounded-full bg-primary/10 px-2.5 py-0.5 text-[11px] font-semibold text-primary capitalize">
+                {stage.stageTypeName || stage.stageCategory || stage.type}
               </span>
             </div>
             <div className="text-muted-foreground">

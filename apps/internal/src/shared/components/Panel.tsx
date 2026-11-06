@@ -10,7 +10,7 @@ export function Panel({ children, className, ...props }: PanelProps) {
   return (
     <div
       className={cn(
-        "overflow-hidden rounded-2xl border border-border bg-card shadow-card",
+        "overflow-hidden rounded-2xl border border-border bg-card",
         className
       )}
       {...props}

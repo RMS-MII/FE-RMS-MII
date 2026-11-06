@@ -181,7 +181,9 @@ export function CandidatesTab({
         )}
 
         {/* Removable Active Filter Chips */}
-        <FilterChips chips={activeChips} onReset={handleResetFilters} />
+        <div className="border-b border-border bg-muted/20 px-6 py-2.5">
+          <FilterChips chips={activeChips} onReset={handleResetFilters} />
+        </div>  
 
         {/* Candidate Application Table */}
         <div className="overflow-x-auto">

@@ -4,12 +4,13 @@ import { Button } from "@workspace/ui/components/button"
 import { Panel, PanelHeader, CreateButton, EmptyState } from "@/shared/components"
 import { safeFormatDate, getDurationDays } from "@/shared/lib/format"
 import { cn } from "@/shared/lib/utils"
-import { mockStageTypes } from "../../data/mock"
+import type { StageTypeDto } from "../../types"
 import type { EditableStage } from "./types"
 
 export interface StageListProps {
   stages: EditableStage[]
   selectedId: string | null
+  stageTypes?: StageTypeDto[]
   onSelect: (tempId: string) => void
   onAddStage: () => void
   onMoveUp: (index: number) => void
@@ -21,6 +22,7 @@ export interface StageListProps {
 export function StageList({
   stages,
   selectedId,
+  stageTypes = [],
   onSelect,
   onAddStage,
   onMoveUp,
@@ -60,7 +62,7 @@ export function StageList({
               const isSelected = selectedId === stage.tempId
               const isFirst = index === 0
               const isLast = index === stages.length - 1
-              const stageType = mockStageTypes.find((st) => st.id === stage.stageTypeId)
+              const stageType = stageTypes.find((st) => st.id === stage.stageTypeId)
 
               return (
                 <li

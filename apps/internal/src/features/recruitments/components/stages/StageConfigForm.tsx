@@ -1,5 +1,3 @@
-import { useMemo } from "react"
-import { Trash2 } from "lucide-react"
 import { Button } from "@workspace/ui/components/button"
 import { Input } from "@workspace/ui/components/input"
 import {
@@ -11,16 +9,18 @@ import {
   SelectValue,
 } from "@workspace/ui/components/select"
 import { Panel, PanelHeader, DatePicker } from "@/shared/components"
-import { mockStageTypes } from "../../data/mock"
+import type { StageTypeDto } from "../../types"
+import { formatStageCategory, stageCategoryToLegacyType } from "../../utils"
 import type { EditableStage } from "./types"
-import type { LegacyStageType, StageEmployeeStatus, StageInterviewerAssignment } from "../../types"
-import { InterviewerAssignSection } from "../InterviewerAssignSection"
+import { Trash2 } from "lucide-react"
 
 export interface StageConfigFormProps {
   selectedStage: EditableStage | null
   selectedIndex: number
   totalStages: number
   nextStage: EditableStage | null
+  stageTypes?: StageTypeDto[]
+  isLoadingStageTypes?: boolean
   onFieldChange: <K extends keyof EditableStage>(
     field: K,
     value: EditableStage[K]
@@ -32,6 +32,7 @@ export function StageConfigForm({
   selectedStage,
   selectedIndex,
   totalStages,
+  stageTypes = [],
   onFieldChange,
   onRemoveStage,
 }: StageConfigFormProps) {
@@ -48,43 +49,17 @@ export function StageConfigForm({
     )
   }
 
-  const stageAssignments = useMemo<StageInterviewerAssignment[]>(() => {
-    if (selectedStage.assignedInterviewers && selectedStage.assignedInterviewers.length > 0) {
-      return selectedStage.assignedInterviewers
-    }
-    const fallback =
-      selectedStage.interviewerIds && selectedStage.interviewerIds.length > 0
-        ? selectedStage.interviewerIds
-        : selectedStage.ownerId
-        ? [selectedStage.ownerId]
-        : []
-    return fallback.map((id) => ({
-      employeeId: id,
-      status: "pending" as StageEmployeeStatus,
-    }))
-  }, [selectedStage.assignedInterviewers, selectedStage.interviewerIds, selectedStage.ownerId])
-
-  const handleInterviewerAssignmentsChange = (assignments: StageInterviewerAssignment[]) => {
-    const ids = assignments.map((a) => a.employeeId)
-    onFieldChange("assignedInterviewers", assignments)
-    onFieldChange("interviewerIds", ids)
-    onFieldChange("ownerId", ids[0] || "")
-  }
-
   const handleStageTypeChange = (stageTypeId: string) => {
-    const selectedType = mockStageTypes.find((st) => st.id === stageTypeId)
-    let category: LegacyStageType = "screening"
-    if (selectedType?.stageCategory?.toLowerCase().includes("test")) category = "test"
-    else if (selectedType?.stageCategory?.toLowerCase().includes("interview")) category = "interview"
-    else if (selectedType?.stageCategory?.toLowerCase().includes("offering")) category = "offering"
+    const selectedType = stageTypes.find((st) => st.id === stageTypeId)
+    const category = stageCategoryToLegacyType(selectedType?.stageCategory)
 
     onFieldChange("stageTypeId", stageTypeId)
     onFieldChange("type", category)
 
-    // Update name if name was default
+    // Update name if name was empty or matched a known stage type's name
     if (
       !selectedStage.name.trim() ||
-      mockStageTypes.some((m) => m.name === selectedStage.name)
+      stageTypes.some((m) => m.name === selectedStage.name)
     ) {
       if (selectedType) {
         onFieldChange("name", selectedType.name)
@@ -106,8 +81,8 @@ export function StageConfigForm({
             Stage Type <span className="text-destructive">*</span>
           </label>
           <Select
-            items={mockStageTypes.map((st) => ({
-              label: `${st.name} (${st.stageCategory || "General"})`,
+            items={stageTypes.map((st) => ({
+              label: `${st.name} (${formatStageCategory(st.stageCategory)})`,
               value: st.id,
             }))}
             value={selectedStage.stageTypeId}
@@ -120,9 +95,9 @@ export function StageConfigForm({
             </SelectTrigger>
             <SelectContent className="rounded-xl">
               <SelectGroup>
-                {mockStageTypes.map((st) => (
+                {stageTypes.map((st) => (
                   <SelectItem key={st.id} value={st.id}>
-                    {st.name} ({st.stageCategory})
+                    {st.name} ({formatStageCategory(st.stageCategory)})
                   </SelectItem>
                 ))}
               </SelectGroup>
@@ -189,15 +164,6 @@ export function StageConfigForm({
             />
           </div>
         </div>
-
-        {/* Unified Interviewer Assignment Section */}
-        <InterviewerAssignSection
-          id="stage-config-interviewers"
-          label="Assigned Interviewers"
-          optional
-          assignments={stageAssignments}
-          onChange={handleInterviewerAssignmentsChange}
-        />
 
         {/* Delete Stage */}
         <div className="border-t border-border pt-4">

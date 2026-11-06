@@ -63,6 +63,7 @@ export const baseApi = createApi({
     "Auth",
     "Recruitment",
     "Department",
+    "Employee",
     "Stage",
     "Candidate",
     "Interview",

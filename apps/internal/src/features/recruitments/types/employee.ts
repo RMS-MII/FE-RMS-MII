@@ -6,6 +6,7 @@ export interface Employee {
   id: string
   managerId?: string | null
   departmentId: string
+  departmentName?: string
   employeeNumber: string
   fullName: string
   email: string
@@ -15,4 +16,3 @@ export interface Employee {
   createdAt?: string
   updatedAt?: string | null
 }
-

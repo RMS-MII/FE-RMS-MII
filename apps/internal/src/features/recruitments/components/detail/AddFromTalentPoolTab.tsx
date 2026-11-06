@@ -196,11 +196,11 @@ export function AddFromTalentPoolTab({
         <CancelButton onClick={onCancel} disabled={isSubmitting} />
         <SaveButton
           onClick={handleSubmit}
-          disabled={!hasStages || selectedCandidates.length === 0 || isSubmitting}
+          disabled={!hasStages || selectedCandidates.length === 0}
+          isLoading={isSubmitting}
+          loadingText="Adding Candidates..."
         >
-          {isSubmitting
-            ? "Adding Candidates..."
-            : `Add Selected (${selectedCandidates.length})`}
+          Add Selected ({selectedCandidates.length})
         </SaveButton>
       </DialogFooter>
     </>
