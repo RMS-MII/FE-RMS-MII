@@ -31,6 +31,8 @@ export function CandidateDetailDialog({
 }: CandidateDetailDialogProps) {
   if (!candidate) return null
 
+  const isCvUrl = candidate.cv ? candidate.cv.startsWith("http") : false
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-xl rounded-2xl">
@@ -124,7 +126,9 @@ export function CandidateDetailDialog({
               <div className="pt-1 flex flex-wrap items-center gap-2">
                 {candidate.cv ? (
                   <a
-                    href={`#${candidate.cv}`}
+                    href={isCvUrl ? candidate.cv : `#${candidate.cv}`}
+                    target={isCvUrl ? "_blank" : undefined}
+                    rel="noreferrer"
                     className="inline-flex items-center gap-1 rounded-full border border-border bg-muted/50 px-2.5 py-1 text-[11px] font-medium text-foreground hover:bg-muted transition-colors"
                   >
                     <FileText className="size-3 text-primary" />
