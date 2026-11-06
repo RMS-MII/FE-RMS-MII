@@ -59,6 +59,24 @@ export interface StageInterviewerAssignment {
   note?: string
 }
 
+export interface UpdateBatchStageItem {
+  stageTypeId: string
+  stageName: string
+  isActive: boolean
+  passingScore?: number | null
+  startDate: string
+  endDate: string
+}
+
+export interface UpdateBatchStagesRequest {
+  batchId: string
+  stages: UpdateBatchStageItem[]
+}
+
+export interface AssignInterviewersRequest {
+  interviewerEmployeeIds: string[]
+}
+
 /** UI pipeline stage with ERD BatchStage metadata */
 export interface Stage {
   id: string

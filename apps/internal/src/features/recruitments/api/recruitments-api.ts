@@ -1,5 +1,13 @@
 import { baseApi } from "@/shared/api/base-api"
-import type { Recruitment, PagedResult, GetBatchesParams, CreateBatchRequest } from "../types"
+import type {
+  Recruitment,
+  PagedResult,
+  GetBatchesParams,
+  CreateBatchRequest,
+  BatchStage,
+  UpdateBatchStagesRequest,
+  AssignInterviewersRequest,
+} from "../types"
 
 export const recruitmentsApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
@@ -37,6 +45,33 @@ export const recruitmentsApi = baseApi.injectEndpoints({
       }),
       invalidatesTags: [{ type: "Recruitment", id: "LIST" }],
     }),
+    updateBatchStages: builder.mutation<
+      BatchStage[],
+      { id: string; body: UpdateBatchStagesRequest }
+    >({
+      query: ({ id, body }) => ({
+        url: `/batches/${id}/stages`,
+        method: "PUT",
+        body,
+      }),
+      invalidatesTags: (_result, _err, { id }) => [
+        { type: "Recruitment", id },
+        { type: "Recruitment", id: "LIST" },
+      ],
+    }),
+    assignStageInterviewers: builder.mutation<
+      any,
+      { batchId: string; stageId: string; body: AssignInterviewersRequest }
+    >({
+      query: ({ batchId, stageId, body }) => ({
+        url: `/batches/${batchId}/stages/${stageId}/interviewers`,
+        method: "POST",
+        body,
+      }),
+      invalidatesTags: (_result, _err, { batchId }) => [
+        { type: "Recruitment", id: batchId },
+      ],
+    }),
   }),
 })
 
@@ -46,4 +81,6 @@ export const {
   useLazyGetBatchesQuery,
   useLazyGetBatchByIdQuery,
   useCreateBatchMutation,
+  useUpdateBatchStagesMutation,
+  useAssignStageInterviewersMutation,
 } = recruitmentsApi

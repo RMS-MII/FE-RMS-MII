@@ -31,7 +31,7 @@ export function StageOverviewBanner({
           <div className="h-3 w-px bg-border hidden sm:block" />
           <div>
             <span className="text-muted-foreground">Department: </span>
-            <span className="font-medium text-foreground">{recruitment.division}</span>
+            <span className="font-medium text-foreground">{recruitment.departmentName || recruitment.division || "—"}</span>
           </div>
           <div className="h-3 w-px bg-border hidden sm:block" />
           <div>
