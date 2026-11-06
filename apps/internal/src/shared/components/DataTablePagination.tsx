@@ -49,7 +49,7 @@ export function DataTablePagination({
   return (
     <div
       className={cn(
-        "flex flex-col items-center justify-between gap-4 border-t border-border px-5 py-3.5 sm:flex-row",
+        "flex flex-col items-center justify-between gap-4 sm:flex-row",
         className
       )}
     >

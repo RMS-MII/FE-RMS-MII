@@ -5,7 +5,7 @@ import { RecruitmentsListPage } from "@/features/recruitments"
 export const recruitmentListSearchSchema = z.object({
   search: z.string().optional().catch(undefined),
   status: z
-    .enum(["draft", "running", "completed", "closed"])
+    .string()
     .optional()
     .catch(undefined),
   division: z.string().optional().catch(undefined),

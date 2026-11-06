@@ -24,21 +24,66 @@ const currencyFmt = new Intl.NumberFormat("id-ID", {
   maximumFractionDigits: 0,
 })
 
-/** ISO date (YYYY-MM-DD) parsed as a local calendar date. */
-export function parseDate(iso: string): Date {
-  const [y, m, d] = iso.split("-").map(Number)
-  return new Date(y, m - 1, d)
+/** ISO date (YYYY-MM-DD or full ISO 8601 YYYY-MM-DDTHH:mm:ssZ) parsed safely. */
+export function parseDate(iso?: string): Date {
+  if (!iso) return new Date()
+  const clean = iso.includes("T") ? iso.split("T")[0] : iso.split(" ")[0]
+  const parts = clean.split("-").map(Number)
+  if (parts.length === 3) {
+    const [y, m, d] = parts
+    if (!isNaN(y) && !isNaN(m) && !isNaN(d) && y > 0 && m > 0 && d > 0) {
+      return new Date(y, m - 1, d)
+    }
+  }
+  const fallback = new Date(iso)
+  return isNaN(fallback.getTime()) ? new Date() : fallback
 }
 
-export const formatDate = (iso: string): string => dateFmt.format(parseDate(iso))
-export const formatDay = (iso: string): string => dayFmt.format(parseDate(iso))
-export const formatLongDay = (iso: string): string => longDayFmt.format(parseDate(iso))
+export const formatDate = (iso?: string): string => {
+  if (!iso) return "-"
+  try {
+    const d = parseDate(iso)
+    if (isNaN(d.getTime())) return "-"
+    return dateFmt.format(d)
+  } catch {
+    return "-"
+  }
+}
+
+export const formatDay = (iso?: string): string => {
+  if (!iso) return "-"
+  try {
+    const d = parseDate(iso)
+    if (isNaN(d.getTime())) return "-"
+    return dayFmt.format(d)
+  } catch {
+    return "-"
+  }
+}
+
+export const formatLongDay = (iso?: string): string => {
+  if (!iso) return "-"
+  try {
+    const d = parseDate(iso)
+    if (isNaN(d.getTime())) return "-"
+    return longDayFmt.format(d)
+  } catch {
+    return "-"
+  }
+}
+
 export const formatNumber = (n: number): string => numberFmt.format(n)
 export const formatCurrency = (n: number): string => currencyFmt.format(n)
 
-export function formatPeriod(startIso: string, endIso: string): string {
-  if (!startIso || !endIso) return "-"
-  return `${formatDate(startIso)} – ${formatDate(endIso)}`
+export function formatPeriod(startIso?: string, endIso?: string): string {
+  if (!startIso && !endIso) return "-"
+  if (!startIso) return formatDate(endIso)
+  if (!endIso) return formatDate(startIso)
+  try {
+    return `${formatDate(startIso)} – ${formatDate(endIso)}`
+  } catch {
+    return "-"
+  }
 }
 
 /** Calculate duration in days between two dates. Returns null if invalid or end < start. */
@@ -60,8 +105,7 @@ export function getDurationDays(startDate?: string, endDate?: string): number | 
 export function safeFormatDate(dateStr?: string): string {
   if (!dateStr) return "-"
   try {
-    const clean = dateStr.includes("T") ? dateStr.split("T")[0] : dateStr
-    return formatDate(clean)
+    return formatDate(dateStr)
   } catch {
     return dateStr
   }
@@ -75,4 +119,3 @@ export function relativeDays(iso: string, today: string): string {
   if (diff === -1) return "Tomorrow"
   return `In ${-diff} days`
 }
-

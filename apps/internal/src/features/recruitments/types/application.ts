@@ -2,6 +2,99 @@
 // Matches BatchApplications & ApplicationStage tables in Document/ERD.sql
 // =====================================================================
 
+export interface CandidateDto {
+  id: string
+  fullName: string
+  gender?: number | null
+  email: string
+  phoneNumber?: string | null
+  birthDate?: string | null
+  cv?: string | null
+  portfolio?: string | null
+  education?: string | null
+  institution?: string | null
+  address?: string | null
+  expectedSalary?: number | null
+  gpa?: number | null
+  createdAt?: string
+  updatedAt?: string | null
+}
+
+export interface BatchApplicationListItemDto {
+  id: string
+  candidateId: string
+  recruitmentBatchId: string
+  codeApplication: string
+  appliedAt?: string | null
+  finalResultStatus?: string | null
+  status: number | string
+  notes?: string | null
+  offeringLetterStatus?: number | null
+  fileOfferingLetter?: string | null
+  createdAt?: string
+  updatedAt?: string | null
+  candidate?: CandidateDto | null
+}
+
+export interface GetBatchApplicationsParams {
+  id: string
+  search?: string
+  status?: number
+  page?: number
+  pageSize?: number
+}
+
+export interface ApplicationDetailDto {
+  id: string
+  candidateId: string
+  recruitmentBatchId: string
+  codeApplication: string
+  appliedAt?: string | null
+  finalResultStatus?: string | null
+  status: number | string
+  notes?: string | null
+  offeringLetterStatus?: number | null
+  fileOfferingLetter?: string | null
+  createdAt?: string
+  updatedAt?: string | null
+  candidate?: CandidateDto | null
+  batch?: any
+  stages?: any[]
+  summary?: any
+}
+
+export interface RegisterCandidateItem {
+  fullName: string
+  gender?: number
+  email: string
+  phoneNumber?: string
+  birthDate?: string
+  cv?: string
+  portfolio?: string
+  education?: string
+  institution?: string
+  address?: string
+  expectedSalary?: number
+  gpa?: number
+}
+
+export interface RegisterCandidatesCommand {
+  batchId: string
+  candidates: RegisterCandidateItem[]
+}
+
+export interface EvaluateStageCommand {
+  stageId: string
+  status?: number
+  notes?: string
+}
+
+export interface SetFinalResultCommand {
+  applicationId: string
+  finalResultStatus?: number
+  notes?: string
+}
+
 /** Matches BatchApplications table in ERD.sql */
 export interface BatchApplication {
   id: string
@@ -105,4 +198,3 @@ export interface CandidateApplicationItem {
   currentStageStatus: "pending" | "in_progress" | "passed" | "failed" | "accepted" | "rejected" | "withdrawn" | string
   applicationStages: CandidateApplicationStageItem[]
 }
-

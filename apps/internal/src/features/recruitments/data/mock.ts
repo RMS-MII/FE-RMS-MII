@@ -5,10 +5,10 @@ import type {
   Employee,
   BatchApplication,
   Recruitment,
-  RecruitmentStatus,
   Stage,
   LegacyStageType,
   PipelineItem,
+  StageState,
 } from "../types"
 import { candidates } from "@/data/mock"
 
@@ -542,11 +542,17 @@ export const mockBatchApplications: BatchApplication[] = candidates.map((c, inde
 // =====================================================================
 // UI Status Metadata & Helpers
 // =====================================================================
-export const recruitmentStatusMeta: Record<RecruitmentStatus, { label: string; tone: Tone }> = {
+export const recruitmentStatusMeta: Record<string, { label: string; tone: Tone }> = {
   draft: { label: "Draft", tone: "neutral" },
-  running: { label: "Running", tone: "info" },
-  completed: { label: "Completed", tone: "success" },
+  running: { label: "Open", tone: "success" },
+  completed: { label: "Closed", tone: "danger" },
   closed: { label: "Closed", tone: "danger" },
+  Draft: { label: "Draft", tone: "neutral" },
+  Open: { label: "Open", tone: "success" },
+  Closed: { label: "Closed", tone: "danger" },
+  "1": { label: "Draft", tone: "neutral" },
+  "2": { label: "Open", tone: "success" },
+  "3": { label: "Closed", tone: "danger" },
 }
 
 export function activeCandidateCount(r: Recruitment): number {
@@ -558,7 +564,33 @@ export function activeCandidateCount(r: Recruitment): number {
 }
 
 export function recruitmentPipeline(r: Recruitment): PipelineItem[] {
-  return r.stages.map((s, i) => ({
+  if (r.batchStages && Array.isArray(r.batchStages) && r.batchStages.length > 0) {
+    const activeIndex = r.batchStages.findIndex((s) => s.isActive)
+    return r.batchStages.map((s, i) => {
+      let state: StageState = "upcoming"
+      if (activeIndex === -1) {
+        state = "upcoming"
+      } else if (i < activeIndex) {
+        state = "done"
+      } else if (i === activeIndex) {
+        state = "current"
+      } else {
+        state = "upcoming"
+      }
+      return {
+        name: s.stageName || s.stageTypeName || `Stage ${i + 1}`,
+        count: candidates.filter(
+          (c) =>
+            c.recruitmentId === r.id &&
+            c.stageIndex === i &&
+            (c.status === "in_progress" || c.status === "pending" || c.status === "accepted")
+        ).length,
+        state,
+      }
+    })
+  }
+
+  return (r.stages ?? []).map((s, i) => ({
     name: s.name,
     count: candidates.filter(
       (c) =>
@@ -566,6 +598,6 @@ export function recruitmentPipeline(r: Recruitment): PipelineItem[] {
         c.stageIndex === i &&
         (c.status === "in_progress" || c.status === "pending" || c.status === "accepted")
     ).length,
-    state: i < r.currentStage ? "done" : i === r.currentStage ? "current" : "upcoming",
+    state: i < (r.currentStage ?? 0) ? "done" : i === (r.currentStage ?? 0) ? "current" : "upcoming",
   }))
 }

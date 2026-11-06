@@ -16,7 +16,7 @@ export function FilterChips({ chips, onReset }: FilterChipsProps) {
   if (chips.length === 0) return null
 
   return (
-    <div className="flex flex-wrap items-center gap-2 border-b border-border px-5 py-2.5">
+    <div className="flex flex-wrap items-center gap-2">
       <span className="text-xs text-muted-foreground">Active filters:</span>
       {chips.map((c) => (
         <span

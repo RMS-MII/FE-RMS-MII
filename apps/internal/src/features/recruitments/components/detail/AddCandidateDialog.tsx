@@ -7,9 +7,9 @@ import {
   DialogTitle,
 } from "@workspace/ui/components/dialog"
 import { cn } from "@/shared/lib/utils"
-import { mockCandidates } from "@/features/candidates/data/mock"
+import { useGetCandidatesQuery } from "@/features/candidates/api/candidates-api"
 import type { Recruitment, CandidateApplicationItem } from "../../types"
-import { Users, UserPlus } from "lucide-react"
+import { Users, UserPlus, AlertCircle } from "lucide-react"
 import { AddFromTalentPoolTab } from "./AddFromTalentPoolTab"
 import { RegisterNewCandidateTab } from "./RegisterNewCandidateTab"
 
@@ -30,14 +30,26 @@ export function AddCandidateDialog({
 }: AddCandidateDialogProps) {
   const [activeTab, setActiveTab] = useState<"talent-pool" | "new-candidate">("talent-pool")
 
-  // Count available candidates not yet in this recruitment batch
+  const hasStages = useMemo(() => {
+    if (recruitment.batchStages && recruitment.batchStages.length > 0) return true
+    return (recruitment.stages?.length ?? 0) > 0
+  }, [recruitment.batchStages, recruitment.stages])
+
+  const { data: apiCandidatesData } = useGetCandidatesQuery(undefined, {
+    skip: !open,
+  })
+
+  // Count available candidates not yet in this recruitment batch directly from API
   const availableCount = useMemo(() => {
-    return mockCandidates.filter((c) => {
-      return !c.appliedBatches?.some(
-        (b) => b.batchId === recruitment.id || b.batchCode === recruitment.batchCode
+    if (!apiCandidatesData?.items) return 0
+    return apiCandidatesData.items.filter((c) => {
+      return !c.assignedBatches?.some(
+        (b) =>
+          (b.batchId && b.batchId.toLowerCase() === recruitment.id?.toLowerCase()) ||
+          (recruitment.batchCode && b.batchCode && b.batchCode.toLowerCase() === recruitment.batchCode.toLowerCase())
       )
     }).length
-  }, [recruitment.id, recruitment.batchCode])
+  }, [apiCandidatesData, recruitment.id, recruitment.batchCode])
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -53,6 +65,15 @@ export function AddCandidateDialog({
             Add candidates from talent pool or register a new candidate into {recruitment.name}.
           </DialogDescription>
         </DialogHeader>
+
+        {!hasStages && (
+          <div className="mx-6 mt-4 rounded-xl border border-amber-500/30 bg-amber-500/10 p-3.5 text-xs text-amber-700 dark:text-amber-400 flex items-center gap-2.5">
+            <AlertCircle className="size-4 shrink-0 text-amber-600 dark:text-amber-400" />
+            <p>
+              <strong className="font-semibold">Selection stages required:</strong> This recruitment batch does not have selection stages yet. Please configure stages first before adding candidates.
+            </p>
+          </div>
+        )}
 
         <div className="px-6 pt-5">
           <div className="grid grid-cols-2 p-1 bg-muted rounded-full w-full h-11 select-none">
