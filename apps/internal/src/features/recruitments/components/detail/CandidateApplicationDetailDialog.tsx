@@ -13,8 +13,13 @@ import { CancelButton, ErrorState } from "@/shared/components"
 import { getApiError } from "@/shared/api/api-error"
 import { safeFormatDate } from "@/shared/lib/format"
 import type { CandidateApplicationDetailItem } from "../../types"
-import { useGetApplicationByIdQuery } from "../../api/applications-api"
+import {
+  useGetApplicationByIdQuery,
+  useStartApplicationStageMutation,
+} from "../../api/applications-api"
 import { mapApplicationRecap } from "../../utils/applicationRecapAdapter"
+import { getStartStageRestriction } from "../../utils/applicationStageUtils"
+import { StartApplicationStageDialog } from "./StartApplicationStageDialog"
 import { CandidateProfileCard } from "./CandidateProfileCard"
 import { StageTimelineProgress } from "./StageTimelineProgress"
 import { StageEvaluationEvidence } from "./StageEvaluationEvidence"
@@ -30,12 +35,18 @@ interface ApplicationDetailContentProps {
   application: CandidateApplicationDetailItem
   onOpenChange: (open: boolean) => void
   onRefresh: () => void
+  onStartStage: () => void
+  startRestriction: string | null
+  isStarting: boolean
 }
 
 function ApplicationDetailContent({
   application,
   onOpenChange,
   onRefresh,
+  onStartStage,
+  startRestriction,
+  isStarting,
 }: ApplicationDetailContentProps) {
   const stages = application.applicationStages || []
   const activeStageIndex = application.currentStageIndex
@@ -64,6 +75,7 @@ function ApplicationDetailContent({
             variant="outline"
             size="sm"
             onClick={onRefresh}
+            disabled={isStarting}
             className="ml-auto h-8 gap-1.5 rounded-full bg-card px-3 text-xs"
           >
             <RefreshCw className="size-3.5" aria-hidden />
@@ -134,6 +146,9 @@ function ApplicationDetailContent({
         }
         isFinalStage={isFinalStage}
         onGoToActiveStage={() => setStageIndex(activeStageIndex)}
+        onStartStage={onStartStage}
+        startRestriction={startRestriction}
+        isStarting={isStarting}
         onClose={() => onOpenChange(false)}
       />
     </DialogContent>
@@ -156,14 +171,37 @@ function ApplicationRecapContent({
     [currentData]
   )
 
-  if (!isError && !isFetching && application) {
-    return (
-      <ApplicationDetailContent
-        application={application}
-        onOpenChange={onOpenChange}
-        onRefresh={() => void refetch()}
-      />
-    )
+  const [startStage, { isLoading: isStarting }] =
+    useStartApplicationStageMutation()
+  const [isStartOpen, setIsStartOpen] = useState(false)
+  const [startError, setStartError] = useState<string | null>(null)
+  const startRestriction = application
+    ? getStartStageRestriction(application)
+    : "Application details are unavailable."
+  const handleStartStage = async () => {
+    if (!application || isStarting) return
+    if (isFetching || isError) {
+      setStartError("Refresh the application details before starting a stage.")
+      return
+    }
+    const restriction = getStartStageRestriction(application)
+    if (restriction) {
+      setStartError(restriction)
+      return
+    }
+    setStartError(null)
+    try {
+      await startStage({
+        applicationId: application.id,
+        batchId: application.recruitmentBatchId,
+      }).unwrap()
+      setIsStartOpen(false)
+    } catch (error) {
+      setStartError(
+        getApiError(error, "Failed to start the next stage. Please try again.")
+          .message
+      )
+    }
   }
 
   const problem = getApiError(
@@ -172,7 +210,7 @@ function ApplicationRecapContent({
   )
   const isForbidden = problem.status === 403
   const isNotFound = problem.status === 404
-  return (
+  const fallbackContent = (
     <DialogContent className="flex max-h-[90dvh] w-full flex-col gap-0 overflow-hidden rounded-2xl bg-card p-0 sm:max-w-4xl lg:max-w-5xl">
       <DialogHeader className="shrink-0 border-b border-border p-6 pr-14 pb-4">
         <DialogTitle className="text-base font-semibold text-foreground">
@@ -224,6 +262,46 @@ function ApplicationRecapContent({
         <CancelButton onClick={() => onOpenChange(false)}>Close</CancelButton>
       </div>
     </DialogContent>
+  )
+  return (
+    <>
+      {!isError && (!isFetching || isStartOpen) && application ? (
+        <ApplicationDetailContent
+          application={application}
+          onOpenChange={onOpenChange}
+          onRefresh={() => void refetch()}
+          onStartStage={() => {
+            setStartError(null)
+            setIsStartOpen(true)
+          }}
+          startRestriction={startRestriction}
+          isStarting={isStarting}
+        />
+      ) : (
+        fallbackContent
+      )}
+      {application && (
+        <StartApplicationStageDialog
+          open={isStartOpen}
+          onOpenChange={setIsStartOpen}
+          candidateName={application.candidateName}
+          stageName={application.currentStageName}
+          isTest={
+            application.applicationStages[application.currentStageIndex]
+              ?.stageType === "test"
+          }
+          isSubmitting={isStarting}
+          disabled={isFetching || isError || Boolean(startRestriction)}
+          error={
+            startError ??
+            (isError
+              ? "Unable to verify the application progress. Refresh the details and try again."
+              : startRestriction)
+          }
+          onConfirm={() => void handleStartStage()}
+        />
+      )}
+    </>
   )
 }
 

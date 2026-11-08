@@ -35,6 +35,9 @@ export interface StageDecisionFooterProps {
   onAdvanceStage?: (notes?: string) => void
   onRejectStage?: (reason: string, notes?: string) => void
   onGoToActiveStage?: () => void
+  onStartStage?: () => void
+  startRestriction?: string | null
+  isStarting?: boolean
   onClose: () => void
 }
 
@@ -60,6 +63,9 @@ export function StageDecisionFooter({
   onAdvanceStage,
   onRejectStage,
   onGoToActiveStage,
+  onStartStage,
+  startRestriction,
+  isStarting = false,
   onClose,
 }: StageDecisionFooterProps) {
   const formId = useId()
@@ -113,6 +119,9 @@ export function StageDecisionFooter({
     readOnlyMessage = stageName + " was dropped."
   if (isApplicationDropped)
     readOnlyMessage = "This application has been dropped."
+  else if (startRestriction && (isViewingActiveStage || !hasActiveStage)) {
+    readOnlyMessage = startRestriction
+  }
 
   const handleOpenConfirmation = (action: "advance" | "reject") => {
     if (!canMakeDecision) return
@@ -177,7 +186,9 @@ export function StageDecisionFooter({
           </div>
 
           <div className="flex flex-wrap items-center justify-end gap-2">
-            <CancelButton onClick={onClose}>Close</CancelButton>
+            <CancelButton disabled={isStarting} onClick={onClose}>
+              Close
+            </CancelButton>
             {!canMakeDecision &&
               !isApplicationRejected &&
               !isApplicationAccepted &&
@@ -189,11 +200,21 @@ export function StageDecisionFooter({
                   type="button"
                   variant="outline"
                   onClick={onGoToActiveStage}
+                  disabled={isStarting}
                   className="h-10 rounded-full bg-card px-4 text-sm"
                 >
                   Go to Active Stage
                 </Button>
               )}
+            {onStartStage && !startRestriction && isViewingActiveStage && (
+              <SaveButton
+                disabled={isStarting}
+                isLoading={isStarting}
+                onClick={onStartStage}
+              >
+                Start Stage
+              </SaveButton>
+            )}
             {canMakeDecision && (
               <>
                 <Button

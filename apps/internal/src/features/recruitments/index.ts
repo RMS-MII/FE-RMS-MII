@@ -1,4 +1,5 @@
 export * from "./types"
+export { mapStageEmployeeStatus } from "./utils/statusAdapters"
 export * from "./data/mock"
 export * from "./utils"
 export * from "./components"

@@ -47,6 +47,17 @@ export const applicationsApi = baseApi.injectEndpoints({
           : []),
       ],
     }),
+    startApplicationStage: builder.mutation<
+      ApplicationStageDto,
+      { applicationId: string; batchId: string }
+    >({
+      query: ({ applicationId }) => ({
+        url: `/applications/${applicationId}/stages/start`,
+        method: "POST",
+      }),
+      invalidatesTags: (result, _error, { applicationId, batchId }) =>
+        result ? applicationTags(applicationId, batchId) : [],
+    }),
     registerCandidates: builder.mutation<
       BatchApplicationListItemDto[],
       { batchId: string; candidates: RegisterCandidatesCommand["candidates"] }
@@ -103,6 +114,7 @@ export const applicationsApi = baseApi.injectEndpoints({
 export const {
   useGetBatchApplicationsQuery,
   useGetApplicationByIdQuery,
+  useStartApplicationStageMutation,
   useRegisterCandidatesMutation,
   useEvaluateStageMutation,
   useSetFinalResultMutation,

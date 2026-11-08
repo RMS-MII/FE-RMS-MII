@@ -4,19 +4,12 @@
 // =====================================================================
 
 export type MyInterviewStatus =
-  | "pending"
-  | "accepted"
-  | "declined"
-  | "completed"
-  | "reschedule_requested"
+  "pending" | "accepted" | "declined" | "completed" | "reschedule_requested"
 
 export type InterviewMode = "online" | "onsite"
 
 export type AssessmentRecommendation =
-  | "Strong Hire"
-  | "Recommend"
-  | "Neutral"
-  | "Do Not Recommend"
+  "Strong Hire" | "Recommend" | "Neutral" | "Do Not Recommend"
 
 export interface InterviewAssessmentItem {
   id: string // InterviewAssessment.Id
@@ -118,14 +111,9 @@ export type MyInterviewFilterParams = {
 // Matches StageEmployee table in Document/ERD.sql
 // =====================================================================
 
-export type StageInvitationStatus = "pending" | "accepted" | "declined"
-
-export interface StagePanelistItem {
-  employeeId: string
-  name: string
-  role: string
-  isYou?: boolean
-}
+export type StageInvitationStatus =
+  "pending" | "accepted" | "declined" | "unknown"
+export type StageInvitationFilter = "all" | "pending" | "accepted" | "declined"
 
 export interface StageInvitationItem {
   id: string // StageEmployee.Id
@@ -133,16 +121,15 @@ export interface StageInvitationItem {
   recruitmentId: string // RecruitmentBatch.Id
   recruitmentName: string
   recruitmentBatchCode: string
-  department: string
   stageId: string
   stageName: string
-  stageType: string
+  stageTypeName: string
   startDate: string
   endDate: string
   status: StageInvitationStatus
   assignedAt: string
   respondedAt?: string | null
-  declineReason?: string | null
-  estimatedCandidates: number
-  assignedPanelists?: StagePanelistItem[]
+  note: string | null
 }
+
+export * from "./invitations"

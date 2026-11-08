@@ -1,4 +1,7 @@
-import { useState, useEffect } from "react"
+import { useId } from "react"
+import { useForm } from "react-hook-form"
+import { zodResolver } from "@hookform/resolvers/zod"
+import { X } from "lucide-react"
 import {
   Dialog,
   DialogContent,
@@ -7,17 +10,21 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@workspace/ui/components/dialog"
-import { Button } from "@workspace/ui/components/button"
 import { Textarea } from "@workspace/ui/components/textarea"
 import { Label } from "@workspace/ui/components/label"
-import { CancelButton } from "@/shared/components"
+import { CancelButton, SaveButton } from "@/shared/components"
+import { getApiError } from "@/shared/api/api-error"
+import {
+  declineStageSchema,
+  type DeclineStageValues,
+} from "../schemas/invitation-response"
 import type { StageInvitationItem } from "../types"
 
 export interface ConfirmDeclineStageDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
-  item: StageInvitationItem | null
-  onConfirm: (reason: string) => void
+  item: StageInvitationItem
+  onConfirm: (note: string) => Promise<void>
 }
 
 export function ConfirmDeclineStageDialog({
@@ -26,73 +33,124 @@ export function ConfirmDeclineStageDialog({
   item,
   onConfirm,
 }: ConfirmDeclineStageDialogProps) {
-  const [reason, setReason] = useState("")
-
-  useEffect(() => {
-    if (open) {
-      setReason("")
+  const formId = useId()
+  const {
+    register,
+    handleSubmit,
+    setError,
+    clearErrors,
+    formState: { errors, isSubmitting },
+  } = useForm<DeclineStageValues>({
+    resolver: zodResolver(declineStageSchema),
+    defaultValues: { note: "" },
+    mode: "onChange",
+  })
+  const submit = handleSubmit(async (values) => {
+    clearErrors("root")
+    try {
+      await onConfirm(values.note)
+    } catch (error) {
+      const problem = getApiError(
+        error,
+        "Failed to decline this invitation. Please try again."
+      )
+      const noteErrors = Object.entries(problem.fieldErrors)
+        .filter(([field]) => field.toLowerCase() === "note")
+        .flatMap(([, messages]) => messages)
+      if (noteErrors.length)
+        setError("note", { type: "server", message: noteErrors.join(" ") })
+      else setError("root.server", { type: "server", message: problem.message })
     }
-  }, [open, item])
-
-  if (!item) return null
-
-  const handleConfirm = () => {
-    if (!reason.trim()) return
-    onConfirm(reason.trim())
-  }
-
+  })
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md rounded-2xl p-0 gap-0 bg-card overflow-hidden">
-        <DialogHeader className="p-6 pb-4 border-b border-border">
-          <DialogTitle>Decline Stage Interviewer Role</DialogTitle>
-          <DialogDescription>
+    <Dialog
+      open={open}
+      onOpenChange={(nextOpen) => {
+        if (!isSubmitting) onOpenChange(nextOpen)
+      }}
+    >
+      <DialogContent className="max-h-[90dvh] gap-0 overflow-y-auto rounded-2xl bg-card p-0 sm:max-w-md">
+        <DialogHeader className="border-b border-border p-6 pr-12 pb-4">
+          <DialogTitle className="text-base font-semibold">
+            Decline stage invitation
+          </DialogTitle>
+          <DialogDescription className="text-sm leading-relaxed">
             Provide a reason why you cannot take on this stage assignment.
           </DialogDescription>
         </DialogHeader>
-
-        <div className="space-y-4 p-6">
-          <div className="rounded-2xl bg-muted/60 p-4 space-y-1.5 text-xs">
-            <div className="flex items-center justify-between gap-2">
-              <span className="font-semibold text-foreground text-sm truncate">
-                {item.recruitmentName}
-              </span>
-              <span className="shrink-0 rounded-full bg-primary/10 px-2.5 py-0.5 text-[11px] font-semibold text-primary">
-                {item.department}
-              </span>
-            </div>
-            <div className="text-muted-foreground">
-              <span>Stage: </span>
-              <strong className="text-foreground font-medium">{item.stageName}</strong>
-            </div>
+        <form
+          id={formId}
+          onSubmit={submit}
+          className="space-y-4 p-6"
+          aria-busy={isSubmitting}
+        >
+          <div className="space-y-1">
+            <p className="text-sm font-medium text-foreground">
+              {item.recruitmentName}
+            </p>
+            <p className="text-sm text-muted-foreground">{item.stageName}</p>
           </div>
-
           <div className="space-y-1.5">
-            <Label htmlFor="stage-decline-reason" className="text-sm font-medium px-1">
-              Decline Reason <span className="text-destructive">*</span>
+            <Label htmlFor={formId + "-note"} className="text-sm font-medium">
+              Decline reason <span className="text-destructive">*</span>
             </Label>
             <Textarea
-              id="stage-decline-reason"
-              placeholder="Briefly explain why you cannot participate in this recruitment stage..."
+              id={formId + "-note"}
+              {...register("note")}
               rows={3}
-              value={reason}
-              onChange={(e) => setReason(e.target.value)}
-              className="min-h-20 rounded-2xl border-0 bg-muted px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground transition-all duration-150 outline-none focus-visible:bg-card focus-visible:ring-2 focus-visible:ring-primary shadow-none resize-y"
+              maxLength={500}
+              disabled={isSubmitting}
+              aria-required="true"
+              aria-invalid={Boolean(errors.note)}
+              aria-describedby={
+                formId +
+                "-note-help" +
+                (errors.note ? " " + formId + "-note-error" : "")
+              }
+              placeholder="Explain why you cannot participate in this stage..."
+              className="min-h-24 resize-y rounded-xl border-0 bg-muted px-4 py-3 text-sm text-foreground shadow-none placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-primary"
             />
+            <p
+              id={formId + "-note-help"}
+              className="text-xs text-muted-foreground"
+            >
+              Required, up to 500 characters
+            </p>
+            {errors.note && (
+              <p
+                id={formId + "-note-error"}
+                role="alert"
+                className="text-xs text-destructive"
+              >
+                {errors.note.message}
+              </p>
+            )}
           </div>
-        </div>
-
-        <DialogFooter className="px-9 pb-9 border-t border-border bg-card gap-2">
-          <CancelButton onClick={() => onOpenChange(false)} />
-          <Button
-            type="button"
-            variant="destructive"
-            onClick={handleConfirm}
-            disabled={!reason.trim()}
-            className="h-10 rounded-full px-5 cursor-pointer"
+          {errors.root?.server && (
+            <p
+              role="alert"
+              className="rounded-xl bg-danger-soft p-3 text-sm text-danger"
+            >
+              {errors.root.server.message}
+            </p>
+          )}
+        </form>
+        <DialogFooter className="m-0 gap-2 border-t border-border bg-card px-6 py-4">
+          <CancelButton
+            disabled={isSubmitting}
+            onClick={() => onOpenChange(false)}
+          />
+          <SaveButton
+            type="submit"
+            form={formId}
+            disabled={isSubmitting}
+            isLoading={isSubmitting}
+            loadingText="Declining..."
+            icon={<X className="size-4" aria-hidden />}
+            className="bg-destructive hover:bg-destructive/90"
           >
-            Confirm Decline
-          </Button>
+            Decline invitation
+          </SaveButton>
         </DialogFooter>
       </DialogContent>
     </Dialog>

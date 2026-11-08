@@ -94,6 +94,9 @@ export const recruitmentsApi = baseApi.injectEndpoints({
               { type: "Recruitment", id: "LIST" },
               { type: "Candidate", id: `APPLICATION_BATCH_${id}` },
               { type: "Interview", id: `BATCH_${id}` },
+              { type: "Interview", id: "INVITATIONS" },
+              { type: "Interview", id: "INTERVIEWER_DASHBOARD" },
+              { type: "Interview", id: "AVAILABLE_INTERVIEWERS" },
             ]
           : [],
     }),
@@ -113,6 +116,9 @@ export const recruitmentsApi = baseApi.injectEndpoints({
               { type: "Recruitment", id: batchId },
               { type: "Candidate", id: `APPLICATION_BATCH_${batchId}` },
               { type: "Interview", id: `BATCH_${batchId}` },
+              { type: "Interview", id: "INVITATIONS" },
+              { type: "Interview", id: "INTERVIEWER_DASHBOARD" },
+              { type: "Interview", id: "AVAILABLE_INTERVIEWERS" },
             ]
           : [],
     }),
