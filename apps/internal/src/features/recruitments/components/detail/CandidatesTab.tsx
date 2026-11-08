@@ -64,7 +64,7 @@ export function CandidatesTab({
     isApiError,
     apiError,
     refetchApplications,
-    selectedApplication,
+    selectedApplicationId,
     isDetailOpen,
     setIsDetailOpen,
     isAddOpen,
@@ -82,7 +82,6 @@ export function CandidatesTab({
     handleResetFilters,
     handleOpenDetail,
     handleAddCandidates,
-    handleUpdateCandidateStatus,
   } = useCandidatesTab({
     recruitment,
     selectedStageIndex,
@@ -463,11 +462,9 @@ export function CandidatesTab({
 
       {/* Candidate Application & Stage Journey Detail Dialog */}
       <CandidateApplicationDetailDialog
-        application={selectedApplication}
-        recruitment={recruitment}
+        applicationId={selectedApplicationId}
         open={isDetailOpen}
         onOpenChange={setIsDetailOpen}
-        onUpdateStatus={handleUpdateCandidateStatus}
       />
 
       {/* Add Candidate Manual Dialog (Talent Pool & Direct Register) */}

@@ -9,6 +9,7 @@ import {
 import { EmptyState, StatusBadge } from "@/shared/components"
 import type { Tone } from "@/shared/components"
 import { cn } from "@/shared/lib/utils"
+import { safeFormatDate } from "@/shared/lib/format"
 import type { CandidateApplicationItem } from "../../types"
 
 export interface StageEvaluationEvidenceProps {
@@ -17,13 +18,19 @@ export interface StageEvaluationEvidenceProps {
 }
 
 const stageStatusMeta: Record<string, { label: string; tone: Tone }> = {
+  prioritized: { label: "Prioritized", tone: "success" },
+  considered: { label: "Considered", tone: "success" },
+  submitted: { label: "Submitted", tone: "warning" },
+  expired: { label: "Expired", tone: "danger" },
+  dropped: { label: "Dropped", tone: "neutral" },
+  unknown: { label: "Unknown", tone: "neutral" },
   in_progress: { label: "In Progress", tone: "info" },
   passed: { label: "Passed", tone: "success" },
   accepted: { label: "Accepted", tone: "success" },
   failed: { label: "Failed", tone: "danger" },
   rejected: { label: "Rejected", tone: "danger" },
   pending: { label: "Pending", tone: "warning" },
-  upcoming: { label: "Upcoming", tone: "neutral" },
+  upcoming: { label: "Not started", tone: "neutral" },
   withdrawn: { label: "Withdrawn", tone: "neutral" },
 }
 
@@ -51,36 +58,37 @@ export function StageEvaluationEvidence({
   const passing =
     stage.passingScore ?? stage.testEvaluation?.passingScore ?? null
   const score = stage.totalScore ?? stage.testEvaluation?.score ?? null
-  const canCompareScore = score !== null && passing !== null
-  const meetsPassing = canCompareScore && score >= passing
-  const scoreTone: Tone = !canCompareScore
-    ? "neutral"
-    : meetsPassing
-      ? "success"
-      : "danger"
   const status = stageStatusMeta[stage.status] ?? {
     label: stage.status,
     tone: "neutral" as const,
   }
+  const scoreTone: Tone = stage.isPassed
+    ? "success"
+    : stage.isCompleted
+      ? status.tone
+      : "neutral"
   const assessments = stage.interviewAssessments ?? []
   const duration = stage.testEvaluation?.durationMinutes
   const attemptedQuestions = stage.testEvaluation?.attemptedQuestions
   const totalQuestions = stage.testEvaluation?.totalQuestions
+  const answers = stage.testEvaluation?.answers
   const questionSummary =
-    attemptedQuestions != null && totalQuestions != null
-      ? attemptedQuestions + " of " + totalQuestions + " answered"
-      : attemptedQuestions != null
-        ? attemptedQuestions + " answered"
-        : totalQuestions != null
-          ? totalQuestions + " questions"
-          : "Not available"
+    answers != null
+      ? `${answers.length} recorded`
+      : attemptedQuestions != null && totalQuestions != null
+        ? attemptedQuestions + " of " + totalQuestions + " answered"
+        : attemptedQuestions != null
+          ? attemptedQuestions + " answered"
+          : totalQuestions != null
+            ? totalQuestions + " questions"
+            : "Not available"
 
   return (
     <section className="space-y-6" aria-label="Stage evaluation">
       <div className="flex flex-wrap items-start justify-between gap-3 border-b border-border pb-4">
         <div className="min-w-0 space-y-1">
           <h4 className="text-sm leading-5 font-semibold text-foreground">
-            Stage {stage.stageIndex + 1}: {stage.stageName}
+            Stage {stage.sequence ?? stage.stageIndex + 1}: {stage.stageName}
           </h4>
           {stage.stageTypeName && (
             <p className="text-xs text-muted-foreground">
@@ -99,23 +107,56 @@ export function StageEvaluationEvidence({
         </div>
       </div>
 
+      {(stage.startedAt || stage.endAt || stage.completedAt) && (
+        <dl className="grid gap-4 text-xs sm:grid-cols-3">
+          {stage.startedAt && (
+            <div className="space-y-1">
+              <dt className="text-muted-foreground">Started</dt>
+              <dd className="text-foreground">
+                {safeFormatDate(stage.startedAt)}
+              </dd>
+            </div>
+          )}
+          {stage.endAt && (
+            <div className="space-y-1">
+              <dt className="text-muted-foreground">Deadline</dt>
+              <dd className="text-foreground">{safeFormatDate(stage.endAt)}</dd>
+            </div>
+          )}
+          {stage.completedAt && (
+            <div className="space-y-1">
+              <dt className="text-muted-foreground">Completed</dt>
+              <dd className="text-foreground">
+                {safeFormatDate(stage.completedAt)}
+              </dd>
+            </div>
+          )}
+        </dl>
+      )}
+
       {isTest && (
         <div className="space-y-4">
           <dl className="grid gap-4 rounded-xl bg-muted/50 p-4 sm:grid-cols-3">
             <div className="space-y-1">
               <dt className="text-xs text-muted-foreground">Test score</dt>
               <dd className="text-sm font-medium text-foreground tabular-nums">
-                {score !== null ? score + " / 100" : "Not evaluated"}
+                {score !== null ? score : "Not evaluated"}
               </dd>
             </div>
             <div className="space-y-1">
               <dt className="text-xs text-muted-foreground">Duration</dt>
               <dd className="text-sm font-medium text-foreground tabular-nums">
-                {duration != null ? duration + " min" : "Not available"}
+                {duration != null
+                  ? new Intl.NumberFormat("en-US", {
+                      maximumFractionDigits: 2,
+                    }).format(duration) + " min"
+                  : "Not available"}
               </dd>
             </div>
             <div className="space-y-1">
-              <dt className="text-xs text-muted-foreground">Questions</dt>
+              <dt className="text-xs text-muted-foreground">
+                {answers != null ? "Recorded answers" : "Questions"}
+              </dt>
               <dd className="text-sm font-medium text-foreground tabular-nums">
                 {questionSummary}
               </dd>
@@ -125,43 +166,82 @@ export function StageEvaluationEvidence({
           <div
             className={cn(
               "flex items-start gap-3 rounded-xl p-4",
-              !canCompareScore
-                ? "bg-muted/50 text-muted-foreground"
-                : meetsPassing
-                  ? "bg-success-soft text-success"
-                  : "bg-danger-soft text-danger"
+              scoreTone === "success"
+                ? "bg-success-soft text-success"
+                : scoreTone === "danger"
+                  ? "bg-danger-soft text-danger"
+                  : "bg-muted/50 text-muted-foreground"
             )}
           >
-            {!canCompareScore ? (
-              <Clock className="mt-0.5 size-4 shrink-0" aria-hidden />
-            ) : meetsPassing ? (
+            {stage.isPassed ? (
               <CheckCircle2 className="mt-0.5 size-4 shrink-0" aria-hidden />
-            ) : (
+            ) : scoreTone === "danger" ? (
               <XCircle className="mt-0.5 size-4 shrink-0" aria-hidden />
+            ) : (
+              <Clock className="mt-0.5 size-4 shrink-0" aria-hidden />
             )}
             <div className="space-y-1">
               <p className="text-sm font-medium">
-                {score === null
-                  ? "Not evaluated"
-                  : passing === null
-                    ? "Score available"
-                    : meetsPassing
-                      ? "Meets the passing criteria"
-                      : "Below the minimum passing score"}
+                {stage.isStarted === false
+                  ? "This stage has not started"
+                  : stage.isPassed
+                    ? "Passed stage evaluation"
+                    : stage.isCompleted
+                      ? status.label
+                      : stage.status === "submitted"
+                        ? "Awaiting evaluation"
+                        : score === null
+                          ? "Not evaluated"
+                          : "Score recorded"}
               </p>
               <p className="text-xs leading-relaxed">
-                {score === null
-                  ? "Test results have not been recorded for this stage."
-                  : passing === null
-                    ? "No passing score has been configured for this stage."
-                    : "Passing score: " +
-                      passing +
-                      ". Candidate score: " +
-                      score +
-                      "."}
+                {stage.isStarted === false
+                  ? "Results will appear after the candidate starts this stage."
+                  : stage.isCompleted
+                    ? "The recorded stage decision is shown above."
+                    : "The final stage decision has not been recorded."}
               </p>
             </div>
           </div>
+
+          {answers != null && (
+            <div className="space-y-3">
+              <h5 className="text-sm font-semibold text-foreground">
+                Recorded test answers
+              </h5>
+              <p className="text-xs leading-relaxed text-muted-foreground">
+                Only recorded answers are shown. The total question count is not
+                available.
+              </p>
+              {answers.length > 0 ? (
+                <ol className="divide-y divide-border">
+                  {answers.map((answer, index) => (
+                    <li
+                      key={answer.id}
+                      className="space-y-2 py-4 first:pt-0 last:pb-0"
+                    >
+                      <p className="text-sm font-medium break-words whitespace-pre-wrap text-foreground">
+                        {index + 1}.{" "}
+                        {answer.questionText || "Question text not available"}
+                      </p>
+                      <p className="text-sm leading-relaxed break-words whitespace-pre-wrap text-muted-foreground">
+                        <span className="font-medium">Answer: </span>
+                        {answer.questionOptionText ||
+                          "Answer text not available"}
+                      </p>
+                      <p className="text-xs text-muted-foreground tabular-nums">
+                        Score: {answer.score}
+                      </p>
+                    </li>
+                  ))}
+                </ol>
+              ) : (
+                <p className="text-sm text-muted-foreground">
+                  No test answers recorded.
+                </p>
+              )}
+            </div>
+          )}
         </div>
       )}
 
@@ -182,11 +262,15 @@ export function StageEvaluationEvidence({
               {assessments.map((assessment) => {
                 const recommendationTone: Tone =
                   assessment.recommendation === "Strong Hire" ||
+                  assessment.recommendation === "Strongly Recommend" ||
                   assessment.recommendation === "Recommend"
                     ? "success"
-                    : assessment.recommendation === "Do Not Recommend"
+                    : assessment.recommendation === "Do Not Recommend" ||
+                        assessment.recommendation === "Not Recommend"
                       ? "danger"
-                      : "neutral"
+                      : assessment.recommendation === "Consider"
+                        ? "warning"
+                        : "neutral"
                 return (
                   <article
                     key={assessment.id}
@@ -200,6 +284,21 @@ export function StageEvaluationEvidence({
                         {assessment.interviewerRole && (
                           <p className="text-xs text-muted-foreground">
                             {assessment.interviewerRole}
+                          </p>
+                        )}
+                        {assessment.interviewerEmail && (
+                          <p className="text-xs break-all text-muted-foreground">
+                            {assessment.interviewerEmail}
+                          </p>
+                        )}
+                        {assessment.sessionName && (
+                          <p className="text-xs text-muted-foreground">
+                            {assessment.sessionName}
+                          </p>
+                        )}
+                        {assessment.assessedAt && (
+                          <p className="text-xs text-muted-foreground">
+                            Evaluated {safeFormatDate(assessment.assessedAt)}
                           </p>
                         )}
                       </div>

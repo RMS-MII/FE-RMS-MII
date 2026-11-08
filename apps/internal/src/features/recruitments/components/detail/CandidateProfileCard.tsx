@@ -8,6 +8,18 @@ export interface CandidateProfileCardProps {
   application: CandidateApplicationItem
 }
 
+function getWebUrl(value: string | null | undefined): string | null {
+  if (!value) return null
+  try {
+    const url = new URL(value)
+    return url.protocol === "https:" || url.protocol === "http:"
+      ? url.href
+      : null
+  } catch {
+    return null
+  }
+}
+
 const statusToneMap: Record<string, Tone> = {
   passed: "success",
   accepted: "success",
@@ -37,7 +49,8 @@ const statusLabelMap: Record<string, string> = {
 export function CandidateProfileCard({
   application,
 }: CandidateProfileCardProps) {
-  const isCvUrl = application.candidateCv?.startsWith("http") ?? false
+  const cvUrl = getWebUrl(application.candidateCv)
+  const portfolioUrl = getWebUrl(application.candidatePortfolio)
 
   return (
     <div className="flex items-start gap-3 rounded-xl bg-muted/50 p-4">
@@ -59,6 +72,12 @@ export function CandidateProfileCard({
                 application.candidateInstitution ||
                 "Education details not provided"}
             </p>
+            {application.candidateEducation &&
+              application.candidateInstitution && (
+                <p className="text-xs leading-relaxed text-muted-foreground">
+                  {application.candidateInstitution}
+                </p>
+              )}
           </div>
 
           <StatusBadge tone={statusToneMap[application.status] || "neutral"}>
@@ -96,38 +115,29 @@ export function CandidateProfileCard({
 
         {(application.candidateCv || application.candidatePortfolio) && (
           <div className="flex flex-wrap items-center gap-2">
-            {application.candidateCv && (
+            {cvUrl && (
               <Button
                 nativeButton={false}
-                render={
-                  <a
-                    href={
-                      isCvUrl
-                        ? application.candidateCv
-                        : "#" + application.candidateCv
-                    }
-                    target={isCvUrl ? "_blank" : undefined}
-                    rel="noreferrer"
-                  />
-                }
+                render={<a href={cvUrl} target="_blank" rel="noreferrer" />}
                 variant="outline"
                 size="sm"
                 className="h-8 gap-1.5 rounded-full bg-card px-3 text-xs"
-                title={application.candidateCv}
+                title={application.candidateCv ?? undefined}
               >
                 <FileText className="size-3.5" aria-hidden />
                 View CV
               </Button>
             )}
-            {application.candidatePortfolio && (
+            {application.candidateCv && !cvUrl && (
+              <p className="text-xs break-all text-muted-foreground">
+                CV: {application.candidateCv}
+              </p>
+            )}
+            {portfolioUrl && (
               <Button
                 nativeButton={false}
                 render={
-                  <a
-                    href={application.candidatePortfolio}
-                    target="_blank"
-                    rel="noreferrer"
-                  />
+                  <a href={portfolioUrl} target="_blank" rel="noreferrer" />
                 }
                 variant="outline"
                 size="sm"
@@ -136,6 +146,11 @@ export function CandidateProfileCard({
                 <ExternalLink className="size-3.5" aria-hidden />
                 Portfolio
               </Button>
+            )}
+            {application.candidatePortfolio && !portfolioUrl && (
+              <p className="text-xs break-all text-muted-foreground">
+                Portfolio: {application.candidatePortfolio}
+              </p>
             )}
           </div>
         )}

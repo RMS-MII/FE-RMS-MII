@@ -3,12 +3,14 @@ import type {
   FinalResultStatusValue,
   OfferingLetterStatusValue,
   ApplicationStageStatusValue,
+  RecommendationValue,
   StageCategoryValue,
 } from "./api-status"
 import type {
   ApplicationStageRecapDto,
   ApplicationRecapSummaryDto,
   RecruitmentBatchSummaryDto,
+  CandidateAnswerRecapDto,
 } from "./application-recap"
 
 // =====================================================================
@@ -151,31 +153,54 @@ export interface ApplicationStageEntity {
 export interface StageInterviewAssessmentItem {
   id: string
   interviewerId?: string
+  employeeId?: string
+  sessionInterviewId?: string
+  interviewSessionId?: string
+  sessionName?: string
+  scheduledStart?: string
+  interviewerEmail?: string
   interviewerName: string
   interviewerRole: string
   score: number
-  recommendation: "Strong Hire" | "Recommend" | "Do Not Recommend" | "Neutral"
+  recommendation:
+    | "Strong Hire"
+    | "Recommend"
+    | "Do Not Recommend"
+    | "Neutral"
+    | "Strongly Recommend"
+    | "Consider"
+    | "Not Recommend"
+    | "Unknown"
+  apiRecommendation?: RecommendationValue
   notes: string
   assessedAt?: string
 }
 
 export interface StageTestEvaluationItem {
-  totalQuestions: number
-  attemptedQuestions: number
-  passingScore: number
-  score: number
-  durationMinutes: number
+  totalQuestions?: number | null
+  attemptedQuestions?: number | null
+  passingScore: number | null
+  score: number | null
+  durationMinutes: number | null
+  answers?: CandidateAnswerRecapDto[]
   submittedAt?: string
 }
 
 export interface CandidateApplicationStageItem {
   stageIndex: number
+  sequence?: number
   /** Configuration ID used for UI navigation only. */
   stageId: string
   batchStageId: string
   /** Execution ID; null until the application stage has started. */
   applicationStageId: string | null
   apiStatus?: ApplicationStageStatusValue | null
+  isStarted?: boolean
+  isCompleted?: boolean
+  isPassed?: boolean
+  startDate?: string
+  endDate?: string
+  endAt?: string | null
   stageName: string
   stageType?: string
   stageTypeName?: string
@@ -198,6 +223,11 @@ export interface CandidateApplicationStageItem {
 }
 
 export type ApplicationStageItem = CandidateApplicationStageItem
+
+export interface CandidateApplicationDetailItem extends CandidateApplicationItem {
+  batch: RecruitmentBatchSummaryDto
+  summary: ApplicationRecapSummaryDto
+}
 
 /** Rich view model joining BatchApplications, Candidates, and ApplicationStages */
 export interface CandidateApplicationItem {

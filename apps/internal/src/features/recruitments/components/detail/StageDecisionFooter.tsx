@@ -32,8 +32,8 @@ export interface StageDecisionFooterProps {
   stage: CandidateApplicationStageItem | undefined
   isViewingActiveStage: boolean
   isFinalStage: boolean
-  onAdvanceStage: (notes?: string) => void
-  onRejectStage: (reason: string, notes?: string) => void
+  onAdvanceStage?: (notes?: string) => void
+  onRejectStage?: (reason: string, notes?: string) => void
   onGoToActiveStage?: () => void
   onClose: () => void
 }
@@ -72,9 +72,13 @@ export function StageDecisionFooter({
   const isApplicationRejected =
     application.status === "rejected" || application.status === "failed"
   const isApplicationAccepted = application.status === "accepted"
+  const isApplicationDropped =
+    application.status === "dropped" || application.status === "withdrawn"
   const canMakeDecision =
+    Boolean(onAdvanceStage && onRejectStage && stage?.applicationStageId) &&
     !isApplicationRejected &&
     !isApplicationAccepted &&
+    !isApplicationDropped &&
     isViewingActiveStage &&
     stage?.status === "in_progress"
   const hasActiveStage = Boolean(
@@ -85,7 +89,11 @@ export function StageDecisionFooter({
   let readOnlyMessage = "This stage is not currently available for evaluation."
   if (!stage)
     readOnlyMessage = "No selection stage is available for evaluation."
-  else if (stage.status === "passed" || stage.status === "accepted") {
+  else if (
+    stage.isPassed ||
+    stage.status === "passed" ||
+    stage.status === "accepted"
+  ) {
     readOnlyMessage =
       stageName +
       " has passed" +
@@ -93,10 +101,18 @@ export function StageDecisionFooter({
       "."
   } else if (stage.status === "failed" || stage.status === "rejected") {
     readOnlyMessage = stageName + " did not pass."
-  } else if (stage.status === "upcoming")
-    readOnlyMessage = stageName + " is upcoming."
-  else if (stage.status === "pending")
+  } else if (stage.isStarted === false || stage.status === "upcoming")
+    readOnlyMessage = stageName + " has not started."
+  else if (stage.status === "pending" || stage.status === "submitted")
     readOnlyMessage = stageName + " is awaiting evaluation."
+  else if (stage.status === "in_progress")
+    readOnlyMessage = stageName + " is in progress."
+  else if (stage.status === "expired")
+    readOnlyMessage = stageName + " has expired."
+  else if (stage.status === "dropped")
+    readOnlyMessage = stageName + " was dropped."
+  if (isApplicationDropped)
+    readOnlyMessage = "This application has been dropped."
 
   const handleOpenConfirmation = (action: "advance" | "reject") => {
     if (!canMakeDecision) return
@@ -110,9 +126,9 @@ export function StageDecisionFooter({
     if (!canMakeDecision || !confirmation) return
     if (isRejecting) {
       if (!rejectionReason) return
-      onRejectStage(rejectionReason, notes.trim())
+      onRejectStage?.(rejectionReason, notes.trim())
     } else {
-      onAdvanceStage(notes.trim())
+      onAdvanceStage?.(notes.trim())
     }
     setConfirmation(null)
     setNotes("")
@@ -165,6 +181,7 @@ export function StageDecisionFooter({
             {!canMakeDecision &&
               !isApplicationRejected &&
               !isApplicationAccepted &&
+              !isApplicationDropped &&
               hasActiveStage &&
               !isViewingActiveStage &&
               onGoToActiveStage && (

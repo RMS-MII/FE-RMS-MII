@@ -107,8 +107,9 @@ export function useCandidatesTab({
   })
 
   // Selected application for detail modal
-  const [selectedApplication, setSelectedApplication] =
-    useState<CandidateApplicationItem | null>(null)
+  const [selectedApplicationId, setSelectedApplicationId] = useState<
+    string | null
+  >(null)
   const [isDetailOpen, setIsDetailOpen] = useState(false)
   const [isAddOpen, setIsAddOpen] = useState(false)
 
@@ -235,15 +236,11 @@ export function useCandidatesTab({
   }
 
   const handleOpenDetail = (app: CandidateApplicationItem) => {
-    setSelectedApplication(app)
+    setSelectedApplicationId(app.id)
     setIsDetailOpen(true)
   }
 
   const handleAddCandidates = () => {
-    refetchApplications()
-  }
-
-  const handleUpdateCandidateStatus = () => {
     refetchApplications()
   }
 
@@ -304,8 +301,7 @@ export function useCandidatesTab({
     isApiError,
     apiError,
     refetchApplications,
-    selectedApplication,
-    setSelectedApplication,
+    selectedApplicationId,
     isDetailOpen,
     setIsDetailOpen,
     isAddOpen,
@@ -323,6 +319,5 @@ export function useCandidatesTab({
     handleResetFilters,
     handleOpenDetail,
     handleAddCandidates,
-    handleUpdateCandidateStatus,
   }
 }

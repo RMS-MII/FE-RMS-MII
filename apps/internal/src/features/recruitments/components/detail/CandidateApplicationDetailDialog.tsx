@@ -1,4 +1,7 @@
-import { useState } from "react"
+import { useMemo, useState } from "react"
+import { RefreshCw } from "lucide-react"
+import { Button } from "@workspace/ui/components/button"
+import { Skeleton } from "@workspace/ui/components/skeleton"
 import {
   Dialog,
   DialogContent,
@@ -6,50 +9,45 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@workspace/ui/components/dialog"
-import type { CandidateApplicationItem, Recruitment } from "../../types"
+import { CancelButton, ErrorState } from "@/shared/components"
+import { getApiError } from "@/shared/api/api-error"
+import { safeFormatDate } from "@/shared/lib/format"
+import type { CandidateApplicationDetailItem } from "../../types"
+import { useGetApplicationByIdQuery } from "../../api/applications-api"
+import { mapApplicationRecap } from "../../utils/applicationRecapAdapter"
 import { CandidateProfileCard } from "./CandidateProfileCard"
 import { StageTimelineProgress } from "./StageTimelineProgress"
 import { StageEvaluationEvidence } from "./StageEvaluationEvidence"
 import { StageDecisionFooter } from "./StageDecisionFooter"
 
 export interface CandidateApplicationDetailDialogProps {
-  application: CandidateApplicationItem | null
-  recruitment: Recruitment
+  applicationId: string | null
   open: boolean
   onOpenChange: (open: boolean) => void
-  onUpdateStatus?: (
-    applicationId: string,
-    action: "advance" | "reject" | "reopen",
-    payload?: { reason?: string; notes?: string }
-  ) => void
 }
 
-type ApplicationDetailContentProps = Pick<
-  CandidateApplicationDetailDialogProps,
-  "onOpenChange" | "onUpdateStatus"
-> & {
-  application: CandidateApplicationItem
-  recruitmentName: string
+interface ApplicationDetailContentProps {
+  application: CandidateApplicationDetailItem
+  onOpenChange: (open: boolean) => void
+  onRefresh: () => void
 }
 
 function ApplicationDetailContent({
   application,
-  recruitmentName,
   onOpenChange,
-  onUpdateStatus,
+  onRefresh,
 }: ApplicationDetailContentProps) {
   const stages = application.applicationStages || []
-  const activeStageIndex = Math.max(
-    0,
-    Math.min(application.currentStageIndex, stages.length - 1)
+  const activeStageIndex = application.currentStageIndex
+  const [stageIndex, setStageIndex] = useState(
+    activeStageIndex >= 0 ? activeStageIndex : stages.length - 1
   )
-  const [stageIndex, setStageIndex] = useState(activeStageIndex)
   const selectedStageIndex = Math.max(
-    0,
+    -1,
     Math.min(stageIndex, stages.length - 1)
   )
   const isFinalStage =
-    stages.length > 0 && application.currentStageIndex >= stages.length - 1
+    activeStageIndex >= 0 && activeStageIndex === stages.length - 1
 
   return (
     <DialogContent className="flex max-h-[90dvh] w-full flex-col gap-0 overflow-hidden rounded-2xl bg-card p-0 sm:max-w-4xl lg:max-w-5xl">
@@ -61,16 +59,40 @@ function ApplicationDetailContent({
           <span className="rounded-md bg-muted px-2 py-0.5 font-mono text-xs font-medium text-muted-foreground">
             {application.codeApplication}
           </span>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={onRefresh}
+            className="ml-auto h-8 gap-1.5 rounded-full bg-card px-3 text-xs"
+          >
+            <RefreshCw className="size-3.5" aria-hidden />
+            Refresh
+          </Button>
         </div>
         <DialogDescription className="text-sm leading-relaxed">
           Review the candidate profile and selection-stage evaluations for{" "}
-          {recruitmentName}.
+          {application.batch.name}.
         </DialogDescription>
       </DialogHeader>
 
       <div className="min-h-0 flex-1 overflow-y-auto">
-        <div className="border-b border-border px-6 py-4">
+        <div className="space-y-3 border-b border-border px-6 py-4">
           <CandidateProfileCard application={application} />
+          <div className="flex flex-wrap justify-between gap-2 text-xs text-muted-foreground">
+            {application.appliedAt && (
+              <span>Applied {safeFormatDate(application.appliedAt)}</span>
+            )}
+            <span className="tabular-nums">
+              {application.summary.completedStages} of{" "}
+              {application.summary.totalStages} stages completed
+            </span>
+          </div>
+          {application.note && (
+            <p className="text-sm leading-relaxed whitespace-pre-wrap text-muted-foreground">
+              {application.note}
+            </p>
+          )}
         </div>
 
         <div
@@ -111,12 +133,6 @@ function ApplicationDetailContent({
           selectedStageIndex === application.currentStageIndex
         }
         isFinalStage={isFinalStage}
-        onAdvanceStage={(notes) =>
-          onUpdateStatus?.(application.id, "advance", { notes })
-        }
-        onRejectStage={(reason, notes) =>
-          onUpdateStatus?.(application.id, "reject", { reason, notes })
-        }
         onGoToActiveStage={() => setStageIndex(activeStageIndex)}
         onClose={() => onOpenChange(false)}
       />
@@ -124,24 +140,107 @@ function ApplicationDetailContent({
   )
 }
 
+function ApplicationRecapContent({
+  applicationId,
+  onOpenChange,
+}: {
+  applicationId: string
+  onOpenChange: (open: boolean) => void
+}) {
+  const { currentData, isFetching, isError, error, refetch } =
+    useGetApplicationByIdQuery(applicationId, {
+      refetchOnMountOrArgChange: true,
+    })
+  const application = useMemo(
+    () => (currentData ? mapApplicationRecap(currentData) : null),
+    [currentData]
+  )
+
+  if (!isError && !isFetching && application) {
+    return (
+      <ApplicationDetailContent
+        application={application}
+        onOpenChange={onOpenChange}
+        onRefresh={() => void refetch()}
+      />
+    )
+  }
+
+  const problem = getApiError(
+    error,
+    "Unable to load this application. Please try again."
+  )
+  const isForbidden = problem.status === 403
+  const isNotFound = problem.status === 404
+  return (
+    <DialogContent className="flex max-h-[90dvh] w-full flex-col gap-0 overflow-hidden rounded-2xl bg-card p-0 sm:max-w-4xl lg:max-w-5xl">
+      <DialogHeader className="shrink-0 border-b border-border p-6 pr-14 pb-4">
+        <DialogTitle className="text-base font-semibold text-foreground">
+          Candidate Application
+        </DialogTitle>
+        <DialogDescription className="text-sm leading-relaxed">
+          Review the candidate profile and selection-stage evaluations.
+        </DialogDescription>
+      </DialogHeader>
+      <div className="min-h-0 flex-1 overflow-y-auto">
+        {isError ? (
+          <ErrorState
+            title={
+              isForbidden
+                ? "Access denied"
+                : isNotFound
+                  ? "Application unavailable"
+                  : "Failed to load application"
+            }
+            description={
+              isForbidden
+                ? "You do not have access to this application."
+                : isNotFound
+                  ? "This application could not be found. Close this dialog and refresh the candidate list."
+                  : problem.message
+            }
+            onRetry={
+              isForbidden || isNotFound ? undefined : () => void refetch()
+            }
+          />
+        ) : (
+          <div role="status" aria-busy="true" className="space-y-6 p-6">
+            <span className="sr-only">Loading application details...</span>
+            <Skeleton className="h-28 w-full rounded-xl" />
+            <div className="grid gap-6 md:grid-cols-[280px_minmax(0,1fr)]">
+              <div className="space-y-3">
+                <Skeleton className="h-20 w-full" />
+                <Skeleton className="h-20 w-full" />
+              </div>
+              <div className="space-y-4">
+                <Skeleton className="h-8 w-1/2" />
+                <Skeleton className="h-36 w-full" />
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+      <div className="flex justify-end border-t border-border px-6 py-4">
+        <CancelButton onClick={() => onOpenChange(false)}>Close</CancelButton>
+      </div>
+    </DialogContent>
+  )
+}
+
 export function CandidateApplicationDetailDialog({
-  application,
-  recruitment,
+  applicationId,
   open,
   onOpenChange,
-  onUpdateStatus,
 }: CandidateApplicationDetailDialogProps) {
-  if (!application) return null
+  if (!applicationId) return null
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       {open && (
-        <ApplicationDetailContent
-          key={application.id + ":" + application.currentStageIndex}
-          application={application}
-          recruitmentName={recruitment.name}
+        <ApplicationRecapContent
+          key={applicationId}
+          applicationId={applicationId}
           onOpenChange={onOpenChange}
-          onUpdateStatus={onUpdateStatus}
         />
       )}
     </Dialog>
