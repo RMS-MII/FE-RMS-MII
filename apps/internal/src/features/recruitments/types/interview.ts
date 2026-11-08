@@ -94,6 +94,17 @@ export interface ScheduledInterviewerDto {
   statusName?: string
 }
 
+export interface AvailableInterviewerDto {
+  stageEmployeeId: string
+  employeeId: string
+  fullName: string
+  email: string
+  jobTitle: string
+  departmentName: string
+  status: string | number
+  statusName?: string
+}
+
 export interface BatchInterviewSessionDto {
   id: string
   applicationStageId: string

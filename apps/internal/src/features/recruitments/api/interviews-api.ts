@@ -5,6 +5,7 @@ import type {
   RescheduleRequestDto,
   ReviewRescheduleRequest,
   RescheduleStatusValue,
+  AvailableInterviewerDto,
 } from "../types"
 import { applicationTags } from "./cache-tags"
 
@@ -17,6 +18,14 @@ export interface GetBatchInterviewSessionsParams {
 
 export const interviewsApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
+    getAvailableInterviewers: builder.query<AvailableInterviewerDto[], string>({
+      query: (applicationStageId) =>
+        `/application-stages/${applicationStageId}/available-interviewers`,
+      providesTags: (_result, _error, applicationStageId) => [
+        { type: "Interview" as const, id: "AVAILABLE_INTERVIEWERS" },
+        { type: "Interview" as const, id: `AVAILABLE_${applicationStageId}` },
+      ],
+    }),
     getBatchInterviewSessions: builder.query<
       BatchInterviewSessionDto[],
       { batchId: string; params?: GetBatchInterviewSessionsParams }
@@ -62,6 +71,8 @@ export const interviewsApi = baseApi.injectEndpoints({
                 batchId ?? result.recruitmentBatchId
               ),
               { type: "Interview" as const, id: "LIST" },
+              { type: "Interview" as const, id: "INTERVIEWER_DASHBOARD" },
+              { type: "Interview" as const, id: "AVAILABLE_INTERVIEWERS" },
               ...(batchId
                 ? [{ type: "Interview" as const, id: `BATCH_${batchId}` }]
                 : []),
@@ -117,6 +128,7 @@ export const interviewsApi = baseApi.injectEndpoints({
 })
 
 export const {
+  useGetAvailableInterviewersQuery,
   useGetBatchInterviewSessionsQuery,
   useLazyGetBatchInterviewSessionsQuery,
   useScheduleInterviewSessionMutation,

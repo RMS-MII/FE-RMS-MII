@@ -113,6 +113,7 @@ export const applicationsApi = baseApi.injectEndpoints({
 
 export const {
   useGetBatchApplicationsQuery,
+  useLazyGetBatchApplicationsQuery,
   useGetApplicationByIdQuery,
   useStartApplicationStageMutation,
   useRegisterCandidatesMutation,

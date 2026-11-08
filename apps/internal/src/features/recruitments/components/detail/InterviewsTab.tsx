@@ -59,8 +59,6 @@ export function InterviewsTab({
     // Dialog states
     isScheduleOpen,
     setIsScheduleOpen,
-    sessionToReschedule,
-    setSessionToReschedule,
     rescheduleSessionToReview,
     isReviewRescheduleOpen,
     setIsReviewRescheduleOpen,
@@ -70,8 +68,8 @@ export function InterviewsTab({
     handleTogglePendingReschedule,
     handleClearDateFilter,
     handleOpenScheduleNew,
-    handleOpenAdjustSchedule,
     handleSaveSession,
+    isSchedulingInterview,
     handleOpenReviewReschedule,
     handleApproveReschedule,
     handleRejectReschedule,
@@ -265,7 +263,6 @@ export function InterviewsTab({
               onClearDateFilter={handleClearDateFilter}
               onViewDetail={onViewSessionDetail}
               onReviewReschedule={handleOpenReviewReschedule}
-              onAdjustSchedule={handleOpenAdjustSchedule}
               isFilterPendingReschedule={isFilterPendingReschedule}
             />
           </div>
@@ -276,16 +273,15 @@ export function InterviewsTab({
       <ScheduleInterviewDialog
         open={
           isScheduleOpen &&
-          (Boolean(sessionToReschedule) || canScheduleInterview)
+          canScheduleInterview
         }
         onOpenChange={(open) => {
           setIsScheduleOpen(open)
-          if (!open) setSessionToReschedule(null)
         }}
         recruitment={recruitment}
         existingSessions={sessions}
-        sessionToReschedule={sessionToReschedule}
         onSchedule={handleSaveSession}
+        isScheduling={isSchedulingInterview}
       />
 
       {/* Review Reschedule Dialog */}

@@ -1,5 +1,4 @@
 import { useState, useId, useMemo, useEffect } from "react"
-import { format, parseISO } from "date-fns"
 import {
   Dialog,
   DialogContent,
@@ -28,24 +27,33 @@ import {
   type SearchComboboxOption,
 } from "@/shared/components"
 import { addMinutesToTime, isTimeBefore } from "@/shared/lib/timeUtils"
-import { candidates } from "@/data/mock"
-import { mockEmployees } from "../../data/mock"
 import type {
   Recruitment,
   InterviewSessionItem,
-  InterviewerAssignmentItem,
+  ScheduleInterviewSessionRequest,
 } from "../../types"
 import { Video, MapPin, Check, User, AlertTriangle } from "lucide-react"
 import { cn } from "@/shared/lib/utils"
 import { getApiError } from "@/shared/api/api-error"
 import { getRecruitmentAddRestriction } from "../../utils/recruitmentUtils"
-import { getRecruitmentInterviewStages } from "../../utils/stageUtils"
+import {
+  useLazyGetBatchApplicationsQuery,
+  useGetApplicationByIdQuery,
+} from "../../api/applications-api"
+import { useGetAvailableInterviewersQuery } from "../../api/interviews-api"
+import { mapApplicationStatus } from "../../utils/statusAdapters"
+import { mapApplicationStageStatus } from "../../utils/statusAdapters"
 
 export interface ScheduleInterviewDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   recruitment: Recruitment
-  onSchedule: (session: InterviewSessionItem) => void | Promise<void>
+  onSchedule: (input: {
+    applicationId: string
+    applicationStageId: string
+    body: ScheduleInterviewSessionRequest
+  }) => void | Promise<void>
+  isScheduling?: boolean
   existingSessions?: InterviewSessionItem[]
   sessionToReschedule?: InterviewSessionItem | null
 }
@@ -55,6 +63,7 @@ export function ScheduleInterviewDialog({
   onOpenChange,
   recruitment,
   onSchedule,
+  isScheduling = false,
   existingSessions = [],
   sessionToReschedule = null,
 }: ScheduleInterviewDialogProps) {
@@ -65,154 +74,153 @@ export function ScheduleInterviewDialog({
     : getRecruitmentAddRestriction(recruitment, "interview")
 
   // Interview stage options
-  const interviewStages = useMemo(() => {
-    return getRecruitmentInterviewStages(recruitment)
-  }, [recruitment])
-
-  const stageOptions = useMemo(() => {
-    return interviewStages.map((stg) => ({
-      label: stg.name,
-      value: stg.id,
-    }))
-  }, [interviewStages])
-
-  // Form state
-  const [stageId, setStageId] = useState<string>(stageOptions[0]?.value ?? "")
-
-  // Candidates who have NOT yet been scheduled for this stage (Option 1)
-  const unscheduledCandidates = useMemo(() => {
-    const list = candidates.filter((c) => c.recruitmentId === recruitment.id)
-    const baseList = list.length > 0 ? list : candidates.slice(0, 12)
-
-    // IDs of candidates already scheduled for this specific stage (excluding cancelled)
-    const scheduledIds = new Set(
-      (existingSessions || [])
-        .filter((s) => s.stageId === stageId && s.status !== "cancelled")
-        .map((s) => s.candidateId)
-    )
-
-    return baseList
-      .filter((c) => !scheduledIds.has(c.id))
-      .map((c, idx) => ({
-        id: c.id,
-        name: c.name,
-        email: c.email,
-        codeApplication: `APP-2026-${String(idx + 1).padStart(3, "0")}`,
-      }))
-  }, [recruitment.id, existingSessions, stageId])
-
-  const candidateComboboxOptions = useMemo<SearchComboboxOption[]>(() => {
-    if (isRescheduleMode && sessionToReschedule) {
-      return [
-        {
-          id: sessionToReschedule.candidateId,
-          label: sessionToReschedule.candidateName,
-          subLabel: sessionToReschedule.candidateEmail,
-          meta: sessionToReschedule.codeApplication,
-        },
-      ]
-    }
-    return unscheduledCandidates.map((c) => ({
-      id: c.id,
-      label: c.name,
-      subLabel: c.email,
-      meta: c.codeApplication,
-    }))
-  }, [isRescheduleMode, sessionToReschedule, unscheduledCandidates])
-
-  const [candidateId, setCandidateId] = useState<string>("")
+  const [candidateId, setCandidateId] = useState("")
+  const [applicationStageId, setApplicationStageId] = useState("")
+  const [loadApplications, { isFetching: isApplicationsLoading }] =
+    useLazyGetBatchApplicationsQuery()
+  const [allApplications, setAllApplications] = useState<
+    import("../../types/application").BatchApplicationListItemDto[]
+  >([])
+  const applications = allApplications
+  const selectedApplication = applications.find((item) => item.id === candidateId)
+  const {
+    currentData: applicationDetail,
+    isFetching: isApplicationLoading,
+    isError: isApplicationError,
+    error: applicationError,
+  } = useGetApplicationByIdQuery(candidateId, {
+      skip: !open || !candidateId || isRescheduleMode,
+    })
+  const eligibleStages = useMemo(
+    () =>
+      (applicationDetail?.stages ?? []).filter(
+        (stage) =>
+          String(stage.stageCategory).toLowerCase() === "interview" ||
+          String(stage.stageCategory) === "2"
+      ).filter(
+        (stage) => stage.applicationStageId &&
+          stage.isStarted &&
+          mapApplicationStageStatus(stage.status) === "in_progress"
+      ),
+    [applicationDetail]
+  )
+  const selectedStage = eligibleStages.find(
+    (stage) => stage.applicationStageId === applicationStageId
+  )
+  const eligibleStageOptions = useMemo(
+    () => eligibleStages.flatMap((stage) => stage.applicationStageId
+      ? [{ label: stage.stageName, value: stage.applicationStageId }]
+      : []),
+    [eligibleStages]
+  )
+  const {
+    currentData: availableInterviewers,
+    isFetching: isInterviewersLoading,
+    isError: isInterviewersError,
+    error: interviewersError,
+    refetch: refetchInterviewers,
+  } = useGetAvailableInterviewersQuery(applicationStageId, {
+    skip: !open || !applicationStageId || isRescheduleMode,
+  })
+  const unscheduledCandidates = useMemo(
+    () => applications.filter((item) => mapApplicationStatus(item.status) === "in_progress"),
+    [applications]
+  )
+  const candidateComboboxOptions = useMemo<SearchComboboxOption[]>(
+    () => unscheduledCandidates.map((item) => ({
+      id: item.id,
+      label: item.candidate?.fullName ?? "Candidate",
+      subLabel: item.candidate?.email ?? "",
+      meta: item.codeApplication,
+    })),
+    [unscheduledCandidates]
+  )
   const [sessionName, setSessionName] = useState<string>("")
-  const [scheduledDate, setScheduledDate] = useState<string>("2026-03-11")
+  const [scheduledDate, setScheduledDate] = useState<string>("")
   const [startTime, setStartTime] = useState<string>("10:00")
   const [endTime, setEndTime] = useState<string>("11:00")
   const [mode, setMode] = useState<"online" | "onsite">("online")
-  const [meetingUrl, setMeetingUrl] = useState<string>(
-    "https://meet.google.com/rec-interview-session"
-  )
-  const [location, setLocation] = useState<string>(
-    "APL Tower Lt. 37, Meeting Room 1"
-  )
-  const [selectedInterviewerIds, setSelectedInterviewerIds] = useState<
-    string[]
-  >([mockEmployees[0]?.id ?? ""])
+  const [meetingUrl, setMeetingUrl] = useState("")
+  const [location, setLocation] = useState("")
+  const [selectedInterviewerIds, setSelectedInterviewerIds] = useState<string[]>([])
 
   // Errors state
   const [errors, setErrors] = useState<Record<string, string>>({})
 
-  // Keep candidateId pointing to a valid unscheduled candidate (only in create mode)
+  // Load every application page so candidates are not silently limited to page one.
   useEffect(() => {
-    if (isRescheduleMode && sessionToReschedule) {
-      setCandidateId(sessionToReschedule.candidateId)
-      setStageId(sessionToReschedule.stageId)
-      setSessionName(sessionToReschedule.sessionName)
-
-      const req = sessionToReschedule.rescheduleRequest
-      if (req && req.proposedStart) {
-        setScheduledDate(format(parseISO(req.proposedStart), "yyyy-MM-dd"))
-        setStartTime(format(parseISO(req.proposedStart), "HH:mm"))
-        setEndTime(format(parseISO(req.proposedEnd), "HH:mm"))
-      } else {
-        setScheduledDate(
-          format(parseISO(sessionToReschedule.scheduledStart), "yyyy-MM-dd")
-        )
-        setStartTime(
-          format(parseISO(sessionToReschedule.scheduledStart), "HH:mm")
-        )
-        setEndTime(format(parseISO(sessionToReschedule.scheduledEnd), "HH:mm"))
+    if (!open || isRescheduleMode) return
+    let cancelled = false
+    const loadRemainingPages = async () => {
+      const collected: typeof allApplications = []
+      let page = 1
+      let hasNextPage = true
+      while (hasNextPage) {
+        const result = await loadApplications({
+          id: recruitment.id,
+          page,
+          pageSize: 100,
+        }).unwrap()
+        collected.push(...result.items)
+        hasNextPage = result.hasNextPage
+        page += 1
       }
-
-      setMode(sessionToReschedule.isOnline ? "online" : "onsite")
-      if (sessionToReschedule.meetingUrl)
-        setMeetingUrl(sessionToReschedule.meetingUrl)
-      if (sessionToReschedule.location)
-        setLocation(sessionToReschedule.location)
-      setSelectedInterviewerIds(
-        sessionToReschedule.interviewers.map((i) => i.employeeId)
-      )
-      return
+      if (!cancelled) setAllApplications(collected)
     }
+    setAllApplications([])
+    void loadRemainingPages().catch((error) => {
+      if (!cancelled) setErrors((previous) => ({
+        ...previous,
+        recruitment: getApiError(error).message,
+      }))
+    })
+    return () => { cancelled = true }
+  }, [open, isRescheduleMode, recruitment.id, loadApplications])
 
-    if (unscheduledCandidates.length > 0) {
-      const isValid = unscheduledCandidates.some((c) => c.id === candidateId)
-      if (!isValid) {
-        setCandidateId(unscheduledCandidates[0].id)
-      }
-    } else {
-      setCandidateId("")
-    }
-  }, [
-    isRescheduleMode,
-    sessionToReschedule,
-    unscheduledCandidates,
-    candidateId,
-    open,
-  ])
+  useEffect(() => {
+    if (open) return
+    setCandidateId("")
+    setApplicationStageId("")
+    setSelectedInterviewerIds([])
+    setSessionName("")
+    setScheduledDate("")
+    setMeetingUrl("")
+    setLocation("")
+    setErrors({})
+  }, [open])
 
-  const selectedCandidate = useMemo(() => {
-    if (isRescheduleMode && sessionToReschedule) {
-      return {
-        id: sessionToReschedule.candidateId,
-        name: sessionToReschedule.candidateName,
-        email: sessionToReschedule.candidateEmail,
-        codeApplication: sessionToReschedule.codeApplication,
-      }
+  const selectedCandidate = useMemo(
+    () => selectedApplication?.candidate
+      ? {
+          id: selectedApplication.id,
+          name: selectedApplication.candidate.fullName,
+          email: selectedApplication.candidate.email,
+          codeApplication: selectedApplication.codeApplication,
+        }
+      : undefined,
+    [selectedApplication]
+  )
+
+  useEffect(() => {
+    setApplicationStageId("")
+    setSelectedInterviewerIds([])
+  }, [candidateId])
+  useEffect(() => {
+    setSelectedInterviewerIds([])
+  }, [applicationStageId])
+  useEffect(() => {
+    if (!applicationStageId && eligibleStages.length === 1) {
+      setApplicationStageId(eligibleStages[0].applicationStageId ?? "")
     }
-    return unscheduledCandidates.find((c) => c.id === candidateId)
-  }, [
-    isRescheduleMode,
-    sessionToReschedule,
-    unscheduledCandidates,
-    candidateId,
-  ])
+  }, [applicationStageId, eligibleStages])
 
   // Auto-fill session name when candidate or stage changes
   useEffect(() => {
     if (isRescheduleMode) return
-    const selectedStg = stageOptions.find((s) => s.value === stageId)
-    if (selectedCandidate && selectedStg) {
-      setSessionName(`${selectedStg.label} - ${selectedCandidate.name}`)
+    if (selectedCandidate && selectedStage) {
+      setSessionName(`${selectedStage.stageName} - ${selectedCandidate.name}`)
     }
-  }, [isRescheduleMode, selectedCandidate, stageId, stageOptions])
+  }, [isRescheduleMode, selectedCandidate, selectedStage])
 
   const handleToggleInterviewer = (empId: string) => {
     setSelectedInterviewerIds((prev) =>
@@ -228,9 +236,13 @@ export function ScheduleInterviewDialog({
     const errs: Record<string, string> = {}
     if (scheduleRestriction) errs.recruitment = scheduleRestriction
     if (!selectedCandidate) errs.candidateId = "Candidate is required."
-    if (!stageOptions.some((stage) => stage.value === stageId)) {
-      errs.stageId = "Select a configured interview stage."
+    if (!selectedStage) {
+      errs.stageId = "Select a started interview stage for this candidate."
     }
+    if (selectedStage && existingSessions.some((session) =>
+      session.applicationStageId === selectedStage.applicationStageId &&
+      session.status !== "cancelled"
+    )) errs.stageId = "An interview is already scheduled for this stage."
     if (!sessionName.trim()) errs.sessionName = "Session title is required."
     if (!scheduledDate) errs.scheduledDate = "Date is required."
     if (!startTime) errs.startTime = "Start time is required."
@@ -242,12 +254,26 @@ export function ScheduleInterviewDialog({
     ) {
       errs.endTime = "End time must be after start time."
     }
-    if (mode === "online" && !meetingUrl.trim())
-      errs.meetingUrl = "Meeting URL is required."
+    if (sessionName.trim().length > 200)
+      errs.sessionName = "Session title must be 200 characters or fewer."
+    if (mode === "online") {
+      try {
+        const url = new URL(meetingUrl.trim())
+        if (!['http:', 'https:'].includes(url.protocol)) throw new Error()
+      } catch {
+        errs.meetingUrl = "Enter a valid absolute http or https meeting URL."
+      }
+    }
     if (mode === "onsite" && !location.trim())
       errs.location = "Location/Room is required."
+    if (location.trim().length > 255)
+      errs.location = "Location must be 255 characters or fewer."
     if (selectedInterviewerIds.length === 0)
       errs.interviewers = "Please assign at least one interviewer."
+    const availableIds = new Set((availableInterviewers ?? []).map((item) => item.employeeId))
+    if (selectedInterviewerIds.some((id) => !availableIds.has(id)))
+      errs.interviewers = "Refresh the interviewer list before scheduling."
+    if (isInterviewersError) errs.interviewers = "Unable to load eligible interviewers. Retry the request."
 
     setErrors(errs)
     return Object.keys(errs).length === 0
@@ -258,61 +284,23 @@ export function ScheduleInterviewDialog({
     if (!validate()) return
 
     const candidateInfo = selectedCandidate
-    const selectedStg = stageOptions.find((s) => s.value === stageId)
-    if (!candidateInfo || !selectedStg) return
-
-    // All assigned interviewers will have status 'pending' in new schedule
-    const interviewersList: InterviewerAssignmentItem[] =
-      selectedInterviewerIds.map((empId, idx) => {
-        const emp = mockEmployees.find((e) => e.id === empId)
-        return {
-          id: `draft-interviewer-${idx}`,
-          employeeId: empId,
-          employeeName: emp?.fullName ?? "Interviewer",
-          employeeEmail: emp?.email ?? "",
-          role: emp?.jobTitle,
-          status: "pending",
-          assessment: null,
-        }
-      })
-
-    const newSession: InterviewSessionItem = {
-      id: sessionToReschedule?.id ?? "draft-session",
-      applicationStageId: sessionToReschedule?.applicationStageId ?? null,
-      recruitmentBatchId: recruitment.id,
-      stageId: selectedStg.value,
-      batchStageId: selectedStg.value,
-      stageName: selectedStg.label,
+    if (!candidateInfo || !selectedStage?.applicationStageId) return
+    const request: ScheduleInterviewSessionRequest = {
       sessionName: sessionName.trim(),
-      scheduledStart: new Date(
-        `${scheduledDate}T${startTime}:00`
-      ).toISOString(),
+      scheduledStart: new Date(`${scheduledDate}T${startTime}:00`).toISOString(),
       scheduledEnd: new Date(`${scheduledDate}T${endTime}:00`).toISOString(),
       isOnline: mode === "online",
-      meetingUrl: mode === "online" ? meetingUrl.trim() : null,
       location: mode === "onsite" ? location.trim() : null,
-      status: "scheduled",
-      fileSubmission: sessionToReschedule
-        ? sessionToReschedule.fileSubmission
-        : null,
-      endedSubmissionAt: sessionToReschedule
-        ? sessionToReschedule.endedSubmissionAt
-        : null,
-      candidateId: candidateInfo.id,
-      candidateName: candidateInfo.name,
-      candidateEmail: candidateInfo.email,
-      codeApplication: candidateInfo.codeApplication,
-      interviewers: interviewersList,
-      rescheduleRequest: sessionToReschedule?.rescheduleRequest
-        ? {
-            ...sessionToReschedule.rescheduleRequest,
-            status: "approved",
-          }
-        : null,
+      meetingUrl: mode === "online" ? meetingUrl.trim() : null,
+      interviewerEmployeeIds: selectedInterviewerIds,
     }
 
     try {
-      await onSchedule(newSession)
+      await onSchedule({
+        applicationId: candidateInfo.id,
+        applicationStageId: selectedStage.applicationStageId,
+        body: request,
+      })
       onOpenChange(false)
     } catch (error) {
       setErrors((previous) => ({
@@ -421,14 +409,16 @@ export function ScheduleInterviewDialog({
                   placeholder={
                     selectedCandidate
                       ? `${selectedCandidate.name} (${selectedCandidate.codeApplication})`
-                      : unscheduledCandidates.length === 0
+                      : isApplicationsLoading
+                        ? "Loading candidates..."
+                        : unscheduledCandidates.length === 0
                         ? "No unscheduled candidates"
                         : "Search candidate..."
                   }
                   searchPlaceholder="Search candidate by name, email, or code..."
                   emptyText="No unscheduled candidates for this stage"
                   disabled={
-                    isRescheduleMode || unscheduledCandidates.length === 0
+                    isRescheduleMode || isApplicationsLoading || unscheduledCandidates.length === 0
                   }
                   selectedIds={candidateId ? [candidateId] : []}
                   onSelect={(opt) => {
@@ -456,12 +446,12 @@ export function ScheduleInterviewDialog({
                   Interview Stage <span className="text-destructive">*</span>
                 </Label>
                 <Select
-                  items={stageOptions}
-                  value={stageId}
-                  disabled={isRescheduleMode}
+                  items={eligibleStageOptions}
+                  value={applicationStageId}
+                  disabled={isRescheduleMode || isApplicationLoading || eligibleStages.length === 0}
                   onValueChange={(val) => {
                     if (val) {
-                      setStageId(val)
+                      setApplicationStageId(val)
                       if (errors.stageId)
                         setErrors((prev) => ({ ...prev, stageId: "" }))
                     }
@@ -469,7 +459,7 @@ export function ScheduleInterviewDialog({
                 >
                   <SelectTrigger
                     id="interview-stage"
-                    disabled={isRescheduleMode}
+                    disabled={isRescheduleMode || isApplicationLoading || eligibleStages.length === 0}
                     aria-invalid={!!errors.stageId}
                     className="h-10 w-full rounded-full border-0 bg-muted px-4 text-sm text-foreground shadow-none transition-all duration-150 outline-none hover:bg-muted/60 focus-visible:ring-2 focus-visible:ring-primary disabled:cursor-not-allowed disabled:opacity-70"
                   >
@@ -477,9 +467,9 @@ export function ScheduleInterviewDialog({
                   </SelectTrigger>
                   <SelectContent className="rounded-xl">
                     <SelectGroup>
-                      {stageOptions.map((stg) => (
-                        <SelectItem key={stg.value} value={stg.value}>
-                          {stg.label}
+                      {eligibleStages.map((stage) => (
+                        <SelectItem key={stage.applicationStageId!} value={stage.applicationStageId!}>
+                          {stage.stageName}
                         </SelectItem>
                       ))}
                     </SelectGroup>
@@ -727,13 +717,13 @@ export function ScheduleInterviewDialog({
                   </span>
                 </div>
                 <div className="grid max-h-55 grid-cols-1 gap-2 overflow-y-auto pr-1">
-                  {mockEmployees.map((emp) => {
-                    const isSelected = selectedInterviewerIds.includes(emp.id)
+                  {(availableInterviewers ?? []).map((emp) => {
+                    const isSelected = selectedInterviewerIds.includes(emp.employeeId)
                     return (
                       <button
-                        key={emp.id}
+                        key={emp.employeeId}
                         type="button"
-                        onClick={() => handleToggleInterviewer(emp.id)}
+                        onClick={() => handleToggleInterviewer(emp.employeeId)}
                         className={cn(
                           "flex cursor-pointer items-center justify-between rounded-2xl border p-2.5 text-left transition-all",
                           isSelected
@@ -750,7 +740,7 @@ export function ScheduleInterviewDialog({
                               {emp.fullName}
                             </p>
                             <p className="truncate text-[10px] text-muted-foreground">
-                              {emp.jobTitle}
+                              {emp.jobTitle} · {emp.departmentName}
                             </p>
                           </div>
                         </div>
@@ -769,6 +759,31 @@ export function ScheduleInterviewDialog({
                     )
                   })}
                 </div>
+                {isApplicationLoading && (
+                  <p className="px-1 text-xs text-muted-foreground">Loading application stages...</p>
+                )}
+                {isApplicationError && (
+                  <p role="alert" className="px-1 text-xs text-destructive">
+                    {getApiError(applicationError, "Unable to load candidate stages.").message}
+                  </p>
+                )}
+                {candidateId && !isApplicationLoading && eligibleStages.length === 0 && (
+                  <p className="px-1 text-xs text-muted-foreground">No started interview stage is currently eligible for this candidate.</p>
+                )}
+                {isInterviewersLoading && (
+                  <p className="px-1 text-xs text-muted-foreground">Loading accepted interviewers...</p>
+                )}
+                {isInterviewersError && (
+                  <div className="flex items-center justify-between px-1 text-xs text-destructive">
+                    <span>{getApiError(interviewersError, "Unable to load eligible interviewers.").message}</span>
+                    <button type="button" className="font-semibold underline" onClick={() => void refetchInterviewers()}>
+                      Retry
+                    </button>
+                  </div>
+                )}
+                {!isInterviewersLoading && applicationStageId && (availableInterviewers?.length ?? 0) === 0 && !isInterviewersError && (
+                  <p className="px-1 text-xs text-muted-foreground">No accepted interviewers are available for this stage.</p>
+                )}
                 {errors.interviewers && (
                   <p className="px-1 text-xs text-destructive">
                     {errors.interviewers}
@@ -784,7 +799,7 @@ export function ScheduleInterviewDialog({
           <SaveButton
             type="submit"
             form={formId}
-            disabled={Boolean(scheduleRestriction)}
+            disabled={Boolean(scheduleRestriction) || isScheduling || isInterviewersLoading}
           >
             {isRescheduleMode ? "Save & Reschedule" : "Schedule Interview"}
           </SaveButton>

@@ -10,8 +10,10 @@ import {
 } from "../utils/statusAdapters"
 import {
   useGetBatchInterviewSessionsQuery,
+  useScheduleInterviewSessionMutation,
   useReviewRescheduleRequestMutation,
 } from "../api/interviews-api"
+import type { ScheduleInterviewSessionRequest } from "../types"
 import { getRecruitmentAddRestriction } from "../utils/recruitmentUtils"
 import { getRecruitmentInterviewStages } from "../utils/stageUtils"
 
@@ -111,6 +113,8 @@ export function useInterviewsTab({
   )
 
   const [reviewRescheduleMutation] = useReviewRescheduleRequestMutation()
+  const [scheduleInterviewMutation, { isLoading: isSchedulingInterview }] =
+    useScheduleInterviewSessionMutation()
 
   // The query remains authoritative; failed or pending mutations do not rewrite its data.
   const sessions = useMemo(
@@ -132,8 +136,6 @@ export function useInterviewsTab({
 
   // Dialog states
   const [isScheduleOpen, setIsScheduleOpen] = useState<boolean>(false)
-  const [sessionToReschedule, setSessionToReschedule] =
-    useState<InterviewSessionItem | null>(null)
   const [rescheduleSessionToReview, setRescheduleSessionToReview] =
     useState<InterviewSessionItem | null>(null)
   const [isReviewRescheduleOpen, setIsReviewRescheduleOpen] =
@@ -222,23 +224,23 @@ export function useInterviewsTab({
   // Handlers
   const handleOpenScheduleNew = useCallback(() => {
     if (!canScheduleInterview) return
-    setSessionToReschedule(null)
     setIsScheduleOpen(true)
     onScheduleInterview?.()
   }, [canScheduleInterview, onScheduleInterview])
 
-  const handleOpenAdjustSchedule = useCallback(
-    (session: InterviewSessionItem) => {
-      setSessionToReschedule(session)
-      setIsScheduleOpen(true)
+  const handleSaveSession = useCallback(
+    async (input: {
+      applicationId: string
+      applicationStageId: string
+      body: ScheduleInterviewSessionRequest
+    }) => {
+      await scheduleInterviewMutation({
+        ...input,
+        batchId: recruitment.id,
+      }).unwrap()
     },
-    []
+    [scheduleInterviewMutation, recruitment.id]
   )
-
-  const handleSaveSession = () => {
-    // Real scheduling is implemented in phase 03, after application-stage eligibility.
-    throw new Error("Interview scheduling is not connected yet.")
-  }
 
   const handleOpenReviewReschedule = useCallback(
     (session: InterviewSessionItem) => {
@@ -336,8 +338,6 @@ export function useInterviewsTab({
     // Dialog states
     isScheduleOpen,
     setIsScheduleOpen,
-    sessionToReschedule,
-    setSessionToReschedule,
     rescheduleSessionToReview,
     isReviewRescheduleOpen,
     setIsReviewRescheduleOpen,
@@ -347,8 +347,8 @@ export function useInterviewsTab({
     handleTogglePendingReschedule,
     handleClearDateFilter,
     handleOpenScheduleNew,
-    handleOpenAdjustSchedule,
     handleSaveSession,
+    isSchedulingInterview,
     handleOpenReviewReschedule,
     handleApproveReschedule,
     handleRejectReschedule,
