@@ -17,12 +17,12 @@ import {
   PanelHeader,
   StatusBadge,
   EmptyState,
+  ErrorState,
   CreateButton,
   EditButton,
 } from "@/shared/components"
 import { safeFormatDate } from "@/shared/lib/format"
 import { cn } from "@/shared/lib/utils"
-import { mockEmployees } from "../../data/mock"
 import { formatStageCategory } from "../../utils"
 import type {
   Recruitment,
@@ -30,8 +30,7 @@ import type {
 } from "../../types"
 import { AssignInterviewersDialog } from "./AssignInterviewersDialog"
 import { useStagesTab } from "../../hooks/useStagesTab"
-import { useGetEmployeesQuery } from "../../api/employees-api"
-import { UserPlus, Pencil } from "lucide-react"
+import { UserPlus, Pencil, Loader2 } from "lucide-react"
 
 export interface StagesTabProps {
   recruitment: Recruitment
@@ -48,15 +47,24 @@ const statusColors: Record<StageEmployeeStatus, string> = {
     "bg-rose-500/15 text-rose-800 dark:text-rose-300 hover:bg-rose-500/25",
 }
 
+const statusTextColors: Record<StageEmployeeStatus, string> = {
+  pending: "text-amber-800",
+  accepted: "text-emerald-800",
+  declined: "text-rose-800",
+}
+
 const statusLabels: Record<StageEmployeeStatus, string> = {
-  pending: "Pending (Menunggu Persetujuan)",
-  accepted: "Accepted (Menyetujui)",
-  declined: "Declined (Menolak)",
+  pending: "Pending",
+  accepted: "Accepted",
+  declined: "Declined",
 }
 
 export function StagesTab({ recruitment, onCreateStage, onEditStage }: StagesTabProps) {
   const {
     stages,
+    isLoading,
+    isError,
+    refetch,
     totalDays,
     assignStage,
     assignIndex,
@@ -66,7 +74,28 @@ export function StagesTab({ recruitment, onCreateStage, onEditStage }: StagesTab
     handleSaveInterviewers,
   } = useStagesTab({ recruitment })
 
-  const { data: apiEmployees } = useGetEmployeesQuery()
+  if (isLoading) {
+    return (
+      <Panel className="p-8">
+        <div role="status" className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
+          <Loader2 className="size-4 animate-spin" aria-hidden />
+          Loading stages...
+        </div>
+      </Panel>
+    )
+  }
+
+  if (isError) {
+    return (
+      <Panel className="p-8">
+        <ErrorState
+          title="Failed to load stages"
+          description="Unable to fetch the selection stages and interviewers. Please try again."
+          onRetry={() => refetch()}
+        />
+      </Panel>
+    )
+  }
 
   if (stages.length === 0) {
     return (
@@ -129,27 +158,16 @@ export function StagesTab({ recruitment, onCreateStage, onEditStage }: StagesTab
                     stage.type === "interview" ||
                     stage.stageCategory === "Interview" ||
                     stage.stageCategory === "2" ||
-                    (stage as any).stageCategory === 2 ||
                     stage.name.toLowerCase().includes("interview") ||
                     stage.name.toLowerCase().includes("wawancara")
 
                   // Detailed interviewers with status
                   const stageInterviewers = (stage.assignedInterviewers ?? []).map((assignment) => {
-                    const emp =
-                      assignment.employeeName
-                        ? {
-                            id: assignment.employeeId,
-                            fullName: assignment.employeeName,
-                            email: assignment.employeeEmail || "",
-                            jobTitle: assignment.jobTitle || "Interviewer",
-                          }
-                        : (apiEmployees || []).find((e) => e.id === assignment.employeeId) ||
-                          mockEmployees.find((e) => e.id === assignment.employeeId) || {
-                            id: assignment.employeeId,
-                            fullName: `Employee (${assignment.employeeId.slice(0, 6)}...)`,
-                            email: "interviewer@mii.co.id",
-                            jobTitle: "Interviewer",
-                          }
+                    const emp = {
+                      id: assignment.employeeId,
+                      fullName: assignment.employeeName || `Employee (${assignment.employeeId.slice(0, 6)}...)`,
+                      jobTitle: assignment.jobTitle || "Interviewer",
+                    }
                     return {
                       employee: emp,
                       status: assignment.status,
@@ -217,13 +235,12 @@ export function StagesTab({ recruitment, onCreateStage, onEditStage }: StagesTab
                                 >
                                   <span className="truncate max-w-30">{employee.fullName}</span>
                                 </TooltipTrigger>
-                                <TooltipContent side="top" className="text-xs max-w-xs">
+                                <TooltipContent side="top" className="max-w-xs flex-col items-start gap-0.5 border border-slate-200 bg-white px-3 py-2 text-left text-xs text-slate-900 shadow-md">
                                   <p className="font-semibold">{employee.fullName}</p>
-                                  <p className="text-muted-foreground">{employee.jobTitle || "Interviewer"}</p>
-                                  <p className="mt-1 text-primary-200">
-                                    Status: <span className="font-medium">{statusLabels[empStatus]}</span>
+                                  <p className="text-slate-600">{employee.jobTitle || "Interviewer"}</p>
+                                  <p className={cn("mt-1 font-medium", statusTextColors[empStatus])}>
+                                    {statusLabels[empStatus]}
                                   </p>
-                                  <p className="text-[10px] text-muted-foreground mt-0.5">Click badge to edit assignment</p>
                                 </TooltipContent>
                               </Tooltip>
                             ))}
@@ -251,14 +268,16 @@ export function StagesTab({ recruitment, onCreateStage, onEditStage }: StagesTab
         </Panel>
       </div>
 
-      <AssignInterviewersDialog
-        open={isDialogOpen}
-        onOpenChange={setIsDialogOpen}
-        stage={assignStage}
-        stageIndex={assignIndex}
-        batchName={recruitment.name}
-        onSave={handleSaveInterviewers}
-      />
+      {isDialogOpen && (
+        <AssignInterviewersDialog
+          open={isDialogOpen}
+          onOpenChange={setIsDialogOpen}
+          stage={assignStage}
+          stageIndex={assignIndex}
+          batchName={recruitment.name}
+          onSave={handleSaveInterviewers}
+        />
+      )}
     </TooltipProvider>
   )
 }

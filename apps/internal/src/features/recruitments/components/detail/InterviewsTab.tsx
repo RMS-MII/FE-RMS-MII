@@ -30,6 +30,8 @@ export function InterviewsTab({
   onReviewReschedule,
 }: InterviewsTabProps) {
   const {
+    canScheduleInterview,
+    scheduleRestriction,
     sessions,
     filteredSessions,
     pendingReschedules,
@@ -75,10 +77,10 @@ export function InterviewsTab({
   })
 
   return (
-    <Panel className="p-4 sm:p-6 space-y-6 bg-card border-border">
+    <Panel className="space-y-0">
       {/* Top Pending Reschedule Banner Alert (if any) */}
       {pendingReschedules.length > 0 && !isFilterPendingReschedule && (
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 rounded-2xl bg-amber-50 px-4 py-3 text-xs text-amber-950">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b border-border bg-amber-50 px-5 py-3 text-xs text-amber-950">
           <div className="flex items-center gap-2.5">
             <AlertTriangle className="size-4 text-amber-600 dark:text-amber-400 shrink-0" />
             <div>
@@ -115,7 +117,7 @@ export function InterviewsTab({
       )}
 
       {/* Top Filter & Action Toolbar */}
-      <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+      <div className="flex flex-col gap-3 border-b border-border px-5 py-4 lg:flex-row lg:items-center lg:justify-between">
         <div className="flex flex-1 flex-wrap items-center gap-2.5">
           {/* Search Input */}
           <SearchInput
@@ -191,7 +193,9 @@ export function InterviewsTab({
           <Button
             type="button"
             onClick={handleOpenScheduleNew}
-            className="h-10 gap-2 rounded-full border-0 bg-primary px-4 text-xs font-semibold text-primary-foreground shadow-none hover:bg-primary/90 cursor-pointer shrink-0"
+            disabled={!canScheduleInterview}
+            title={scheduleRestriction ?? "Schedule Interview"}
+            className="h-10 gap-2 rounded-full border-0 bg-primary px-4 text-xs font-semibold text-primary-foreground shadow-none hover:bg-primary/90 cursor-pointer shrink-0 disabled:bg-muted disabled:text-muted-foreground"
           >
             <CalendarPlus className="size-4" />
             <span>Schedule Interview</span>
@@ -199,8 +203,15 @@ export function InterviewsTab({
         </div>
       </div>
 
+      {scheduleRestriction && (
+        <div className="flex items-center gap-2.5 border-b border-border bg-amber-500/10 px-5 py-3 text-xs text-amber-700 dark:text-amber-400">
+          <AlertTriangle className="size-4 shrink-0" aria-hidden />
+          <p>{scheduleRestriction}</p>
+        </div>
+      )}
+
       {/* 2-Column Split Layout: Mini Calendar (Left) + Table (Right) */}
-      <div className="flex flex-col md:flex-row gap-6 pt-2">
+      <div className="flex flex-col md:flex-row gap-6 p-5">
         {/* Left Column: Mini Calendar (fixed sidebar) */}
         <div className="w-full md:w-72 lg:w-80 shrink-0">
           <InterviewMiniCalendar
@@ -229,7 +240,7 @@ export function InterviewsTab({
 
       {/* Schedule Interview Dialog */}
       <ScheduleInterviewDialog
-        open={isScheduleOpen}
+        open={isScheduleOpen && (Boolean(sessionToReschedule) || canScheduleInterview)}
         onOpenChange={(open) => {
           setIsScheduleOpen(open)
           if (!open) setSessionToReschedule(null)

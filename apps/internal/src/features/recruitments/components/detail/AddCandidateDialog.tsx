@@ -12,6 +12,7 @@ import type { Recruitment, CandidateApplicationItem } from "../../types"
 import { Users, UserPlus, AlertCircle } from "lucide-react"
 import { AddFromTalentPoolTab } from "./AddFromTalentPoolTab"
 import { RegisterNewCandidateTab } from "./RegisterNewCandidateTab"
+import { getRecruitmentAddRestriction } from "../../utils/recruitmentUtils"
 
 export interface AddCandidateDialogProps {
   recruitment: Recruitment
@@ -30,10 +31,7 @@ export function AddCandidateDialog({
 }: AddCandidateDialogProps) {
   const [activeTab, setActiveTab] = useState<"talent-pool" | "new-candidate">("talent-pool")
 
-  const hasStages = useMemo(() => {
-    if (recruitment.batchStages && recruitment.batchStages.length > 0) return true
-    return (recruitment.stages?.length ?? 0) > 0
-  }, [recruitment.batchStages, recruitment.stages])
+  const addRestriction = getRecruitmentAddRestriction(recruitment, "candidate")
 
   const { data: apiCandidatesData } = useGetCandidatesQuery(undefined, {
     skip: !open,
@@ -66,11 +64,11 @@ export function AddCandidateDialog({
           </DialogDescription>
         </DialogHeader>
 
-        {!hasStages && (
+        {addRestriction && (
           <div className="mx-6 mt-4 rounded-xl border border-amber-500/30 bg-amber-500/10 p-3.5 text-xs text-amber-700 dark:text-amber-400 flex items-center gap-2.5">
             <AlertCircle className="size-4 shrink-0 text-amber-600 dark:text-amber-400" />
             <p>
-              <strong className="font-semibold">Selection stages required:</strong> This recruitment batch does not have selection stages yet. Please configure stages first before adding candidates.
+              {addRestriction}
             </p>
           </div>
         )}

@@ -52,16 +52,30 @@ export interface BatchStage {
   updatedAt?: string | null
   // UI Relations
   stageType?: StageTypeEntity | StageTypeDto
-  interviewers?: {
-    stageEmployeeId: string
-    employeeId: string
-    fullName: string
-    email: string
-    jobTitle: string
-    departmentName: string
-    status: number | string
-    statusName?: string
-  }[]
+  interviewers?: AssignedInterviewer[]
+}
+
+export interface AssignedInterviewer {
+  stageEmployeeId: string
+  employeeId: string
+  fullName: string
+  email: string
+  jobTitle: string
+  departmentName: string
+  status: number | string
+  statusName?: string
+}
+
+export interface BatchStageWithInterviewers extends BatchStage {
+  interviewers: AssignedInterviewer[]
+}
+
+export interface AssignInterviewersResponse {
+  batchId: string
+  batchName: string
+  stageId: string
+  stageName: string
+  interviewers: AssignedInterviewer[]
 }
 
 /**

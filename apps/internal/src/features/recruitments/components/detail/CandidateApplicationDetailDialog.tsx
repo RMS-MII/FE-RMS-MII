@@ -1,7 +1,8 @@
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
 } from "@workspace/ui/components/dialog"
@@ -23,89 +24,126 @@ export interface CandidateApplicationDetailDialogProps {
   ) => void
 }
 
+type ApplicationDetailContentProps = Pick<
+  CandidateApplicationDetailDialogProps,
+  "onOpenChange" | "onUpdateStatus"
+> & {
+  application: CandidateApplicationItem
+  recruitmentName: string
+}
+
+function ApplicationDetailContent({
+  application,
+  recruitmentName,
+  onOpenChange,
+  onUpdateStatus,
+}: ApplicationDetailContentProps) {
+  const stages = application.applicationStages || []
+  const activeStageIndex = Math.max(
+    0,
+    Math.min(application.currentStageIndex, stages.length - 1)
+  )
+  const [stageIndex, setStageIndex] = useState(activeStageIndex)
+  const selectedStageIndex = Math.max(
+    0,
+    Math.min(stageIndex, stages.length - 1)
+  )
+  const isFinalStage =
+    stages.length > 0 && application.currentStageIndex >= stages.length - 1
+
+  return (
+    <DialogContent className="flex max-h-[90dvh] w-full flex-col gap-0 overflow-hidden rounded-2xl bg-card p-0 sm:max-w-4xl lg:max-w-5xl">
+      <DialogHeader className="shrink-0 border-b border-border p-6 pr-14 pb-4">
+        <div className="flex flex-wrap items-center gap-2.5">
+          <DialogTitle className="text-base font-semibold text-foreground">
+            Candidate Application
+          </DialogTitle>
+          <span className="rounded-md bg-muted px-2 py-0.5 font-mono text-xs font-medium text-muted-foreground">
+            {application.codeApplication}
+          </span>
+        </div>
+        <DialogDescription className="text-sm leading-relaxed">
+          Review the candidate profile and selection-stage evaluations for{" "}
+          {recruitmentName}.
+        </DialogDescription>
+      </DialogHeader>
+
+      <div className="min-h-0 flex-1 overflow-y-auto">
+        <div className="border-b border-border px-6 py-4">
+          <CandidateProfileCard application={application} />
+        </div>
+
+        <div
+          className={
+            stages.length > 0
+              ? "md:grid md:grid-cols-[280px_minmax(0,1fr)]"
+              : undefined
+          }
+        >
+          {stages.length > 0 && (
+            <aside
+              aria-label="Selection stages"
+              className="min-w-0 border-b border-border p-6 md:border-r md:border-b-0"
+            >
+              <StageTimelineProgress
+                stages={stages}
+                currentStageIndex={application.currentStageIndex}
+                selectedStageIndex={selectedStageIndex}
+                onSelectStage={setStageIndex}
+              />
+            </aside>
+          )}
+
+          <div className="min-w-0 p-6">
+            <StageEvaluationEvidence
+              application={application}
+              stageIndex={selectedStageIndex}
+            />
+          </div>
+        </div>
+      </div>
+
+      <StageDecisionFooter
+        key={stages[selectedStageIndex]?.stageId ?? "no-stage"}
+        application={application}
+        stage={stages[selectedStageIndex]}
+        isViewingActiveStage={
+          selectedStageIndex === application.currentStageIndex
+        }
+        isFinalStage={isFinalStage}
+        onAdvanceStage={(notes) =>
+          onUpdateStatus?.(application.id, "advance", { notes })
+        }
+        onRejectStage={(reason, notes) =>
+          onUpdateStatus?.(application.id, "reject", { reason, notes })
+        }
+        onGoToActiveStage={() => setStageIndex(activeStageIndex)}
+        onClose={() => onOpenChange(false)}
+      />
+    </DialogContent>
+  )
+}
+
 export function CandidateApplicationDetailDialog({
   application,
+  recruitment,
   open,
   onOpenChange,
   onUpdateStatus,
 }: CandidateApplicationDetailDialogProps) {
-  const [selectedStageIndex, setSelectedStageIndex] = useState<number>(0)
-
-  useEffect(() => {
-    if (application) {
-      setSelectedStageIndex(application.currentStageIndex || 0)
-    }
-  }, [application])
-
   if (!application) return null
-
-  const stages = application.applicationStages || []
-  const isFinalStage = application.currentStageIndex >= stages.length - 1
-
-  const handleAdvance = (notes?: string) => {
-    if (onUpdateStatus) {
-      onUpdateStatus(application.id, "advance", { notes })
-    }
-  }
-
-  const handleReject = (reason: string, notes?: string) => {
-    if (onUpdateStatus) {
-      onUpdateStatus(application.id, "reject", { reason, notes })
-    }
-  }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent
-        className="sm:max-w-4xl lg:max-w-5xl xl:max-w-6xl w-full p-0! gap-0! rounded-3xl! border border-border shadow-2xl bg-white! max-h-[92vh] h-[88vh] flex flex-col overflow-hidden outline-none"
-      >
-        <DialogHeader className="border-b border-border p-5 sm:px-6 bg-white shrink-0 pr-14 space-y-3">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <div className="flex items-center gap-2">
-              <DialogTitle className="text-base sm:text-lg font-bold text-foreground">
-                Candidate Application & Evaluation
-              </DialogTitle>
-              <span className="font-mono text-xs font-semibold rounded-md bg-muted px-2 py-0.5 text-foreground">
-                {application.codeApplication}
-              </span>
-            </div>
-          </div>
-
-          <CandidateProfileCard application={application} />
-        </DialogHeader>
-
-        <div className="flex flex-col md:flex-row flex-1 min-h-0 overflow-hidden bg-white">
-          <div className="w-full md:w-[320px] lg:w-90 md:shrink-0 border-b md:border-b-0 md:border-r border-border p-4 sm:p-5 overflow-y-auto">
-            <StageTimelineProgress
-              stages={stages}
-              currentStageIndex={application.currentStageIndex}
-              selectedStageIndex={selectedStageIndex}
-              onSelectStage={setSelectedStageIndex}
-            />
-          </div>
-
-          <div className="flex-1 min-w-0 flex flex-col bg-white overflow-hidden">
-            <div className="flex-1 overflow-y-auto px-4 space-y-4">
-
-              <StageEvaluationEvidence
-                application={application}
-                stageIndex={selectedStageIndex}
-              />
-            </div>
-
-            <StageDecisionFooter
-              application={application}
-              stage={stages[selectedStageIndex]}
-              isViewingActiveStage={selectedStageIndex === application.currentStageIndex}
-              isFinalStage={isFinalStage}
-              onAdvanceStage={handleAdvance}
-              onRejectStage={handleReject}
-              onGoToActiveStage={() => setSelectedStageIndex(application.currentStageIndex)}
-              onClose={() => onOpenChange(false)}
-            />
-          </div>
-        </div>
-      </DialogContent>
+      {open && (
+        <ApplicationDetailContent
+          key={application.id + ":" + application.currentStageIndex}
+          application={application}
+          recruitmentName={recruitment.name}
+          onOpenChange={onOpenChange}
+          onUpdateStatus={onUpdateStatus}
+        />
+      )}
     </Dialog>
   )
 }
