@@ -1,25 +1,11 @@
 import { createFileRoute } from "@tanstack/react-router"
-import { z } from "zod"
-import { RecruitmentDetailPage, type TabKey } from "@/features/recruitments"
-
-const tabEnum = z.enum([
-  "summary",
-  "stages",
-  "candidates",
-  "interviews",
-  "evaluations",
-  "decisions",
-])
-
-const recruitmentDetailSearchSchema = z.object({
-  tab: tabEnum.optional().catch(undefined),
-  stage: z.coerce.number().optional().catch(undefined),
-})
-
-export type RecruitmentDetailSearch = z.infer<typeof recruitmentDetailSearchSchema>
+import {
+  RecruitmentDetailPage,
+  recruitmentDetailSearchSchema,
+} from "@/features/recruitments"
 
 export const Route = createFileRoute("/_auth/recruitments/$id/")({
-  validateSearch: (search: Record<string, unknown>): RecruitmentDetailSearch =>
+  validateSearch: (search: Record<string, unknown>) =>
     recruitmentDetailSearchSchema.parse(search),
   component: RouteComponent,
 })
@@ -32,7 +18,7 @@ function RouteComponent() {
   return (
     <RecruitmentDetailPage
       id={id}
-      activeTab={(search.tab as TabKey | undefined) ?? "summary"}
+      activeTab={search.tab ?? "summary"}
       selectedStage={search.stage ?? null}
       onTabChange={(newTab) => {
         navigate({
@@ -50,6 +36,7 @@ function RouteComponent() {
             ...prev,
             tab: "candidates",
             stage: newStage ?? undefined,
+            candidatePage: undefined,
           }),
           replace: true,
         })

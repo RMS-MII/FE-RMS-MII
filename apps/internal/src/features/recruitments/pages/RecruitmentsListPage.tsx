@@ -1,5 +1,5 @@
 import { useState } from "react"
-import { CheckCircle2, CirclePlay, Eye, MoreHorizontal, Plus, X } from "lucide-react"
+import { CheckCircle2, CirclePlay, CircleStop, Eye, MoreHorizontal, Plus, X } from "lucide-react"
 
 // Primitives from @workspace/ui
 import { Button } from "@workspace/ui/components/button"
@@ -46,11 +46,13 @@ import { getRecruitmentStatusMeta } from "../types"
 import { activeCandidateCount } from "../data/mock"
 import { CreateRecruitmentDialog } from "../components/CreateRecruitmentDialog"
 import { OpenRecruitmentDialog } from "../components/OpenRecruitmentDialog"
+import { CloseRecruitmentDialog } from "../components/CloseRecruitmentDialog"
 import { formatCurrentStageText } from "../utils"
 import { useRecruitmentsList } from "../hooks/useRecruitmentsList"
 
 export function RecruitmentsListPage() {
   const [recruitmentToOpen, setRecruitmentToOpen] = useState<Recruitment | null>(null)
+  const [recruitmentToClose, setRecruitmentToClose] = useState<Recruitment | null>(null)
   const [successMessage, setSuccessMessage] = useState<string | null>(null)
   const {
     search,
@@ -76,6 +78,19 @@ export function RecruitmentsListPage() {
     handleResetFilters,
     handleViewDetail,
   } = useRecruitmentsList()
+
+  const handleRecruitmentStatusUpdated = (batch: Recruitment) => {
+    const status = getRecruitmentStatusMeta(batch.status)
+    setSuccessMessage(`${batch.name} is now ${status.label}.`)
+    if (
+      statusFilter !== "all" &&
+      getRecruitmentStatusMeta(statusFilter).label !== status.label &&
+      recruitments.length === 1 &&
+      page > 1
+    ) {
+      handlePageChange(page - 1)
+    }
+  }
 
   const renderCurrentStage = (r: Recruitment) => {
     const text = formatCurrentStageText(r)
@@ -375,6 +390,15 @@ export function RecruitmentsListPage() {
                                 Open Recruitment
                               </DropdownMenuItem>
                             )}
+                            {statusMeta.label === "Open" && (
+                              <DropdownMenuItem variant="destructive" onClick={() => {
+                                setSuccessMessage(null)
+                                setRecruitmentToClose(recruitment)
+                              }}>
+                                <CircleStop className="size-4" aria-hidden />
+                                Close Recruitment
+                              </DropdownMenuItem>
+                            )}
                           </DropdownMenuContent>
                         </DropdownMenu>
                       </TableCell>
@@ -406,12 +430,18 @@ export function RecruitmentsListPage() {
           onOpenChange={(open) => {
             if (!open) setRecruitmentToOpen(null)
           }}
-          onSuccess={(batch) => {
-            setSuccessMessage(`${batch.name} is now Open.`)
-            if (statusFilter === "1" && recruitments.length === 1 && page > 1) {
-              handlePageChange(page - 1)
-            }
+          onSuccess={handleRecruitmentStatusUpdated}
+        />
+      )}
+
+      {recruitmentToClose && (
+        <CloseRecruitmentDialog
+          recruitment={recruitmentToClose}
+          open
+          onOpenChange={(open) => {
+            if (!open) setRecruitmentToClose(null)
           }}
+          onSuccess={handleRecruitmentStatusUpdated}
         />
       )}
 

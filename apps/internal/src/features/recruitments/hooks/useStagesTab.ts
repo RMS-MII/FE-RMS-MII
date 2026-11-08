@@ -3,7 +3,6 @@ import type {
   BatchStageWithInterviewers,
   Recruitment,
   Stage,
-  StageEmployeeStatus,
   StageInterviewerAssignment,
 } from "../types"
 import {
@@ -11,19 +10,7 @@ import {
   useGetBatchStagesQuery,
 } from "../api/recruitments-api"
 import { stageCategoryToLegacyType } from "../utils/stageUtils"
-
-function mapInterviewerStatus(status: number | string): StageEmployeeStatus {
-  switch (String(status).toLowerCase()) {
-    case "2":
-    case "accepted":
-      return "accepted"
-    case "3":
-    case "declined":
-      return "declined"
-    default:
-      return "pending"
-  }
-}
+import { mapStageEmployeeStatus } from "../utils/statusAdapters"
 
 export function mapBatchStagesToStages(
   batchStages: BatchStageWithInterviewers[]
@@ -43,8 +30,9 @@ export function mapBatchStagesToStages(
 
     const assignedList: StageInterviewerAssignment[] = bs.interviewers.map(
       (inv) => ({
+        stageEmployeeId: inv.stageEmployeeId,
         employeeId: inv.employeeId,
-        status: mapInterviewerStatus(inv.status),
+        status: mapStageEmployeeStatus(inv.status),
         employeeName: inv.fullName,
         employeeEmail: inv.email,
         jobTitle: inv.jobTitle,

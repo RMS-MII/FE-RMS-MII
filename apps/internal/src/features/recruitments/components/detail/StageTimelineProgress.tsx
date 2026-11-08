@@ -11,6 +11,36 @@ export interface StageTimelineProgressProps {
 }
 
 const stageStatuses = {
+  prioritized: {
+    label: "Prioritized",
+    className: "bg-success-soft text-success",
+    Icon: CheckCircle2,
+  },
+  considered: {
+    label: "Considered",
+    className: "bg-success-soft text-success",
+    Icon: CheckCircle2,
+  },
+  submitted: {
+    label: "Submitted",
+    className: "bg-warning-soft text-warning",
+    Icon: Clock,
+  },
+  expired: {
+    label: "Expired",
+    className: "bg-danger-soft text-danger",
+    Icon: XCircle,
+  },
+  dropped: {
+    label: "Dropped",
+    className: "bg-neutral-soft text-neutral",
+    Icon: Circle,
+  },
+  unknown: {
+    label: "Unknown",
+    className: "bg-neutral-soft text-neutral",
+    Icon: Circle,
+  },
   passed: {
     label: "Passed",
     className: "bg-success-soft text-success",
@@ -42,7 +72,7 @@ const stageStatuses = {
     Icon: Clock,
   },
   upcoming: {
-    label: "Upcoming",
+    label: "Not started",
     className: "bg-muted text-muted-foreground",
     Icon: Circle,
   },
@@ -66,8 +96,9 @@ export function StageTimelineProgress({
           Stages Timeline
         </h4>
         <span className="text-xs text-muted-foreground tabular-nums">
-          Step {Math.max(0, Math.min(currentStageIndex + 1, stages.length))} of{" "}
-          {stages.length}
+          {currentStageIndex >= 0
+            ? `Step ${currentStageIndex + 1} of ${stages.length}`
+            : `${stages.length} stages`}
         </span>
       </div>
 
@@ -78,7 +109,7 @@ export function StageTimelineProgress({
           {stages.map((stage, index) => {
             const status =
               stageStatuses[stage.status as keyof typeof stageStatuses] ??
-              stageStatuses.upcoming
+              stageStatuses.unknown
             const Icon = status.Icon
             const isSelected = selectedStageIndex === index
             const score =
@@ -117,7 +148,7 @@ export function StageTimelineProgress({
                   </span>
                   <span className="min-w-0 flex-1 space-y-1.5">
                     <span className="block text-sm leading-5 font-medium break-words text-foreground">
-                      {index + 1}. {stage.stageName}
+                      {stage.sequence ?? index + 1}. {stage.stageName}
                     </span>
                     <span className="block text-xs text-muted-foreground">
                       {status.label}
