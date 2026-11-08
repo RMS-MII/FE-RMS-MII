@@ -38,7 +38,7 @@ export interface StageDecisionFooterProps {
   onStartStage?: () => void
   startRestriction?: string | null
   isStarting?: boolean
-  onClose: () => void
+  onBack: () => void
 }
 
 const REJECTION_REASONS = [
@@ -66,7 +66,7 @@ export function StageDecisionFooter({
   onStartStage,
   startRestriction,
   isStarting = false,
-  onClose,
+  onBack,
 }: StageDecisionFooterProps) {
   const formId = useId()
   const [confirmation, setConfirmation] = useState<"advance" | "reject" | null>(
@@ -186,8 +186,8 @@ export function StageDecisionFooter({
           </div>
 
           <div className="flex flex-wrap items-center justify-end gap-2">
-            <CancelButton disabled={isStarting} onClick={onClose}>
-              Close
+            <CancelButton disabled={isStarting} onClick={onBack}>
+              Back to Candidates
             </CancelButton>
             {!canMakeDecision &&
               !isApplicationRejected &&

@@ -2,8 +2,15 @@ import { useEffect } from "react"
 import { Outlet, useRouterState, useNavigate } from "@tanstack/react-router"
 import { AppShell } from "./AppShell"
 import type { Crumb } from "./AppShell"
+import { BreadcrumbProvider } from "./BreadcrumbProvider"
+import { useBreadcrumbOverride } from "./breadcrumbs-context"
 import { useAppDispatch, useAppSelector } from "@/app/store"
-import { logout, setUser, useGetMeQuery, mapCurrentUserToAuthUser } from "@/features/auth"
+import {
+  logout,
+  setUser,
+  useGetMeQuery,
+  mapCurrentUserToAuthUser,
+} from "@/features/auth"
 import { initialRecruitments } from "@/features/recruitments/data/mock"
 
 function getCrumbsForPath(path: string): Crumb[] {
@@ -74,11 +81,23 @@ function getCrumbsForPath(path: string): Crumb[] {
 }
 
 export function AppLayout() {
+  return (
+    <BreadcrumbProvider>
+      <AuthenticatedLayout />
+    </BreadcrumbProvider>
+  )
+}
+
+function AuthenticatedLayout() {
   const routerState = useRouterState()
   const navigate = useNavigate()
   const dispatch = useAppDispatch()
   const path = routerState.location.pathname
-  const crumbs = getCrumbsForPath(path)
+  const breadcrumbOverride = useBreadcrumbOverride()
+  const crumbs =
+    breadcrumbOverride?.pathname === path
+      ? breadcrumbOverride.crumbs
+      : getCrumbsForPath(path)
 
   const isAuthenticated = useAppSelector((state) => state.auth.isAuthenticated)
 

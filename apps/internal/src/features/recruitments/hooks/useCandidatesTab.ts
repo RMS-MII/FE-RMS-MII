@@ -1,7 +1,13 @@
 import { useState, useMemo, useCallback } from "react"
+import { useNavigate, useSearch } from "@tanstack/react-router"
 import type { Recruitment, CandidateApplicationItem } from "../types"
-import type { Chip, SortDirection } from "@/shared/components"
-import { type CandidateAppSortKey } from "../utils"
+import type { Chip } from "@/shared/components"
+import {
+  candidateSortSchema,
+  candidateStatusFilterSchema,
+  getCandidateNavigationSearch,
+  type RecruitmentDetailSearch,
+} from "../schemas/recruitment-navigation"
 import { useGetBatchApplicationsQuery } from "../api/applications-api"
 import {
   mapApplicationStatus,
@@ -61,32 +67,42 @@ export const candidateStatusItems = [
 
 export interface UseCandidatesTabProps {
   recruitment: Recruitment
-  selectedStageIndex?: number | null
-  onStageChange?: (stageIndex: number | null) => void
 }
 
-export function useCandidatesTab({
-  recruitment,
-  selectedStageIndex = null,
-  onStageChange,
-}: UseCandidatesTabProps) {
-  // Search and filter states
-  const [search, setSearch] = useState("")
-  const [localStageFilter, setStageFilter] = useState<string>(
-    selectedStageIndex !== null ? String(selectedStageIndex) : "all"
-  )
-  const stageFilter = onStageChange
-    ? selectedStageIndex === null
-      ? "all"
-      : String(selectedStageIndex)
-    : localStageFilter
-  const [statusFilter, setStatusFilter] = useState("all")
-
-  // Sorting and pagination states
-  const [sortKey, setSortKey] = useState<CandidateAppSortKey>("appliedAt")
-  const [sortDirection, setSortDirection] = useState<SortDirection>("desc")
-  const [page, setPage] = useState(1)
+export function useCandidatesTab({ recruitment }: UseCandidatesTabProps) {
+  const navigate = useNavigate({ from: "/recruitments/$id/" })
+  const searchParams = useSearch({ from: "/_auth/recruitments/$id/" })
+  const search = searchParams.candidateSearch ?? ""
+  const stageFilter =
+    searchParams.stage !== undefined ? String(searchParams.stage) : "all"
+  const statusFilter = searchParams.candidateStatus ?? "all"
+  const sortKey = searchParams.candidateSort ?? "appliedAt"
+  const sortDirection = searchParams.candidateDirection ?? "desc"
+  const page = searchParams.candidatePage ?? 1
   const pageSize = 10
+  const detailSearch = getCandidateNavigationSearch(searchParams)
+
+  const updateSearch = useCallback(
+    (updates: Partial<RecruitmentDetailSearch>) => {
+      void navigate({
+        search: (previous) => ({ ...previous, ...updates, tab: "candidates" }),
+        replace: true,
+      })
+    },
+    [navigate]
+  )
+  const setSearch = useCallback(
+    (value: string) => {
+      updateSearch({
+        candidateSearch: value || undefined,
+        candidatePage: undefined,
+      })
+    },
+    [updateSearch]
+  )
+  const handlePageChange = (value: number) => {
+    updateSearch({ candidatePage: value > 1 ? value : undefined })
+  }
 
   // Real API Query for Batch Applications
   const {
@@ -106,11 +122,6 @@ export function useCandidatesTab({
     pageSize,
   })
 
-  // Selected application for detail modal
-  const [selectedApplicationId, setSelectedApplicationId] = useState<
-    string | null
-  >(null)
-  const [isDetailOpen, setIsDetailOpen] = useState(false)
   const [isAddOpen, setIsAddOpen] = useState(false)
 
   // Build stage dropdown items directly from batchStages
@@ -139,25 +150,29 @@ export function useCandidatesTab({
     return items
   }, [recruitment.batchStages, recruitment.stages])
 
-  // Handle stage filter changes
   const handleStageChange = useCallback(
-    (val: string | null) => {
-      if (!val) return
-      setStageFilter(val)
-      setPage(1)
-      if (onStageChange) {
-        onStageChange(val === "all" ? null : Number(val))
-      }
+    (value: string | null) => {
+      if (!value) return
+      updateSearch({
+        stage: value === "all" ? undefined : Number(value),
+        candidatePage: undefined,
+      })
     },
-    [onStageChange]
+    [updateSearch]
   )
 
-  // Handle status filter changes
-  const handleStatusChange = useCallback((val: string | null) => {
-    if (!val) return
-    setStatusFilter(val)
-    setPage(1)
-  }, [])
+  const handleStatusChange = useCallback(
+    (value: string | null) => {
+      if (!value) return
+      const result = candidateStatusFilterSchema.safeParse(value)
+      if (value !== "all" && !result.success) return
+      updateSearch({
+        candidateStatus: result.success ? result.data : undefined,
+        candidatePage: undefined,
+      })
+    },
+    [updateSearch]
+  )
 
   // Map API data into UI application items
   const currentApplications: CandidateApplicationItem[] = useMemo(() => {
@@ -216,28 +231,31 @@ export function useCandidatesTab({
   const totalCount = apiData?.totalItems ?? 0
 
   const handleSort = (key: string) => {
-    const k = key as CandidateAppSortKey
-    if (sortKey === k) {
-      setSortDirection((prev) => (prev === "asc" ? "desc" : "asc"))
-    } else {
-      setSortKey(k)
-      setSortDirection("asc")
-    }
+    const result = candidateSortSchema.safeParse(key)
+    if (!result.success) return
+    const direction =
+      sortKey === result.data && sortDirection === "asc" ? "desc" : "asc"
+    updateSearch({
+      candidateSort: result.data === "appliedAt" ? undefined : result.data,
+      candidateDirection: direction === "desc" ? undefined : direction,
+    })
   }
 
   const handleResetFilters = () => {
-    setSearch("")
-    setStageFilter("all")
-    setStatusFilter("all")
-    setPage(1)
-    if (onStageChange) {
-      onStageChange(null)
-    }
+    updateSearch({
+      candidateSearch: undefined,
+      stage: undefined,
+      candidateStatus: undefined,
+      candidatePage: undefined,
+    })
   }
 
-  const handleOpenDetail = (app: CandidateApplicationItem) => {
-    setSelectedApplicationId(app.id)
-    setIsDetailOpen(true)
+  const handleOpenDetail = (application: CandidateApplicationItem) => {
+    void navigate({
+      to: "/recruitments/$id/applications/$applicationId",
+      params: { id: recruitment.id, applicationId: application.id },
+      search: detailSearch,
+    })
   }
 
   const handleAddCandidates = () => {
@@ -253,7 +271,6 @@ export function useCandidatesTab({
         label: `Search: "${search}"`,
         onRemove: () => {
           setSearch("")
-          setPage(1)
         },
       })
     }
@@ -281,6 +298,7 @@ export function useCandidatesTab({
     stageItems,
     handleStageChange,
     handleStatusChange,
+    setSearch,
   ])
 
   const startIndex = (page - 1) * pageSize
@@ -301,9 +319,7 @@ export function useCandidatesTab({
     isApiError,
     apiError,
     refetchApplications,
-    selectedApplicationId,
-    isDetailOpen,
-    setIsDetailOpen,
+    detailSearch,
     isAddOpen,
     setIsAddOpen,
     stageItems,
@@ -315,7 +331,7 @@ export function useCandidatesTab({
     handleStageChange,
     handleStatusChange,
     handleSort,
-    handlePageChange: setPage,
+    handlePageChange,
     handleResetFilters,
     handleOpenDetail,
     handleAddCandidates,

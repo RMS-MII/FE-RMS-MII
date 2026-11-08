@@ -1,4 +1,4 @@
-import { useNavigate } from "@tanstack/react-router"
+import { Link, useNavigate } from "@tanstack/react-router"
 import { cn } from "@/shared/lib/utils"
 import { getApiError } from "@/shared/api/api-error"
 import {
@@ -14,7 +14,6 @@ import {
 } from "@/shared/components"
 import { safeFormatDate } from "@/shared/lib/format"
 import { getRecruitmentAddRestriction } from "../../utils/recruitmentUtils"
-import { CandidateApplicationDetailDialog } from "./CandidateApplicationDetailDialog"
 import { AddCandidateDialog } from "./AddCandidateDialog"
 import {
   Table,
@@ -43,11 +42,7 @@ import {
 
 export type CandidatesTabProps = UseCandidatesTabProps
 
-export function CandidatesTab({
-  recruitment,
-  selectedStageIndex = null,
-  onStageChange,
-}: CandidatesTabProps) {
+export function CandidatesTab({ recruitment }: CandidatesTabProps) {
   const navigate = useNavigate()
 
   const {
@@ -64,9 +59,7 @@ export function CandidatesTab({
     isApiError,
     apiError,
     refetchApplications,
-    selectedApplicationId,
-    isDetailOpen,
-    setIsDetailOpen,
+    detailSearch,
     isAddOpen,
     setIsAddOpen,
     stageItems,
@@ -84,8 +77,6 @@ export function CandidatesTab({
     handleAddCandidates,
   } = useCandidatesTab({
     recruitment,
-    selectedStageIndex,
-    onStageChange,
   })
 
   const parsedStageIndex = stageFilter !== "all" ? Number(stageFilter) : null
@@ -104,10 +95,7 @@ export function CandidatesTab({
           <div className="flex flex-1 flex-wrap items-center gap-2.5">
             <SearchInput
               value={search}
-              onChange={(val) => {
-                setSearch(val)
-                handlePageChange(1)
-              }}
+              onChange={setSearch}
               placeholder="Search candidate, email, or application code..."
               containerClassName="sm:w-80"
             />
@@ -379,9 +367,18 @@ export function CandidatesTab({
                       <TableCell className="py-3.5">
                         <div className="flex items-center gap-3">
                           <div className="min-w-0">
-                            <p className="truncate text-sm font-semibold text-foreground">
+                            <Link
+                              to="/recruitments/$id/applications/$applicationId"
+                              params={{
+                                id: recruitment.id,
+                                applicationId: app.id,
+                              }}
+                              search={detailSearch}
+                              onClick={(event) => event.stopPropagation()}
+                              className="block truncate text-sm font-semibold text-foreground hover:underline focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none"
+                            >
                               {app.candidateName}
-                            </p>
+                            </Link>
                             <p className="truncate text-xs text-muted-foreground">
                               {app.candidateEducation || app.candidateEmail}
                             </p>
@@ -433,9 +430,22 @@ export function CandidatesTab({
                       >
                         <Button
                           type="button"
+                          nativeButton={false}
+                          render={
+                            <Link
+                              to="/recruitments/$id/applications/$applicationId"
+                              params={{
+                                id: recruitment.id,
+                                applicationId: app.id,
+                              }}
+                              search={detailSearch}
+                            />
+                          }
                           variant="ghost"
                           size="icon-xs"
-                          onClick={() => handleOpenDetail(app)}
+                          aria-label={
+                            "View application for " + app.candidateName
+                          }
                           title="View application details & stages history"
                           className="size-8 cursor-pointer rounded-full border-0 bg-muted text-foreground hover:bg-muted/60"
                         >
@@ -459,13 +469,6 @@ export function CandidatesTab({
           onPageChange={handlePageChange}
         />
       </Panel>
-
-      {/* Candidate Application & Stage Journey Detail Dialog */}
-      <CandidateApplicationDetailDialog
-        applicationId={selectedApplicationId}
-        open={isDetailOpen}
-        onOpenChange={setIsDetailOpen}
-      />
 
       {/* Add Candidate Manual Dialog (Talent Pool & Direct Register) */}
       <AddCandidateDialog
