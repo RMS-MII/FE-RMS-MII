@@ -1,10 +1,17 @@
 import { useState, useMemo } from "react"
-import { useGetCandidatesQuery } from "@/features/candidates/api/candidates-api"
-import type { CandidateWithBatchesDto } from "@/features/candidates/types"
+import {
+  useGetCandidatesQuery,
+  type CandidateWithBatchesDto,
+} from "@/features/candidates"
 import type { Recruitment, CandidateApplicationItem } from "../types"
 import { useRegisterCandidatesMutation } from "../api/applications-api"
 import { getRecruitmentAddRestriction } from "../utils/recruitmentUtils"
 import { stageCategoryToLegacyType } from "../utils/stageUtils"
+import { getApiError } from "@/shared/api/api-error"
+import {
+  mapApplicationStatus,
+  mapFinalResultStatus,
+} from "../utils/statusAdapters"
 
 export interface UseAddFromTalentPoolProps {
   recruitment: Recruitment
@@ -24,8 +31,8 @@ function mapTalentPoolCandidate(c: CandidateWithBatchesDto) {
     address: c.address || "",
     education: c.education || "",
     institution: c.institution || "",
-    gpa: c.gpa ? String(c.gpa) : "",
-    expectedSalary: c.expectedSalary || undefined,
+    gpa: c.gpa != null ? String(c.gpa) : "",
+    expectedSalary: c.expectedSalary ?? undefined,
     cv: c.cv || "",
     portfolio: c.portfolio || "",
     appliedBatches: (c.assignedBatches || []).map((b) => ({
@@ -55,7 +62,6 @@ function isRegisteredInBatch(
 
 export function useAddFromTalentPool({
   recruitment,
-  existingApplicationCount,
   onSuccess,
 }: UseAddFromTalentPoolProps) {
   const [talentSearch, setTalentSearch] = useState("")
@@ -189,10 +195,6 @@ export function useAddFromTalentPool({
       return
     }
 
-    const codeYear = recruitment.openDate
-      ? recruitment.openDate.slice(0, 4)
-      : "2026"
-    const appliedAt = new Date().toISOString()
     const firstStage = stages[0]
     const firstStageName = firstStage
       ? "stageName" in firstStage
@@ -211,9 +213,8 @@ export function useAddFromTalentPool({
         education: cand.education || undefined,
         institution: cand.institution || undefined,
         gpa: cand.gpa ? Number(cand.gpa) : undefined,
-        expectedSalary: cand.expectedSalary
-          ? Number(cand.expectedSalary)
-          : undefined,
+        expectedSalary:
+          cand.expectedSalary != null ? Number(cand.expectedSalary) : undefined,
         cv: cand.cv || undefined,
         portfolio: cand.portfolio || undefined,
       }))
@@ -224,39 +225,45 @@ export function useAddFromTalentPool({
       }).unwrap()
 
       const createdItems = Array.isArray(result) ? result : []
+      if (
+        createdItems.length !== selectedCandidates.length ||
+        createdItems.some((item) => !item.id || !item.candidateId)
+      ) {
+        throw new Error(
+          "The registration response is incomplete. Refresh the candidate list before trying again."
+        )
+      }
 
       const newApplications: CandidateApplicationItem[] =
         selectedCandidates.map((cand, idx) => {
           const apiItem = createdItems[idx]
-          const codeNumber = String(
-            existingApplicationCount + idx + 1
-          ).padStart(3, "0")
-          const codeApplication =
-            apiItem?.codeApplication || `APP-${codeYear}-${codeNumber}`
+          const codeApplication = apiItem.codeApplication
 
           const applicationStages = stages.map((stg, sIdx) => ({
             stageIndex: sIdx,
             stageId: stg.id,
+            batchStageId: stg.id,
+            applicationStageId: null,
             stageName: "stageName" in stg ? stg.stageName : stg.name,
             stageType: stageCategoryToLegacyType(
               stg.stageCategory ?? ("type" in stg ? stg.type : undefined)
             ),
-            passingScore: stg.passingScore ?? 70,
-            status: sIdx === 0 ? "in_progress" : "upcoming",
+            passingScore: stg.passingScore ?? null,
+            status: "upcoming",
             totalScore: null,
-            startedAt: sIdx === 0 ? appliedAt : null,
+            startedAt: null,
             completedAt: null,
             notes: null,
           }))
 
           return {
-            id: apiItem?.id || `app-man-${Date.now()}-${idx}`,
-            candidateId: apiItem?.candidateId || cand.id,
+            id: apiItem.id,
+            candidateId: apiItem.candidateId,
             recruitmentBatchId: recruitment.id,
             codeApplication,
-            appliedAt: apiItem?.appliedAt || appliedAt,
-            status: "in_progress",
-            finalStatus: "pending",
+            appliedAt: apiItem.appliedAt ?? apiItem.createdAt ?? "",
+            status: mapApplicationStatus(apiItem.status),
+            finalStatus: mapFinalResultStatus(apiItem.finalResultStatus),
             note: null,
             fileOfferingLetter: null,
             offeringLetterStatus: null,
@@ -271,23 +278,17 @@ export function useAddFromTalentPool({
             currentStageIndex: 0,
             currentStageName: firstStageName,
             currentStageScore: null,
-            currentStageStatus: "in_progress",
+            currentStageStatus: "upcoming",
             applicationStages,
           }
         })
 
       onSuccess(newApplications)
     } catch (err) {
-      console.error("Failed to register candidates via API:", err)
-      const apiError = err as {
-        data?: { message?: string; detail?: string; title?: string }
-      }
-      const errMsg =
-        apiError?.data?.message ||
-        apiError?.data?.detail ||
-        apiError?.data?.title ||
-        "Failed to register candidates on server. Please try again."
-      setError(errMsg)
+      setError(
+        getApiError(err, "Failed to register candidates. Please try again.")
+          .message
+      )
     }
   }
 

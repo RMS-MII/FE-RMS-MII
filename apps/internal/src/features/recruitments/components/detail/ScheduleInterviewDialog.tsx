@@ -1,4 +1,5 @@
 import { useState, useId, useMemo, useEffect } from "react"
+import { format, parseISO } from "date-fns"
 import {
   Dialog,
   DialogContent,
@@ -29,9 +30,14 @@ import {
 import { addMinutesToTime, isTimeBefore } from "@/shared/lib/timeUtils"
 import { candidates } from "@/data/mock"
 import { mockEmployees } from "../../data/mock"
-import type { Recruitment, InterviewSessionItem, InterviewerAssignmentItem } from "../../types"
+import type {
+  Recruitment,
+  InterviewSessionItem,
+  InterviewerAssignmentItem,
+} from "../../types"
 import { Video, MapPin, Check, User, AlertTriangle } from "lucide-react"
 import { cn } from "@/shared/lib/utils"
+import { getApiError } from "@/shared/api/api-error"
 import { getRecruitmentAddRestriction } from "../../utils/recruitmentUtils"
 import { getRecruitmentInterviewStages } from "../../utils/stageUtils"
 
@@ -39,7 +45,7 @@ export interface ScheduleInterviewDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   recruitment: Recruitment
-  onSchedule: (session: InterviewSessionItem) => void
+  onSchedule: (session: InterviewSessionItem) => void | Promise<void>
   existingSessions?: InterviewSessionItem[]
   sessionToReschedule?: InterviewSessionItem | null
 }
@@ -126,9 +132,9 @@ export function ScheduleInterviewDialog({
   const [location, setLocation] = useState<string>(
     "APL Tower Lt. 37, Meeting Room 1"
   )
-  const [selectedInterviewerIds, setSelectedInterviewerIds] = useState<string[]>([
-    mockEmployees[0]?.id ?? "",
-  ])
+  const [selectedInterviewerIds, setSelectedInterviewerIds] = useState<
+    string[]
+  >([mockEmployees[0]?.id ?? ""])
 
   // Errors state
   const [errors, setErrors] = useState<Record<string, string>>({})
@@ -142,19 +148,27 @@ export function ScheduleInterviewDialog({
 
       const req = sessionToReschedule.rescheduleRequest
       if (req && req.proposedStart) {
-        setScheduledDate(req.proposedStart.slice(0, 10))
-        setStartTime(req.proposedStart.slice(11, 16))
-        setEndTime(req.proposedEnd.slice(11, 16))
+        setScheduledDate(format(parseISO(req.proposedStart), "yyyy-MM-dd"))
+        setStartTime(format(parseISO(req.proposedStart), "HH:mm"))
+        setEndTime(format(parseISO(req.proposedEnd), "HH:mm"))
       } else {
-        setScheduledDate(sessionToReschedule.scheduledStart.slice(0, 10))
-        setStartTime(sessionToReschedule.scheduledStart.slice(11, 16))
-        setEndTime(sessionToReschedule.scheduledEnd.slice(11, 16))
+        setScheduledDate(
+          format(parseISO(sessionToReschedule.scheduledStart), "yyyy-MM-dd")
+        )
+        setStartTime(
+          format(parseISO(sessionToReschedule.scheduledStart), "HH:mm")
+        )
+        setEndTime(format(parseISO(sessionToReschedule.scheduledEnd), "HH:mm"))
       }
 
       setMode(sessionToReschedule.isOnline ? "online" : "onsite")
-      if (sessionToReschedule.meetingUrl) setMeetingUrl(sessionToReschedule.meetingUrl)
-      if (sessionToReschedule.location) setLocation(sessionToReschedule.location)
-      setSelectedInterviewerIds(sessionToReschedule.interviewers.map((i) => i.employeeId))
+      if (sessionToReschedule.meetingUrl)
+        setMeetingUrl(sessionToReschedule.meetingUrl)
+      if (sessionToReschedule.location)
+        setLocation(sessionToReschedule.location)
+      setSelectedInterviewerIds(
+        sessionToReschedule.interviewers.map((i) => i.employeeId)
+      )
       return
     }
 
@@ -166,7 +180,13 @@ export function ScheduleInterviewDialog({
     } else {
       setCandidateId("")
     }
-  }, [isRescheduleMode, sessionToReschedule, unscheduledCandidates, candidateId, open])
+  }, [
+    isRescheduleMode,
+    sessionToReschedule,
+    unscheduledCandidates,
+    candidateId,
+    open,
+  ])
 
   const selectedCandidate = useMemo(() => {
     if (isRescheduleMode && sessionToReschedule) {
@@ -178,7 +198,12 @@ export function ScheduleInterviewDialog({
       }
     }
     return unscheduledCandidates.find((c) => c.id === candidateId)
-  }, [isRescheduleMode, sessionToReschedule, unscheduledCandidates, candidateId])
+  }, [
+    isRescheduleMode,
+    sessionToReschedule,
+    unscheduledCandidates,
+    candidateId,
+  ])
 
   // Auto-fill session name when candidate or stage changes
   useEffect(() => {
@@ -191,9 +216,12 @@ export function ScheduleInterviewDialog({
 
   const handleToggleInterviewer = (empId: string) => {
     setSelectedInterviewerIds((prev) =>
-      prev.includes(empId) ? prev.filter((id) => id !== empId) : [...prev, empId]
+      prev.includes(empId)
+        ? prev.filter((id) => id !== empId)
+        : [...prev, empId]
     )
-    if (errors.interviewers) setErrors((prev) => ({ ...prev, interviewers: "" }))
+    if (errors.interviewers)
+      setErrors((prev) => ({ ...prev, interviewers: "" }))
   }
 
   const validate = () => {
@@ -207,11 +235,17 @@ export function ScheduleInterviewDialog({
     if (!scheduledDate) errs.scheduledDate = "Date is required."
     if (!startTime) errs.startTime = "Start time is required."
     if (!endTime) errs.endTime = "End time is required."
-    if (startTime && endTime && (isTimeBefore(endTime, startTime) || endTime === startTime)) {
+    if (
+      startTime &&
+      endTime &&
+      (isTimeBefore(endTime, startTime) || endTime === startTime)
+    ) {
       errs.endTime = "End time must be after start time."
     }
-    if (mode === "online" && !meetingUrl.trim()) errs.meetingUrl = "Meeting URL is required."
-    if (mode === "onsite" && !location.trim()) errs.location = "Location/Room is required."
+    if (mode === "online" && !meetingUrl.trim())
+      errs.meetingUrl = "Meeting URL is required."
+    if (mode === "onsite" && !location.trim())
+      errs.location = "Location/Room is required."
     if (selectedInterviewerIds.length === 0)
       errs.interviewers = "Please assign at least one interviewer."
 
@@ -219,7 +253,7 @@ export function ScheduleInterviewDialog({
     return Object.keys(errs).length === 0
   }
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!validate()) return
 
@@ -228,12 +262,11 @@ export function ScheduleInterviewDialog({
     if (!candidateInfo || !selectedStg) return
 
     // All assigned interviewers will have status 'pending' in new schedule
-    const interviewersList: InterviewerAssignmentItem[] = selectedInterviewerIds.map(
-      (empId, idx) => {
+    const interviewersList: InterviewerAssignmentItem[] =
+      selectedInterviewerIds.map((empId, idx) => {
         const emp = mockEmployees.find((e) => e.id === empId)
         return {
-          id: `si-${Date.now()}-${idx}`,
-          stageEmployeeId: `se-${empId}`,
+          id: `draft-interviewer-${idx}`,
           employeeId: empId,
           employeeName: emp?.fullName ?? "Interviewer",
           employeeEmail: emp?.email ?? "",
@@ -241,26 +274,30 @@ export function ScheduleInterviewDialog({
           status: "pending",
           assessment: null,
         }
-      }
-    )
+      })
 
     const newSession: InterviewSessionItem = {
-      id: sessionToReschedule ? sessionToReschedule.id : `is-${Date.now()}`,
-      applicationStageId: sessionToReschedule
-        ? sessionToReschedule.applicationStageId
-        : `as-${Date.now()}`,
+      id: sessionToReschedule?.id ?? "draft-session",
+      applicationStageId: sessionToReschedule?.applicationStageId ?? null,
       recruitmentBatchId: recruitment.id,
       stageId: selectedStg.value,
+      batchStageId: selectedStg.value,
       stageName: selectedStg.label,
       sessionName: sessionName.trim(),
-      scheduledStart: `${scheduledDate}T${startTime}:00`,
-      scheduledEnd: `${scheduledDate}T${endTime}:00`,
+      scheduledStart: new Date(
+        `${scheduledDate}T${startTime}:00`
+      ).toISOString(),
+      scheduledEnd: new Date(`${scheduledDate}T${endTime}:00`).toISOString(),
       isOnline: mode === "online",
       meetingUrl: mode === "online" ? meetingUrl.trim() : null,
       location: mode === "onsite" ? location.trim() : null,
       status: "scheduled",
-      fileSubmission: sessionToReschedule ? sessionToReschedule.fileSubmission : null,
-      endedSubmissionAt: sessionToReschedule ? sessionToReschedule.endedSubmissionAt : null,
+      fileSubmission: sessionToReschedule
+        ? sessionToReschedule.fileSubmission
+        : null,
+      endedSubmissionAt: sessionToReschedule
+        ? sessionToReschedule.endedSubmissionAt
+        : null,
       candidateId: candidateInfo.id,
       candidateName: candidateInfo.name,
       candidateEmail: candidateInfo.email,
@@ -274,19 +311,28 @@ export function ScheduleInterviewDialog({
         : null,
     }
 
-    onSchedule(newSession)
-    onOpenChange(false)
+    try {
+      await onSchedule(newSession)
+      onOpenChange(false)
+    } catch (error) {
+      setErrors((previous) => ({
+        ...previous,
+        recruitment: getApiError(error).message,
+      }))
+    }
   }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-3xl lg:max-w-4xl rounded-2xl max-h-[92vh] overflow-y-auto">
+      <DialogContent className="max-h-[92vh] overflow-y-auto rounded-2xl sm:max-w-3xl lg:max-w-4xl">
         <DialogHeader>
           <div className="flex items-center gap-2">
             <DialogTitle>
-              {isRescheduleMode ? "Adjust Interview Schedule" : "Schedule Interview"}
+              {isRescheduleMode
+                ? "Adjust Interview Schedule"
+                : "Schedule Interview"}
             </DialogTitle>
-            <span className="font-mono text-xs font-semibold rounded-md bg-muted px-2 py-0.5 text-foreground">
+            <span className="rounded-md bg-muted px-2 py-0.5 font-mono text-xs font-semibold text-foreground">
               {recruitment.batchCode}
             </span>
           </div>
@@ -298,15 +344,27 @@ export function ScheduleInterviewDialog({
         </DialogHeader>
 
         {scheduleRestriction && (
-          <div role="alert" className="flex items-center gap-2.5 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-xs text-amber-700 dark:text-amber-400">
+          <div
+            role="alert"
+            className="flex items-center gap-2.5 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-xs text-amber-700 dark:text-amber-400"
+          >
             <AlertTriangle className="size-4 shrink-0" aria-hidden />
             <p>{scheduleRestriction}</p>
           </div>
         )}
 
+        {errors.recruitment && !scheduleRestriction && (
+          <p
+            role="alert"
+            className="rounded-xl bg-danger-soft px-4 py-3 text-sm text-danger"
+          >
+            {errors.recruitment}
+          </p>
+        )}
+
         {/* Reschedule Context Banner */}
         {isRescheduleMode && sessionToReschedule?.rescheduleRequest && (
-          <div className="rounded-xl border border-none bg-amber-50/80 p-3 text-xs text-amber-95 dark:text-amber-200 space-y-1">
+          <div className="text-amber-95 space-y-1 rounded-xl border border-none bg-amber-50/80 p-3 text-xs dark:text-amber-200">
             <div className="flex items-center gap-1.5 font-semibold text-amber-800 dark:text-amber-300">
               <AlertTriangle className="size-3.5" />
               <span>Reschedule Request Context</span>
@@ -314,15 +372,27 @@ export function ScheduleInterviewDialog({
             <p className="text-muted-foreground">
               Candidate proposed:{" "}
               <span className="font-medium text-foreground">
-                {sessionToReschedule.rescheduleRequest.proposedStart.slice(0, 10)} (
-                {sessionToReschedule.rescheduleRequest.proposedStart.slice(11, 16)} -{" "}
-                {sessionToReschedule.rescheduleRequest.proposedEnd.slice(11, 16)})
+                {sessionToReschedule.rescheduleRequest.proposedStart.slice(
+                  0,
+                  10
+                )}{" "}
+                (
+                {sessionToReschedule.rescheduleRequest.proposedStart.slice(
+                  11,
+                  16
+                )}{" "}
+                -{" "}
+                {sessionToReschedule.rescheduleRequest.proposedEnd.slice(
+                  11,
+                  16
+                )}
+                )
               </span>
             </p>
             {sessionToReschedule.rescheduleRequest.reason && (
               <p className="text-muted-foreground">
                 Reason:{" "}
-                <span className="italic text-foreground">
+                <span className="text-foreground italic">
                   "{sessionToReschedule.rescheduleRequest.reason}"
                 </span>
               </p>
@@ -332,13 +402,16 @@ export function ScheduleInterviewDialog({
 
         <form id={formId} onSubmit={handleSubmit} className="py-2">
           {/* 2-Column Split Layout */}
-          <div className="flex flex-col md:flex-row gap-6 items-stretch">
+          <div className="flex flex-col items-stretch gap-6 md:flex-row">
             {/* Column 1: Candidate, Stage, Title, & Schedule */}
             <div className="flex-1 space-y-3.5">
               {/* Candidate */}
               <div className="space-y-1.5">
                 <div className="flex items-center justify-between px-1">
-                  <Label htmlFor="interview-candidate" className="text-sm font-medium">
+                  <Label
+                    htmlFor="interview-candidate"
+                    className="text-sm font-medium"
+                  >
                     Candidate <span className="text-destructive">*</span>
                   </Label>
                 </div>
@@ -354,22 +427,32 @@ export function ScheduleInterviewDialog({
                   }
                   searchPlaceholder="Search candidate by name, email, or code..."
                   emptyText="No unscheduled candidates for this stage"
-                  disabled={isRescheduleMode || unscheduledCandidates.length === 0}
+                  disabled={
+                    isRescheduleMode || unscheduledCandidates.length === 0
+                  }
                   selectedIds={candidateId ? [candidateId] : []}
                   onSelect={(opt) => {
                     setCandidateId(opt.id)
-                    if (errors.candidateId) setErrors((prev) => ({ ...prev, candidateId: "" }))
+                    if (errors.candidateId)
+                      setErrors((prev) => ({ ...prev, candidateId: "" }))
                   }}
-                  className={cn(errors.candidateId && "ring-2 ring-destructive")}
+                  className={cn(
+                    errors.candidateId && "ring-2 ring-destructive"
+                  )}
                 />
                 {errors.candidateId && (
-                  <p className="text-xs text-destructive px-1">{errors.candidateId}</p>
+                  <p className="px-1 text-xs text-destructive">
+                    {errors.candidateId}
+                  </p>
                 )}
               </div>
 
               {/* Stage */}
               <div className="space-y-1.5">
-                <Label htmlFor="interview-stage" className="text-sm font-medium px-1">
+                <Label
+                  htmlFor="interview-stage"
+                  className="px-1 text-sm font-medium"
+                >
                   Interview Stage <span className="text-destructive">*</span>
                 </Label>
                 <Select
@@ -379,7 +462,8 @@ export function ScheduleInterviewDialog({
                   onValueChange={(val) => {
                     if (val) {
                       setStageId(val)
-                      if (errors.stageId) setErrors((prev) => ({ ...prev, stageId: "" }))
+                      if (errors.stageId)
+                        setErrors((prev) => ({ ...prev, stageId: "" }))
                     }
                   }}
                 >
@@ -387,7 +471,7 @@ export function ScheduleInterviewDialog({
                     id="interview-stage"
                     disabled={isRescheduleMode}
                     aria-invalid={!!errors.stageId}
-                    className="h-10 w-full rounded-full border-0 bg-muted px-4 text-sm text-foreground transition-all duration-150 hover:bg-muted/60 outline-none focus-visible:ring-2 focus-visible:ring-primary shadow-none disabled:opacity-70 disabled:cursor-not-allowed"
+                    className="h-10 w-full rounded-full border-0 bg-muted px-4 text-sm text-foreground shadow-none transition-all duration-150 outline-none hover:bg-muted/60 focus-visible:ring-2 focus-visible:ring-primary disabled:cursor-not-allowed disabled:opacity-70"
                   >
                     <SelectValue placeholder="Select stage" />
                   </SelectTrigger>
@@ -402,13 +486,18 @@ export function ScheduleInterviewDialog({
                   </SelectContent>
                 </Select>
                 {errors.stageId && (
-                  <p className="text-xs text-destructive px-1">{errors.stageId}</p>
+                  <p className="px-1 text-xs text-destructive">
+                    {errors.stageId}
+                  </p>
                 )}
               </div>
 
               {/* Session Title */}
               <div className="space-y-1.5">
-                <Label htmlFor="interview-session-title" className="text-sm font-medium px-1">
+                <Label
+                  htmlFor="interview-session-title"
+                  className="px-1 text-sm font-medium"
+                >
                   Session Title <span className="text-destructive">*</span>
                 </Label>
                 <Input
@@ -417,19 +506,25 @@ export function ScheduleInterviewDialog({
                   value={sessionName}
                   onChange={(e) => {
                     setSessionName(e.target.value)
-                    if (errors.sessionName) setErrors((prev) => ({ ...prev, sessionName: "" }))
+                    if (errors.sessionName)
+                      setErrors((prev) => ({ ...prev, sessionName: "" }))
                   }}
                   aria-invalid={!!errors.sessionName}
-                  className="h-10 rounded-full border-0 bg-muted px-4 text-sm text-foreground placeholder:text-muted-foreground transition-all duration-150 outline-none focus-visible:bg-card focus-visible:ring-2 focus-visible:ring-primary shadow-none"
+                  className="h-10 rounded-full border-0 bg-muted px-4 text-sm text-foreground shadow-none transition-all duration-150 outline-none placeholder:text-muted-foreground focus-visible:bg-card focus-visible:ring-2 focus-visible:ring-primary"
                 />
                 {errors.sessionName && (
-                  <p className="text-xs text-destructive px-1">{errors.sessionName}</p>
+                  <p className="px-1 text-xs text-destructive">
+                    {errors.sessionName}
+                  </p>
                 )}
               </div>
 
               {/* Date */}
               <div className="space-y-1.5">
-                <Label htmlFor="interview-date" className="text-sm font-medium px-1">
+                <Label
+                  htmlFor="interview-date"
+                  className="px-1 text-sm font-medium"
+                >
                   Date <span className="text-destructive">*</span>
                 </Label>
                 <DatePicker
@@ -437,13 +532,16 @@ export function ScheduleInterviewDialog({
                   value={scheduledDate}
                   onChange={(val) => {
                     setScheduledDate(val)
-                    if (errors.scheduledDate) setErrors((prev) => ({ ...prev, scheduledDate: "" }))
+                    if (errors.scheduledDate)
+                      setErrors((prev) => ({ ...prev, scheduledDate: "" }))
                   }}
                   aria-invalid={!!errors.scheduledDate}
                   placeholder="dd/mm/yyyy"
                 />
                 {errors.scheduledDate && (
-                  <p className="text-xs text-destructive px-1">{errors.scheduledDate}</p>
+                  <p className="px-1 text-xs text-destructive">
+                    {errors.scheduledDate}
+                  </p>
                 )}
               </div>
 
@@ -451,7 +549,10 @@ export function ScheduleInterviewDialog({
               <div className="grid grid-cols-2 gap-3">
                 {/* Start Time */}
                 <div className="space-y-1.5">
-                  <Label htmlFor="interview-start-time" className="text-sm font-medium px-1">
+                  <Label
+                    htmlFor="interview-start-time"
+                    className="px-1 text-sm font-medium"
+                  >
                     Start Time <span className="text-destructive">*</span>
                   </Label>
                   <TimePicker
@@ -459,24 +560,36 @@ export function ScheduleInterviewDialog({
                     value={startTime}
                     onChange={(val) => {
                       setStartTime(val)
-                      if (errors.startTime) setErrors((prev) => ({ ...prev, startTime: "" }))
+                      if (errors.startTime)
+                        setErrors((prev) => ({ ...prev, startTime: "" }))
                       // Auto adjust end time to +60 minutes if current endTime is before or equal
-                      if (val && (!endTime || isTimeBefore(endTime, val) || endTime === val)) {
+                      if (
+                        val &&
+                        (!endTime ||
+                          isTimeBefore(endTime, val) ||
+                          endTime === val)
+                      ) {
                         setEndTime(addMinutesToTime(val, 60))
-                        if (errors.endTime) setErrors((prev) => ({ ...prev, endTime: "" }))
+                        if (errors.endTime)
+                          setErrors((prev) => ({ ...prev, endTime: "" }))
                       }
                     }}
                     aria-invalid={!!errors.startTime}
                     placeholder="10:00"
                   />
                   {errors.startTime && (
-                    <p className="text-xs text-destructive px-1">{errors.startTime}</p>
+                    <p className="px-1 text-xs text-destructive">
+                      {errors.startTime}
+                    </p>
                   )}
                 </div>
 
                 {/* End Time */}
                 <div className="space-y-1.5">
-                  <Label htmlFor="interview-end-time" className="text-sm font-medium px-1">
+                  <Label
+                    htmlFor="interview-end-time"
+                    className="px-1 text-sm font-medium"
+                  >
                     End Time <span className="text-destructive">*</span>
                   </Label>
                   <TimePicker
@@ -485,36 +598,44 @@ export function ScheduleInterviewDialog({
                     minTime={startTime}
                     onChange={(val) => {
                       setEndTime(val)
-                      if (errors.endTime) setErrors((prev) => ({ ...prev, endTime: "" }))
+                      if (errors.endTime)
+                        setErrors((prev) => ({ ...prev, endTime: "" }))
                     }}
                     aria-invalid={!!errors.endTime}
                     placeholder="11:00"
                   />
                   {errors.endTime && (
-                    <p className="text-xs text-destructive px-1">{errors.endTime}</p>
+                    <p className="px-1 text-xs text-destructive">
+                      {errors.endTime}
+                    </p>
                   )}
                 </div>
               </div>
             </div>
 
             {/* Separator */}
-            <Separator orientation="vertical" className="hidden md:block self-stretch" />
-            <Separator orientation="horizontal" className="md:hidden my-1" />
+            <Separator
+              orientation="vertical"
+              className="hidden self-stretch md:block"
+            />
+            <Separator orientation="horizontal" className="my-1 md:hidden" />
 
             {/* Column 2: Interview Mode, Logistics & Panel Interviewers */}
             <div className="flex-1 space-y-3.5">
               {/* Mode Switcher: Online vs Onsite */}
               <div className="space-y-2">
-                <Label className="text-sm font-medium px-1">Interview Mode</Label>
-                <div className="grid grid-cols-2 p-1 bg-muted rounded-full w-full h-11 select-none">
+                <Label className="px-1 text-sm font-medium">
+                  Interview Mode
+                </Label>
+                <div className="grid h-11 w-full grid-cols-2 rounded-full bg-muted p-1 select-none">
                   <button
                     type="button"
                     onClick={() => setMode("online")}
                     className={cn(
-                      "inline-flex items-center justify-center gap-2 h-9 rounded-full text-sm font-medium transition-all duration-150 cursor-pointer",
+                      "inline-flex h-9 cursor-pointer items-center justify-center gap-2 rounded-full text-sm font-medium transition-all duration-150",
                       mode === "online"
-                        ? "bg-card text-foreground shadow-xs font-semibold"
-                        : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
+                        ? "bg-card font-semibold text-foreground shadow-xs"
+                        : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
                     )}
                   >
                     <Video className="size-4 text-cyan-600" />
@@ -524,10 +645,10 @@ export function ScheduleInterviewDialog({
                     type="button"
                     onClick={() => setMode("onsite")}
                     className={cn(
-                      "inline-flex items-center justify-center gap-2 h-9 rounded-full text-sm font-medium transition-all duration-150 cursor-pointer",
+                      "inline-flex h-9 cursor-pointer items-center justify-center gap-2 rounded-full text-sm font-medium transition-all duration-150",
                       mode === "onsite"
-                        ? "bg-card text-foreground shadow-xs font-semibold"
-                        : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
+                        ? "bg-card font-semibold text-foreground shadow-xs"
+                        : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
                     )}
                   >
                     <MapPin className="size-4 text-indigo-600" />
@@ -538,8 +659,12 @@ export function ScheduleInterviewDialog({
                 {/* Online URL input */}
                 {mode === "online" ? (
                   <div className="space-y-1.5 pt-1">
-                    <Label htmlFor="interview-url" className="text-sm font-medium px-1">
-                      Meeting URL (Google Meet / Teams) <span className="text-destructive">*</span>
+                    <Label
+                      htmlFor="interview-url"
+                      className="px-1 text-sm font-medium"
+                    >
+                      Meeting URL (Google Meet / Teams){" "}
+                      <span className="text-destructive">*</span>
                     </Label>
                     <Input
                       id="interview-url"
@@ -547,20 +672,27 @@ export function ScheduleInterviewDialog({
                       value={meetingUrl}
                       onChange={(e) => {
                         setMeetingUrl(e.target.value)
-                        if (errors.meetingUrl) setErrors((prev) => ({ ...prev, meetingUrl: "" }))
+                        if (errors.meetingUrl)
+                          setErrors((prev) => ({ ...prev, meetingUrl: "" }))
                       }}
                       aria-invalid={!!errors.meetingUrl}
-                      className="h-10 rounded-full border-0 bg-muted px-4 text-sm font-mono text-foreground placeholder:text-muted-foreground transition-all duration-150 outline-none focus-visible:bg-card focus-visible:ring-2 focus-visible:ring-primary shadow-none"
+                      className="h-10 rounded-full border-0 bg-muted px-4 font-mono text-sm text-foreground shadow-none transition-all duration-150 outline-none placeholder:text-muted-foreground focus-visible:bg-card focus-visible:ring-2 focus-visible:ring-primary"
                     />
                     {errors.meetingUrl && (
-                      <p className="text-xs text-destructive px-1">{errors.meetingUrl}</p>
+                      <p className="px-1 text-xs text-destructive">
+                        {errors.meetingUrl}
+                      </p>
                     )}
                   </div>
                 ) : (
                   /* Onsite Location Input */
                   <div className="space-y-1.5 pt-1">
-                    <Label htmlFor="interview-location" className="text-sm font-medium px-1">
-                      Room / Office Location <span className="text-destructive">*</span>
+                    <Label
+                      htmlFor="interview-location"
+                      className="px-1 text-sm font-medium"
+                    >
+                      Room / Office Location{" "}
+                      <span className="text-destructive">*</span>
                     </Label>
                     <Input
                       id="interview-location"
@@ -568,13 +700,16 @@ export function ScheduleInterviewDialog({
                       value={location}
                       onChange={(e) => {
                         setLocation(e.target.value)
-                        if (errors.location) setErrors((prev) => ({ ...prev, location: "" }))
+                        if (errors.location)
+                          setErrors((prev) => ({ ...prev, location: "" }))
                       }}
                       aria-invalid={!!errors.location}
-                      className="h-10 rounded-full border-0 bg-muted px-4 text-sm text-foreground placeholder:text-muted-foreground transition-all duration-150 outline-none focus-visible:bg-card focus-visible:ring-2 focus-visible:ring-primary shadow-none"
+                      className="h-10 rounded-full border-0 bg-muted px-4 text-sm text-foreground shadow-none transition-all duration-150 outline-none placeholder:text-muted-foreground focus-visible:bg-card focus-visible:ring-2 focus-visible:ring-primary"
                     />
                     {errors.location && (
-                      <p className="text-xs text-destructive px-1">{errors.location}</p>
+                      <p className="px-1 text-xs text-destructive">
+                        {errors.location}
+                      </p>
                     )}
                   </div>
                 )}
@@ -584,13 +719,14 @@ export function ScheduleInterviewDialog({
               <div className="space-y-2 pt-1">
                 <div className="flex items-center justify-between px-1">
                   <Label className="text-sm font-medium">
-                    Assign Interviewers <span className="text-destructive">*</span>
+                    Assign Interviewers{" "}
+                    <span className="text-destructive">*</span>
                   </Label>
                   <span className="text-xs text-muted-foreground">
                     {selectedInterviewerIds.length} selected
                   </span>
                 </div>
-                <div className="grid grid-cols-1 gap-2 max-h-55 overflow-y-auto pr-1">
+                <div className="grid max-h-55 grid-cols-1 gap-2 overflow-y-auto pr-1">
                   {mockEmployees.map((emp) => {
                     const isSelected = selectedInterviewerIds.includes(emp.id)
                     return (
@@ -599,21 +735,21 @@ export function ScheduleInterviewDialog({
                         type="button"
                         onClick={() => handleToggleInterviewer(emp.id)}
                         className={cn(
-                          "flex items-center justify-between p-2.5 rounded-2xl border transition-all cursor-pointer text-left",
+                          "flex cursor-pointer items-center justify-between rounded-2xl border p-2.5 text-left transition-all",
                           isSelected
                             ? "border-primary bg-primary/5 text-foreground"
-                            : "border-border/60 hover:bg-muted/40 text-muted-foreground"
+                            : "border-border/60 text-muted-foreground hover:bg-muted/40"
                         )}
                       >
-                        <div className="flex items-center gap-2 min-w-0">
+                        <div className="flex min-w-0 items-center gap-2">
                           <div className="flex size-7 shrink-0 items-center justify-center rounded-full bg-muted text-xs">
                             <User className="size-3.5 text-muted-foreground" />
                           </div>
                           <div className="min-w-0">
-                            <p className="font-semibold text-xs text-foreground truncate">
+                            <p className="truncate text-xs font-semibold text-foreground">
                               {emp.fullName}
                             </p>
-                            <p className="text-[10px] text-muted-foreground truncate">
+                            <p className="truncate text-[10px] text-muted-foreground">
                               {emp.jobTitle}
                             </p>
                           </div>
@@ -634,16 +770,22 @@ export function ScheduleInterviewDialog({
                   })}
                 </div>
                 {errors.interviewers && (
-                  <p className="text-xs text-destructive px-1">{errors.interviewers}</p>
+                  <p className="px-1 text-xs text-destructive">
+                    {errors.interviewers}
+                  </p>
                 )}
               </div>
             </div>
           </div>
         </form>
 
-        <DialogFooter className="mt-4 gap-2 sm:gap-2 bg-white">
+        <DialogFooter className="mt-4 gap-2 bg-white sm:gap-2">
           <CancelButton onClick={() => onOpenChange(false)} />
-          <SaveButton type="submit" form={formId} disabled={Boolean(scheduleRestriction)}>
+          <SaveButton
+            type="submit"
+            form={formId}
+            disabled={Boolean(scheduleRestriction)}
+          >
             {isRescheduleMode ? "Save & Reschedule" : "Schedule Interview"}
           </SaveButton>
         </DialogFooter>

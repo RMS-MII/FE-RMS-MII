@@ -1,4 +1,9 @@
-import type { Recruitment, CandidateApplicationItem, StageTestEvaluationItem, StageInterviewAssessmentItem } from "../types"
+import type {
+  Recruitment,
+  CandidateApplicationItem,
+  StageTestEvaluationItem,
+  StageInterviewAssessmentItem,
+} from "../types"
 import type { SortDirection } from "@/shared/components"
 import { candidates } from "@/data/mock"
 
@@ -11,24 +16,29 @@ import { candidates } from "@/data/mock"
 export function getRecruitmentCandidateApplications(
   recruitment: Recruitment
 ): CandidateApplicationItem[] {
-  const batchCandidates = candidates.filter((c) => c.recruitmentId === recruitment.id)
+  const batchCandidates = candidates.filter(
+    (c) => c.recruitmentId === recruitment.id
+  )
 
   return batchCandidates.map((c, idx) => {
     const codeNumber = String(idx + 1).padStart(3, "0")
-    const codeYear = recruitment.openDate ? recruitment.openDate.slice(0, 4) : "2026"
+    const codeYear = recruitment.openDate
+      ? recruitment.openDate.slice(0, 4)
+      : "2026"
     const codeApplication = `APP-${codeYear}-${codeNumber}`
     const stages = recruitment.stages || []
     const currentStage = stages[c.stageIndex]
 
     // Construct ApplicationStage entries for each stage in the recruitment batch
     const applicationStages = stages.map((stg, sIdx) => {
-      let stageStatus: CandidateApplicationItem["applicationStages"][0]["status"] = "upcoming"
-      let stageScore: number | null = null
+      let stageStatus: CandidateApplicationItem["applicationStages"][0]["status"]
+      let stageScore: number | null
       let startedAt: string | null = null
       let completedAt: string | null = null
       let notes: string | null = null
       let testEvaluation: StageTestEvaluationItem | undefined = undefined
-      let interviewAssessments: StageInterviewAssessmentItem[] | undefined = undefined
+      let interviewAssessments: StageInterviewAssessmentItem[] | undefined =
+        undefined
 
       const passing = stg.passingScore ?? 70
 
@@ -71,7 +81,7 @@ export function getRecruitmentCandidateApplications(
       }
 
       // Populate test evaluation if stage is a test
-      if (stg.type === "test" && (sIdx <= c.stageIndex)) {
+      if (stg.type === "test" && sIdx <= c.stageIndex) {
         const scoreVal = stageScore ?? 80
         testEvaluation = {
           totalQuestions: 50,
@@ -84,7 +94,7 @@ export function getRecruitmentCandidateApplications(
       }
 
       // Populate interview assessments if stage is an interview
-      if (stg.type === "interview" && (sIdx <= c.stageIndex)) {
+      if (stg.type === "interview" && sIdx <= c.stageIndex) {
         const scoreVal = stageScore ?? 82
         const isPassedScore = scoreVal >= passing
         interviewAssessments = [
@@ -116,6 +126,8 @@ export function getRecruitmentCandidateApplications(
       return {
         stageIndex: sIdx,
         stageId: stg.id,
+        batchStageId: stg.id,
+        applicationStageId: null,
         stageName: stg.name,
         stageType: stg.type,
         passingScore: passing,
@@ -131,8 +143,7 @@ export function getRecruitmentCandidateApplications(
 
     const currStageScore =
       applicationStages[c.stageIndex]?.totalScore ?? c.testScore ?? null
-    const currStageStatus =
-      applicationStages[c.stageIndex]?.status ?? c.status
+    const currStageStatus = applicationStages[c.stageIndex]?.status ?? c.status
 
     return {
       id: `app-${c.id}`,
@@ -145,11 +156,13 @@ export function getRecruitmentCandidateApplications(
         c.status === "accepted"
           ? "accepted"
           : c.status === "rejected"
-          ? "rejected"
-          : "pending",
+            ? "rejected"
+            : "pending",
       note: null,
       fileOfferingLetter:
-        c.status === "accepted" ? `Offering_Letter_${c.name.replace(/\s+/g, "_")}.pdf` : null,
+        c.status === "accepted"
+          ? `Offering_Letter_${c.name.replace(/\s+/g, "_")}.pdf`
+          : null,
       offeringLetterStatus: c.status === "accepted" ? "Accepted" : null,
 
       // Profile details
@@ -157,14 +170,18 @@ export function getRecruitmentCandidateApplications(
       candidateEmail: c.email,
       candidatePhone: c.phone,
       candidateEducation: c.education,
-      candidateInstitution: c.education.includes(", ") ? c.education.split(", ")[1] : null,
+      candidateInstitution: c.education.includes(", ")
+        ? c.education.split(", ")[1]
+        : null,
       candidateGpa: "3.75",
       candidateCv: `CV_${c.name.replace(/\s+/g, "_")}.pdf`,
       candidatePortfolio: `https://github.com/${c.name.toLowerCase().replace(/\s+/g, "")}`,
 
       // Current Stage
       currentStageIndex: c.stageIndex,
-      currentStageName: currentStage ? currentStage.name : `Stage ${c.stageIndex + 1}`,
+      currentStageName: currentStage
+        ? currentStage.name
+        : `Stage ${c.stageIndex + 1}`,
       currentStageScore: currStageScore,
       currentStageStatus: currStageStatus,
       applicationStages,
@@ -172,7 +189,8 @@ export function getRecruitmentCandidateApplications(
   })
 }
 
-export type CandidateAppSortKey = "name" | "code" | "stage" | "score" | "status" | "appliedAt"
+export type CandidateAppSortKey =
+  "name" | "code" | "stage" | "score" | "status" | "appliedAt"
 
 export function filterCandidateApplications(
   list: CandidateApplicationItem[],
@@ -194,7 +212,9 @@ export function filterCandidateApplications(
         const stageRecord = item.applicationStages[selectedStageIndex]
         return stageRecord?.status === statusFilter
       }
-      return item.status === statusFilter || item.currentStageStatus === statusFilter
+      return (
+        item.status === statusFilter || item.currentStageStatus === statusFilter
+      )
     })
   }
 
@@ -205,7 +225,8 @@ export function filterCandidateApplications(
         item.candidateName.toLowerCase().includes(q) ||
         item.candidateEmail.toLowerCase().includes(q) ||
         item.codeApplication.toLowerCase().includes(q) ||
-        (item.candidateEducation && item.candidateEducation.toLowerCase().includes(q))
+        (item.candidateEducation &&
+          item.candidateEducation.toLowerCase().includes(q))
     )
   }
 
@@ -219,7 +240,7 @@ export function sortCandidateApplications(
   selectedStageIndex: number | null = null
 ): CandidateApplicationItem[] {
   return [...list].sort((a, b) => {
-    let comparison = 0
+    let comparison: number
 
     switch (sortKey) {
       case "name":
@@ -234,30 +255,31 @@ export function sortCandidateApplications(
       case "score": {
         const scoreA =
           selectedStageIndex !== null
-            ? a.applicationStages[selectedStageIndex]?.totalScore ?? 0
-            : a.currentStageScore ?? 0
+            ? (a.applicationStages[selectedStageIndex]?.totalScore ?? 0)
+            : (a.currentStageScore ?? 0)
         const scoreB =
           selectedStageIndex !== null
-            ? b.applicationStages[selectedStageIndex]?.totalScore ?? 0
-            : b.currentStageScore ?? 0
+            ? (b.applicationStages[selectedStageIndex]?.totalScore ?? 0)
+            : (b.currentStageScore ?? 0)
         comparison = scoreA - scoreB
         break
       }
       case "status": {
         const statusA =
           selectedStageIndex !== null
-            ? a.applicationStages[selectedStageIndex]?.status ?? ""
+            ? (a.applicationStages[selectedStageIndex]?.status ?? "")
             : a.currentStageStatus
         const statusB =
           selectedStageIndex !== null
-            ? b.applicationStages[selectedStageIndex]?.status ?? ""
+            ? (b.applicationStages[selectedStageIndex]?.status ?? "")
             : b.currentStageStatus
         comparison = statusA.localeCompare(statusB)
         break
       }
       case "appliedAt":
       default:
-        comparison = new Date(a.appliedAt).getTime() - new Date(b.appliedAt).getTime()
+        comparison =
+          new Date(a.appliedAt).getTime() - new Date(b.appliedAt).getTime()
         break
     }
 

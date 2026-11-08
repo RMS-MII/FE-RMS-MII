@@ -1,3 +1,16 @@
+import type {
+  ApplicationStatusValue,
+  FinalResultStatusValue,
+  OfferingLetterStatusValue,
+  ApplicationStageStatusValue,
+  StageCategoryValue,
+} from "./api-status"
+import type {
+  ApplicationStageRecapDto,
+  ApplicationRecapSummaryDto,
+  RecruitmentBatchSummaryDto,
+} from "./application-recap"
+
 // =====================================================================
 // Matches BatchApplications & ApplicationStage tables in Document/ERD.sql
 // =====================================================================
@@ -5,7 +18,7 @@
 export interface CandidateDto {
   id: string
   fullName: string
-  gender?: number | null
+  gender?: "Male" | "Female" | 1 | 2 | null
   email: string
   phoneNumber?: string | null
   birthDate?: string | null
@@ -26,10 +39,10 @@ export interface BatchApplicationListItemDto {
   recruitmentBatchId: string
   codeApplication: string
   appliedAt?: string | null
-  finalResultStatus?: string | null
-  status: number | string
+  finalResultStatus?: FinalResultStatusValue | null
+  status: ApplicationStatusValue
   notes?: string | null
-  offeringLetterStatus?: number | null
+  offeringLetterStatus?: OfferingLetterStatusValue | null
   fileOfferingLetter?: string | null
   createdAt?: string
   updatedAt?: string | null
@@ -39,28 +52,16 @@ export interface BatchApplicationListItemDto {
 export interface GetBatchApplicationsParams {
   id: string
   search?: string
-  status?: number
+  status?: ApplicationStatusValue
   page?: number
   pageSize?: number
 }
 
-export interface ApplicationDetailDto {
-  id: string
-  candidateId: string
-  recruitmentBatchId: string
-  codeApplication: string
-  appliedAt?: string | null
-  finalResultStatus?: string | null
-  status: number | string
-  notes?: string | null
-  offeringLetterStatus?: number | null
-  fileOfferingLetter?: string | null
-  createdAt?: string
-  updatedAt?: string | null
-  candidate?: CandidateDto | null
-  batch?: any
-  stages?: any[]
-  summary?: any
+export interface ApplicationDetailDto extends BatchApplicationListItemDto {
+  candidate: CandidateDto
+  batch: RecruitmentBatchSummaryDto
+  stages: ApplicationStageRecapDto[]
+  summary: ApplicationRecapSummaryDto
 }
 
 export interface RegisterCandidateItem {
@@ -84,15 +85,34 @@ export interface RegisterCandidatesCommand {
 }
 
 export interface EvaluateStageCommand {
-  stageId: string
-  status?: number
-  notes?: string
+  status: "Prioritized" | "Considered" | "Rejected"
+  notes: string
 }
 
 export interface SetFinalResultCommand {
-  applicationId: string
-  finalResultStatus?: number
-  notes?: string
+  finalResultStatus: "Accepted" | "Rejected"
+  notes: string
+}
+
+export interface ApplicationStageDto {
+  id: string
+  batchApplicationId: string
+  batchStageId: string
+  batchStageName: string
+  stageTypeId: string
+  stageTypeName: string | null
+  stageCategory: StageCategoryValue | null
+  passingScore: number | null
+  status: ApplicationStageStatusValue
+  totalScore: number | null
+  startedAt: string
+  endAt: string
+  completedAt: string | null
+  notes: string | null
+  isAttempts: boolean
+  durationTest: string | null
+  createdAt: string
+  updatedAt: string | null
 }
 
 /** Matches BatchApplications table in ERD.sql */
@@ -150,12 +170,24 @@ export interface StageTestEvaluationItem {
 
 export interface CandidateApplicationStageItem {
   stageIndex: number
+  /** Configuration ID used for UI navigation only. */
   stageId: string
+  batchStageId: string
+  /** Execution ID; null until the application stage has started. */
+  applicationStageId: string | null
+  apiStatus?: ApplicationStageStatusValue | null
   stageName: string
   stageType?: string
   stageTypeName?: string
   passingScore?: number | null
-  status: "pending" | "in_progress" | "passed" | "failed" | "upcoming" | "withdrawn" | string
+  status:
+    | "pending"
+    | "in_progress"
+    | "passed"
+    | "failed"
+    | "upcoming"
+    | "withdrawn"
+    | string
   totalScore?: number | null
   startedAt?: string | null
   completedAt?: string | null
@@ -174,7 +206,8 @@ export interface CandidateApplicationItem {
   recruitmentBatchId: string
   codeApplication: string // e.g. "APP-2026-001"
   appliedAt: string
-  status: "in_progress" | "pending" | "accepted" | "rejected" | "withdrawn" | string
+  status:
+    "in_progress" | "pending" | "accepted" | "rejected" | "withdrawn" | string
   finalStatus?: "accepted" | "rejected" | "pending" | string | null
   rejectReason?: string | null
   note?: string | null
@@ -195,6 +228,14 @@ export interface CandidateApplicationItem {
   currentStageIndex: number
   currentStageName: string
   currentStageScore?: number | null
-  currentStageStatus: "pending" | "in_progress" | "passed" | "failed" | "accepted" | "rejected" | "withdrawn" | string
+  currentStageStatus:
+    | "pending"
+    | "in_progress"
+    | "passed"
+    | "failed"
+    | "accepted"
+    | "rejected"
+    | "withdrawn"
+    | string
   applicationStages: CandidateApplicationStageItem[]
 }

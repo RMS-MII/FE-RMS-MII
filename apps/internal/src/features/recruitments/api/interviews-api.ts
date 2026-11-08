@@ -4,7 +4,9 @@ import type {
   ScheduleInterviewSessionRequest,
   RescheduleRequestDto,
   ReviewRescheduleRequest,
+  RescheduleStatusValue,
 } from "../types"
+import { applicationTags } from "./cache-tags"
 
 export interface GetBatchInterviewSessionsParams {
   search?: string
@@ -26,7 +28,8 @@ export const interviewsApi = baseApi.injectEndpoints({
           ? {
               search: params.search || undefined,
               stageId: params.stageId || undefined,
-              isOnline: params.isOnline !== undefined ? params.isOnline : undefined,
+              isOnline:
+                params.isOnline !== undefined ? params.isOnline : undefined,
               date: params.date || undefined,
             }
           : undefined,
@@ -38,24 +41,38 @@ export const interviewsApi = baseApi.injectEndpoints({
     }),
 
     scheduleInterviewSession: builder.mutation<
-      any,
-      { applicationStageId: string; body: ScheduleInterviewSessionRequest; batchId?: string }
+      BatchInterviewSessionDto,
+      {
+        applicationStageId: string
+        body: ScheduleInterviewSessionRequest
+        batchId?: string
+        applicationId?: string
+      }
     >({
       query: ({ applicationStageId, body }) => ({
         url: `/application-stages/${applicationStageId}/interview-sessions`,
         method: "POST",
         body,
       }),
-      invalidatesTags: (_result, _err, { batchId }) => [
-        { type: "Interview" as const, id: "LIST" },
-        ...(batchId ? [{ type: "Interview" as const, id: `BATCH_${batchId}` }] : []),
-        { type: "Recruitment" as const, id: "LIST" },
-      ],
+      invalidatesTags: (result, _err, { batchId, applicationId }) =>
+        result
+          ? [
+              ...applicationTags(
+                applicationId,
+                batchId ?? result.recruitmentBatchId
+              ),
+              { type: "Interview" as const, id: "LIST" },
+              ...(batchId
+                ? [{ type: "Interview" as const, id: `BATCH_${batchId}` }]
+                : []),
+              { type: "Recruitment" as const, id: "LIST" },
+            ]
+          : [],
     }),
 
     getRescheduleRequests: builder.query<
       RescheduleRequestDto[],
-      { status?: number | string; sessionId?: string } | void
+      { status?: RescheduleStatusValue; sessionId?: string } | void
     >({
       query: (params) => ({
         url: "/reschedule-requests",
@@ -71,19 +88,30 @@ export const interviewsApi = baseApi.injectEndpoints({
     }),
 
     reviewRescheduleRequest: builder.mutation<
-      any,
-      { id: string; body: ReviewRescheduleRequest; batchId?: string }
+      RescheduleRequestDto,
+      {
+        id: string
+        body: ReviewRescheduleRequest
+        batchId?: string
+        applicationId?: string
+      }
     >({
       query: ({ id, body }) => ({
         url: `/reschedule-requests/${id}/review`,
         method: "POST",
         body,
       }),
-      invalidatesTags: (_result, _err, { batchId }) => [
-        { type: "Interview" as const, id: "LIST" },
-        { type: "Interview" as const, id: "RESCHEDULE_LIST" },
-        ...(batchId ? [{ type: "Interview" as const, id: `BATCH_${batchId}` }] : []),
-      ],
+      invalidatesTags: (result, _err, { batchId, applicationId }) =>
+        result
+          ? [
+              ...applicationTags(applicationId, batchId),
+              { type: "Interview" as const, id: "LIST" },
+              { type: "Interview" as const, id: "RESCHEDULE_LIST" },
+              ...(batchId
+                ? [{ type: "Interview" as const, id: `BATCH_${batchId}` }]
+                : []),
+            ]
+          : [],
     }),
   }),
 })
@@ -96,4 +124,3 @@ export const {
   useLazyGetRescheduleRequestsQuery,
   useReviewRescheduleRequestMutation,
 } = interviewsApi
-

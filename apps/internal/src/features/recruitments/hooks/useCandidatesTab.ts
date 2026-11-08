@@ -1,10 +1,23 @@
-import { useState, useMemo, useEffect } from "react"
+import { useState, useMemo, useCallback } from "react"
 import type { Recruitment, CandidateApplicationItem } from "../types"
 import type { Chip, SortDirection } from "@/shared/components"
 import { type CandidateAppSortKey } from "../utils"
 import { useGetBatchApplicationsQuery } from "../api/applications-api"
+import {
+  mapApplicationStatus,
+  mapFinalResultStatus,
+  parseStatusFilterToNumber,
+} from "../utils/statusAdapters"
 
-export const statusToneMap: Record<string, "success" | "warning" | "info" | "danger" | "neutral"> = {
+export {
+  mapApplicationStatus,
+  parseStatusFilterToNumber,
+} from "../utils/statusAdapters"
+
+export const statusToneMap: Record<
+  string,
+  "success" | "warning" | "info" | "danger" | "neutral"
+> = {
   passed: "success",
   accepted: "success",
   in_progress: "info",
@@ -13,6 +26,12 @@ export const statusToneMap: Record<string, "success" | "warning" | "info" | "dan
   rejected: "danger",
   withdrawn: "neutral",
   upcoming: "neutral",
+  dropped: "neutral",
+  submitted: "warning",
+  expired: "danger",
+  prioritized: "success",
+  considered: "success",
+  unknown: "neutral",
 }
 
 export const statusLabelMap: Record<string, string> = {
@@ -24,37 +43,21 @@ export const statusLabelMap: Record<string, string> = {
   rejected: "Rejected",
   withdrawn: "Withdrawn",
   upcoming: "Upcoming",
+  dropped: "Dropped",
+  submitted: "Submitted",
+  expired: "Expired",
+  prioritized: "Prioritized",
+  considered: "Considered",
+  unknown: "Unknown",
 }
 
 export const candidateStatusItems = [
   { label: "All Status", value: "all" },
   { label: "In Progress", value: "in_progress" },
-  { label: "Passed", value: "passed" },
-  { label: "Pending", value: "pending" },
-  { label: "Failed", value: "failed" },
+  { label: "Rejected", value: "rejected" },
+  { label: "Dropped", value: "dropped" },
   { label: "Accepted", value: "accepted" },
-  { label: "Withdrawn", value: "withdrawn" },
 ]
-
-export function parseStatusFilterToNumber(filter: string): number | undefined {
-  if (filter === "pending") return 0
-  if (filter === "in_progress") return 1
-  if (filter === "passed" || filter === "accepted") return 2
-  if (filter === "failed" || filter === "rejected") return 3
-  if (filter === "withdrawn") return 4
-  return undefined
-}
-
-export function mapApplicationStatus(status: number | string | undefined | null): string {
-  if (status === null || status === undefined) return "in_progress"
-  const s = String(status).toLowerCase()
-  if (s === "0" || s === "pending") return "pending"
-  if (s === "1" || s === "in_progress" || s === "inprogress") return "in_progress"
-  if (s === "2" || s === "passed" || s === "accepted") return "passed"
-  if (s === "3" || s === "failed" || s === "rejected") return "failed"
-  if (s === "4" || s === "withdrawn") return "withdrawn"
-  return s
-}
 
 export interface UseCandidatesTabProps {
   recruitment: Recruitment
@@ -69,9 +72,14 @@ export function useCandidatesTab({
 }: UseCandidatesTabProps) {
   // Search and filter states
   const [search, setSearch] = useState("")
-  const [stageFilter, setStageFilter] = useState<string>(
+  const [localStageFilter, setStageFilter] = useState<string>(
     selectedStageIndex !== null ? String(selectedStageIndex) : "all"
   )
+  const stageFilter = onStageChange
+    ? selectedStageIndex === null
+      ? "all"
+      : String(selectedStageIndex)
+    : localStageFilter
   const [statusFilter, setStatusFilter] = useState("all")
 
   // Sorting and pagination states
@@ -82,14 +90,18 @@ export function useCandidatesTab({
 
   // Real API Query for Batch Applications
   const {
-    data: apiData,
+    currentData: apiData,
+    error: apiError,
     isLoading: isApiLoading,
     isError: isApiError,
     refetch: refetchApplications,
   } = useGetBatchApplicationsQuery({
     id: recruitment.id,
     search: search.trim() || undefined,
-    status: statusFilter !== "all" ? parseStatusFilterToNumber(statusFilter) : undefined,
+    status:
+      statusFilter !== "all"
+        ? parseStatusFilterToNumber(statusFilter)
+        : undefined,
     page,
     pageSize,
   })
@@ -99,13 +111,6 @@ export function useCandidatesTab({
     useState<CandidateApplicationItem | null>(null)
   const [isDetailOpen, setIsDetailOpen] = useState(false)
   const [isAddOpen, setIsAddOpen] = useState(false)
-
-  // Sync external stage index with internal dropdown state
-  useEffect(() => {
-    if (selectedStageIndex !== null) {
-      setStageFilter(String(selectedStageIndex))
-    }
-  }, [selectedStageIndex])
 
   // Build stage dropdown items directly from batchStages
   const stageCount = useMemo(() => {
@@ -134,21 +139,24 @@ export function useCandidatesTab({
   }, [recruitment.batchStages, recruitment.stages])
 
   // Handle stage filter changes
-  const handleStageChange = (val: string | null) => {
-    if (!val) return
-    setStageFilter(val)
-    setPage(1)
-    if (onStageChange) {
-      onStageChange(val === "all" ? null : Number(val))
-    }
-  }
+  const handleStageChange = useCallback(
+    (val: string | null) => {
+      if (!val) return
+      setStageFilter(val)
+      setPage(1)
+      if (onStageChange) {
+        onStageChange(val === "all" ? null : Number(val))
+      }
+    },
+    [onStageChange]
+  )
 
   // Handle status filter changes
-  const handleStatusChange = (val: string | null) => {
+  const handleStatusChange = useCallback((val: string | null) => {
     if (!val) return
     setStatusFilter(val)
     setPage(1)
-  }
+  }, [])
 
   // Map API data into UI application items
   const currentApplications: CandidateApplicationItem[] = useMemo(() => {
@@ -158,19 +166,22 @@ export function useCandidatesTab({
     return apiData.items.map((item) => {
       const cand = item.candidate
       const statusStr = mapApplicationStatus(item.status)
-      const activeStage = stages[0]?.stageName || "Document Screening"
+      const activeStage = "Stage progress unavailable"
 
       return {
         id: item.id,
         candidateId: item.candidateId,
         recruitmentBatchId: item.recruitmentBatchId,
         codeApplication: item.codeApplication,
-        appliedAt: item.appliedAt || item.createdAt || new Date().toISOString(),
+        appliedAt: item.appliedAt ?? item.createdAt ?? "",
         status: statusStr,
-        finalStatus: item.finalResultStatus || undefined,
+        finalStatus: mapFinalResultStatus(item.finalResultStatus),
         note: item.notes,
         fileOfferingLetter: item.fileOfferingLetter,
-        offeringLetterStatus: item.offeringLetterStatus ? String(item.offeringLetterStatus) : null,
+        offeringLetterStatus:
+          item.offeringLetterStatus != null
+            ? String(item.offeringLetterStatus)
+            : null,
         candidateName: cand?.fullName || "Unnamed Candidate",
         candidateEmail: cand?.email || "-",
         candidatePhone: cand?.phoneNumber,
@@ -178,26 +189,28 @@ export function useCandidatesTab({
           ? `${cand.education}${cand.institution ? ` • ${cand.institution}` : ""}`
           : cand?.institution || "-",
         candidateInstitution: cand?.institution,
-        candidateGpa: cand?.gpa ? String(cand.gpa) : undefined,
+        candidateGpa: cand?.gpa != null ? String(cand.gpa) : undefined,
         candidateCv: cand?.cv,
         candidatePortfolio: cand?.portfolio,
-        currentStageIndex: 0,
+        currentStageIndex: -1,
         currentStageName: activeStage,
         currentStageScore: null,
-        currentStageStatus: statusStr,
+        currentStageStatus: "unknown",
         applicationStages: stages.map((s, idx) => ({
           stageIndex: idx,
           stageId: s.id,
+          batchStageId: s.id,
+          applicationStageId: null,
           stageName: s.stageName,
           stageType: s.stageCategory?.toLowerCase() ?? "screening",
           stageTypeName: s.stageTypeName,
           passingScore: s.passingScore,
-          status: idx === 0 ? statusStr : "upcoming",
+          status: "unknown",
           totalScore: null,
         })),
       }
     })
-  }, [apiData?.items, recruitment.batchStages])
+  }, [apiData, recruitment.batchStages])
 
   const totalCount = apiData?.totalItems ?? 0
 
@@ -226,15 +239,11 @@ export function useCandidatesTab({
     setIsDetailOpen(true)
   }
 
-  const handleAddCandidates = (_newApps: CandidateApplicationItem[]) => {
+  const handleAddCandidates = () => {
     refetchApplications()
   }
 
-  const handleUpdateCandidateStatus = (
-    _applicationId: string,
-    _action: "advance" | "reject" | "reopen",
-    _payload?: { reason?: string; notes?: string }
-  ) => {
+  const handleUpdateCandidateStatus = () => {
     refetchApplications()
   }
 
@@ -268,7 +277,14 @@ export function useCandidatesTab({
       })
     }
     return chips
-  }, [search, stageFilter, statusFilter, stageItems])
+  }, [
+    search,
+    stageFilter,
+    statusFilter,
+    stageItems,
+    handleStageChange,
+    handleStatusChange,
+  ])
 
   const startIndex = (page - 1) * pageSize
 
@@ -286,6 +302,7 @@ export function useCandidatesTab({
     stageCount,
     isApiLoading,
     isApiError,
+    apiError,
     refetchApplications,
     selectedApplication,
     setSelectedApplication,

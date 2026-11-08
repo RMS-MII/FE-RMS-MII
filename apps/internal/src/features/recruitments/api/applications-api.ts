@@ -7,7 +7,9 @@ import type {
   RegisterCandidatesCommand,
   EvaluateStageCommand,
   SetFinalResultCommand,
+  ApplicationStageDto,
 } from "../types/application"
+import { applicationTags } from "./cache-tags"
 
 export const applicationsApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
@@ -32,7 +34,18 @@ export const applicationsApi = baseApi.injectEndpoints({
     }),
     getApplicationById: builder.query<ApplicationDetailDto, string>({
       query: (id) => `/applications/${id}`,
-      providesTags: (_result, _err, id) => [{ type: "Candidate", id }],
+      providesTags: (result, _err, id) => [
+        { type: "Candidate", id: `APPLICATION_${id}` },
+        { type: "Candidate", id: "APPLICATION_DETAILS" },
+        ...(result
+          ? [
+              {
+                type: "Candidate" as const,
+                id: `APPLICATION_BATCH_${result.recruitmentBatchId}`,
+              },
+            ]
+          : []),
+      ],
     }),
     registerCandidates: builder.mutation<
       BatchApplicationListItemDto[],
@@ -45,26 +58,35 @@ export const applicationsApi = baseApi.injectEndpoints({
           candidates,
         },
       }),
-      invalidatesTags: (_result, _err, { batchId }) => [
-        { type: "Candidate", id: `BATCH_${batchId}` },
-        { type: "Candidate", id: "LIST" },
-        { type: "Candidate", id: "TALENT_POOL" },
-        { type: "Recruitment", id: batchId },
-      ],
+      invalidatesTags: (result, _err, { batchId }) =>
+        result
+          ? [
+              { type: "Candidate", id: `BATCH_${batchId}` },
+              { type: "Candidate", id: "LIST" },
+              { type: "Candidate", id: "TALENT_POOL" },
+              { type: "Recruitment", id: batchId },
+              { type: "Recruitment", id: "LIST" },
+            ]
+          : [],
     }),
     evaluateStage: builder.mutation<
-      any,
-      { stageId: string; body: EvaluateStageCommand }
+      ApplicationStageDto,
+      {
+        applicationStageId: string
+        body: EvaluateStageCommand
+        batchId?: string
+      }
     >({
-      query: ({ stageId, body }) => ({
-        url: `/application-stages/${stageId}/evaluate`,
+      query: ({ applicationStageId, body }) => ({
+        url: `/application-stages/${applicationStageId}/evaluate`,
         method: "POST",
         body,
       }),
-      invalidatesTags: [{ type: "Candidate", id: "LIST" }],
+      invalidatesTags: (result, _err, { batchId }) =>
+        result ? applicationTags(result.batchApplicationId, batchId) : [],
     }),
     setFinalResult: builder.mutation<
-      any,
+      BatchApplicationListItemDto,
       { applicationId: string; body: SetFinalResultCommand }
     >({
       query: ({ applicationId, body }) => ({
@@ -72,10 +94,8 @@ export const applicationsApi = baseApi.injectEndpoints({
         method: "PUT",
         body,
       }),
-      invalidatesTags: (_result, _err, { applicationId }) => [
-        { type: "Candidate", id: applicationId },
-        { type: "Candidate", id: "LIST" },
-      ],
+      invalidatesTags: (result, _err, { applicationId }) =>
+        result ? applicationTags(applicationId, result.recruitmentBatchId) : [],
     }),
   }),
 })

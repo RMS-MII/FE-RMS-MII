@@ -1,15 +1,12 @@
 import type { Employee } from "./employee"
+import type { StageEmployeeStatusValue } from "./api-status"
 
 // =====================================================================
 // Matches BatchStage, StageType, StageEmployee tables in Document/ERD.sql
 // =====================================================================
 
 export type LegacyStageType =
-  | "screening"
-  | "interview"
-  | "test"
-  | "offering"
-  | "other"
+  "screening" | "interview" | "test" | "offering" | "other"
 
 export type StageType = LegacyStageType
 
@@ -62,7 +59,7 @@ export interface AssignedInterviewer {
   email: string
   jobTitle: string
   departmentName: string
-  status: number | string
+  status: StageEmployeeStatusValue
   statusName?: string
 }
 
@@ -117,9 +114,11 @@ export interface StageEmployee {
   updatedAt?: string | null
 }
 
-export type StageEmployeeStatus = "pending" | "accepted" | "declined"
+export type StageEmployeeStatus =
+  "pending" | "accepted" | "declined" | "unknown"
 
 export interface StageInterviewerAssignment {
+  stageEmployeeId?: string
   employeeId: string
   status: StageEmployeeStatus
   note?: string

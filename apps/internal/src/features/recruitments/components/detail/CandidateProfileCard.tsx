@@ -17,6 +17,8 @@ const statusToneMap: Record<string, Tone> = {
   rejected: "danger",
   withdrawn: "neutral",
   upcoming: "neutral",
+  dropped: "neutral",
+  unknown: "neutral",
 }
 
 const statusLabelMap: Record<string, string> = {
@@ -28,6 +30,8 @@ const statusLabelMap: Record<string, string> = {
   rejected: "Rejected",
   withdrawn: "Withdrawn",
   upcoming: "Upcoming",
+  dropped: "Dropped",
+  unknown: "Unknown",
 }
 
 export function CandidateProfileCard({

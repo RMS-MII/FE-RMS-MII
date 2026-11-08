@@ -14,7 +14,10 @@ import type {
 
 export const recruitmentsApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
-    getBatches: builder.query<PagedResult<Recruitment>, GetBatchesParams | void>({
+    getBatches: builder.query<
+      PagedResult<Recruitment>,
+      GetBatchesParams | void
+    >({
       query: (params) => ({
         url: "/batches",
         method: "GET",
@@ -31,7 +34,10 @@ export const recruitmentsApi = baseApi.injectEndpoints({
       providesTags: (result) =>
         result
           ? [
-              ...result.items.map(({ id }) => ({ type: "Recruitment" as const, id })),
+              ...result.items.map(({ id }) => ({
+                type: "Recruitment" as const,
+                id,
+              })),
               { type: "Recruitment", id: "LIST" },
             ]
           : [{ type: "Recruitment", id: "LIST" }],
@@ -50,7 +56,8 @@ export const recruitmentsApi = baseApi.injectEndpoints({
         method: "POST",
         body,
       }),
-      invalidatesTags: [{ type: "Recruitment", id: "LIST" }],
+      invalidatesTags: (result) =>
+        result ? [{ type: "Recruitment", id: "LIST" }] : [],
     }),
     updateBatchStatus: builder.mutation<
       Recruitment,
@@ -61,9 +68,14 @@ export const recruitmentsApi = baseApi.injectEndpoints({
         method: "PATCH",
         body,
       }),
-      invalidatesTags: (result, _err, { id }) => result
-        ? [{ type: "Recruitment", id }, { type: "Recruitment", id: "LIST" }]
-        : [],
+      invalidatesTags: (result, _err, { id }) =>
+        result
+          ? [
+              { type: "Recruitment", id },
+              { type: "Recruitment", id: "LIST" },
+              { type: "Candidate", id: `APPLICATION_BATCH_${id}` },
+            ]
+          : [],
     }),
     updateBatchStages: builder.mutation<
       BatchStage[],
@@ -74,11 +86,16 @@ export const recruitmentsApi = baseApi.injectEndpoints({
         method: "PUT",
         body,
       }),
-      invalidatesTags: (_result, _err, { id }) => [
-        { type: "Stage", id },
-        { type: "Recruitment", id },
-        { type: "Recruitment", id: "LIST" },
-      ],
+      invalidatesTags: (result, _err, { id }) =>
+        result
+          ? [
+              { type: "Stage", id },
+              { type: "Recruitment", id },
+              { type: "Recruitment", id: "LIST" },
+              { type: "Candidate", id: `APPLICATION_BATCH_${id}` },
+              { type: "Interview", id: `BATCH_${id}` },
+            ]
+          : [],
     }),
     assignStageInterviewers: builder.mutation<
       AssignInterviewersResponse,
@@ -89,10 +106,15 @@ export const recruitmentsApi = baseApi.injectEndpoints({
         method: "POST",
         body,
       }),
-      invalidatesTags: (_result, _err, { batchId }) => [
-        { type: "Stage", id: batchId },
-        { type: "Recruitment", id: batchId },
-      ],
+      invalidatesTags: (result, _err, { batchId }) =>
+        result
+          ? [
+              { type: "Stage", id: batchId },
+              { type: "Recruitment", id: batchId },
+              { type: "Candidate", id: `APPLICATION_BATCH_${batchId}` },
+              { type: "Interview", id: `BATCH_${batchId}` },
+            ]
+          : [],
     }),
   }),
 })
