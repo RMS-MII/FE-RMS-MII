@@ -1,15 +1,31 @@
-import { useState } from "react"
-import {
-  CheckCircle2,
-  XCircle,
-  AlertTriangle,
-  ArrowRight,
-  Lock,
-} from "lucide-react"
+import { useId, useState } from "react"
+import type { FormEvent } from "react"
+import { ArrowRight, CheckCircle2, Lock, XCircle } from "lucide-react"
 import { Button } from "@workspace/ui/components/button"
-import { CancelButton } from "@/shared/components"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@workspace/ui/components/dialog"
+import { Label } from "@workspace/ui/components/label"
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@workspace/ui/components/select"
+import { Textarea } from "@workspace/ui/components/textarea"
+import { CancelButton, SaveButton } from "@/shared/components"
 import { safeFormatDate } from "@/shared/lib/format"
-import type { CandidateApplicationItem, CandidateApplicationStageItem } from "../../types"
+import type {
+  CandidateApplicationItem,
+  CandidateApplicationStageItem,
+} from "../../types"
 
 export interface StageDecisionFooterProps {
   application: CandidateApplicationItem
@@ -31,6 +47,10 @@ const REJECTION_REASONS = [
   "Failed document / background verification",
   "Other reason",
 ]
+const rejectionItems = REJECTION_REASONS.map((reason) => ({
+  label: reason,
+  value: reason,
+}))
 
 export function StageDecisionFooter({
   application,
@@ -42,259 +62,277 @@ export function StageDecisionFooter({
   onGoToActiveStage,
   onClose,
 }: StageDecisionFooterProps) {
-  const [isRejecting, setIsRejecting] = useState(false)
-  const [isAdvancing, setIsAdvancing] = useState(false)
+  const formId = useId()
+  const [confirmation, setConfirmation] = useState<"advance" | "reject" | null>(
+    null
+  )
   const [rejectionReason, setRejectionReason] = useState(REJECTION_REASONS[0])
   const [notes, setNotes] = useState("")
-
   const stageName = stage?.stageName || application.currentStageName
-
-  // 1. Permanent finalized states: overall application is rejected or accepted
   const isApplicationRejected =
     application.status === "rejected" || application.status === "failed"
   const isApplicationAccepted = application.status === "accepted"
-
-  // 2. Stage status check: Decision buttons ONLY available if stage is in_progress
-  const isStageInProgress = stage?.status === "in_progress"
   const canMakeDecision =
     !isApplicationRejected &&
     !isApplicationAccepted &&
     isViewingActiveStage &&
-    isStageInProgress
+    stage?.status === "in_progress"
+  const hasActiveStage = Boolean(
+    application.applicationStages[application.currentStageIndex]
+  )
+  const isRejecting = confirmation === "reject"
 
-  const handleConfirmReject = () => {
-    onRejectStage(rejectionReason, notes.trim())
-    setIsRejecting(false)
+  let readOnlyMessage = "This stage is not currently available for evaluation."
+  if (!stage)
+    readOnlyMessage = "No selection stage is available for evaluation."
+  else if (stage.status === "passed" || stage.status === "accepted") {
+    readOnlyMessage =
+      stageName +
+      " has passed" +
+      (stage.completedAt ? " on " + safeFormatDate(stage.completedAt) : "") +
+      "."
+  } else if (stage.status === "failed" || stage.status === "rejected") {
+    readOnlyMessage = stageName + " did not pass."
+  } else if (stage.status === "upcoming")
+    readOnlyMessage = stageName + " is upcoming."
+  else if (stage.status === "pending")
+    readOnlyMessage = stageName + " is awaiting evaluation."
+
+  const handleOpenConfirmation = (action: "advance" | "reject") => {
+    if (!canMakeDecision) return
+    setNotes("")
+    setRejectionReason(REJECTION_REASONS[0])
+    setConfirmation(action)
   }
 
-  const handleConfirmAdvance = () => {
-    onAdvanceStage(notes.trim())
-    setIsAdvancing(false)
+  const handleConfirm = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+    if (!canMakeDecision || !confirmation) return
+    if (isRejecting) {
+      if (!rejectionReason) return
+      onRejectStage(rejectionReason, notes.trim())
+    } else {
+      onAdvanceStage(notes.trim())
+    }
+    setConfirmation(null)
+    setNotes("")
   }
 
   return (
-    <div className="border-t border-border bg-white p-4 sm:px-6 transition-all shrink-0">
-      {/* State A: Inline Rejection Confirmation Prompt (unboxed, clean layout) */}
-      {isRejecting ? (
-        <div className="space-y-3 text-xs">
-          <div className="flex items-center gap-2 text-rose-700 dark:text-rose-400 font-semibold text-sm">
-            <AlertTriangle className="size-4 shrink-0" />
-            <span>Confirm Disqualification at {stageName}</span>
-          </div>
-
-          <p className="text-muted-foreground">
-            Candidate will be permanently disqualified and this decision cannot be changed once confirmed.
-          </p>
-
-          <div className="space-y-1">
-            <label className="font-medium text-foreground block">
-              Rejection Reason <span className="text-destructive">*</span>
-            </label>
-            <select
-              value={rejectionReason}
-              onChange={(e) => setRejectionReason(e.target.value)}
-              className="w-full rounded-xl border border-border bg-muted/30 px-3 py-2 text-xs text-foreground focus:border-rose-500 focus:outline-none"
-            >
-              {REJECTION_REASONS.map((reason) => (
-                <option key={reason} value={reason}>
-                  {reason}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div className="space-y-1">
-            <label className="font-medium text-foreground block">
-              Evaluation Notes (Optional)
-            </label>
-            <textarea
-              rows={2}
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              placeholder="e.g. Scored below threshold, technical skill mismatch..."
-              className="w-full rounded-xl border border-border bg-muted/30 p-2.5 text-xs text-foreground placeholder:text-muted-foreground/60 focus:border-rose-500 focus:outline-none resize-none"
-            />
-          </div>
-
-          <div className="flex items-center justify-end gap-2 pt-1">
-            <Button
-              type="button"
-              variant="ghost"
-              onClick={() => setIsRejecting(false)}
-              className="h-9 rounded-full px-4 text-xs font-medium text-foreground hover:bg-muted cursor-pointer"
-            >
-              Back
-            </Button>
-            <Button
-              type="button"
-              onClick={handleConfirmReject}
-              className="h-9 rounded-full bg-rose-600 px-4 text-xs font-semibold text-white hover:bg-rose-700 shadow-xs gap-1.5 cursor-pointer"
-            >
-              <XCircle className="size-3.5" />
-              <span>Confirm Disqualification</span>
-            </Button>
-          </div>
-        </div>
-      ) : isAdvancing ? (
-        /* State B: Inline Advance Confirmation Prompt (unboxed, clean layout) */
-        <div className="space-y-3 text-xs">
-          <div className="flex items-center gap-2 text-emerald-700 dark:text-emerald-400 font-semibold text-sm">
-            <CheckCircle2 className="size-4 shrink-0" />
-            <span>
-              {isFinalStage
-                ? "Confirm Final Acceptance (Hired)"
-                : `Pass & Advance from ${stageName}`}
-            </span>
-          </div>
-
-          <p className="text-muted-foreground">
-            {isFinalStage
-              ? "Candidate has cleared all selection stages and will be finalized as Accepted (Hired)."
-              : "Candidate will be marked as Passed for this stage and queued for the next stage."}
-          </p>
-
-          <div className="space-y-1">
-            <label className="font-medium text-foreground block">
-              Stage Clearance Notes (Optional)
-            </label>
-            <input
-              type="text"
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              placeholder="e.g. Cleared with strong recommendation from panel..."
-              className="w-full rounded-xl border border-border bg-muted/30 px-3 py-2 text-xs text-foreground placeholder:text-muted-foreground/60 focus:border-emerald-500 focus:outline-none"
-            />
-          </div>
-
-          <div className="flex items-center justify-end gap-2 pt-1">
-            <Button
-              type="button"
-              variant="ghost"
-              onClick={() => setIsAdvancing(false)}
-              className="h-9 rounded-full px-4 text-xs font-medium text-foreground hover:bg-muted cursor-pointer"
-            >
-              Cancel
-            </Button>
-            <Button
-              type="button"
-              onClick={handleConfirmAdvance}
-              className="h-9 rounded-full bg-emerald-600 px-4 text-xs font-semibold text-white hover:bg-emerald-700 shadow-xs gap-1.5 cursor-pointer"
-            >
-              <CheckCircle2 className="size-3.5" />
-              <span>
-                {isFinalStage ? "Confirm Final Offer" : "Confirm Stage Pass"}
-              </span>
-            </Button>
-          </div>
-        </div>
-      ) : isApplicationRejected ? (
-        /* State C: Application Already Rejected (Locked / Read-Only) */
-        <div className="flex flex-wrap items-center justify-between gap-3 text-xs">
-          <div className="flex items-center gap-2 text-rose-600 dark:text-rose-400">
-            <XCircle className="size-4 shrink-0" />
-            <span className="font-semibold">
-              Candidate Disqualified ({application.rejectReason || "Failed evaluation"})
-            </span>
-            <span className="text-[11px] text-muted-foreground flex items-center gap-1">
-              <Lock className="size-3" />
-              <span>Decision locked</span>
-            </span>
-          </div>
-
-          <CancelButton onClick={onClose} className="h-9 px-5 text-xs">
-            Close
-          </CancelButton>
-        </div>
-      ) : isApplicationAccepted ? (
-        /* State D: Application Already Accepted (Locked / Read-Only) */
-        <div className="flex flex-wrap items-center justify-between gap-3 text-xs">
-          <div className="flex items-center gap-2 text-emerald-600 dark:text-emerald-400">
-            <CheckCircle2 className="size-4 shrink-0" />
-            <span className="font-semibold">
-              Candidate Accepted & Completed All Stages (Hired)
-            </span>
-            <span className="text-[11px] text-muted-foreground flex items-center gap-1">
-              <Lock className="size-3" />
-              <span>Decision locked</span>
-            </span>
-          </div>
-
-          <CancelButton onClick={onClose} className="h-9 px-5 text-xs">
-            Close
-          </CancelButton>
-        </div>
-      ) : !canMakeDecision ? (
-        /* State E: Historical or Future Stage View (Locked / Read-Only) */
-        <div className="flex flex-wrap items-center justify-between gap-3 text-xs">
-          <div className="flex items-center gap-2 text-muted-foreground">
-            <Lock className="size-3.5 text-muted-foreground/80 shrink-0" />
-            <span>
-              {stage?.status === "passed"
-                ? `${stageName} is already Passed${
-                    stage.completedAt ? ` on ${safeFormatDate(stage.completedAt)}` : ""
-                  }.`
-                : stage?.status === "failed"
-                ? `${stageName} was Failed.`
-                : `${stageName} is upcoming.`}
-            </span>
-          </div>
-
-          <div className="flex items-center gap-2">
-            {onGoToActiveStage && !isViewingActiveStage && (
-              <Button
-                type="button"
-                variant="outline"
-                onClick={onGoToActiveStage}
-                className="h-9 rounded-full text-xs font-medium text-foreground hover:bg-muted cursor-pointer"
-              >
-                Go to Active Stage
-              </Button>
+    <>
+      <div className="shrink-0 border-t border-border bg-card px-6 py-4">
+        <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
+          <div className="min-w-0 space-y-1">
+            {isApplicationRejected ? (
+              <>
+                <p className="flex items-center gap-2 text-sm font-medium text-danger">
+                  <XCircle className="size-4 shrink-0" aria-hidden />
+                  Candidate disqualified
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  {application.rejectReason || "Decision locked"}
+                </p>
+              </>
+            ) : isApplicationAccepted ? (
+              <>
+                <p className="flex items-center gap-2 text-sm font-medium text-success">
+                  <CheckCircle2 className="size-4 shrink-0" aria-hidden />
+                  Candidate accepted
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  All selection stages completed. Decision locked.
+                </p>
+              </>
+            ) : canMakeDecision ? (
+              <>
+                <p className="text-xs text-muted-foreground">
+                  Reviewing active stage
+                </p>
+                <p className="text-sm font-medium text-foreground">
+                  {stageName}
+                </p>
+              </>
+            ) : (
+              <p className="flex items-start gap-2 text-sm leading-relaxed text-muted-foreground">
+                <Lock className="mt-0.5 size-4 shrink-0" aria-hidden />
+                {readOnlyMessage}
+              </p>
             )}
-            <CancelButton onClick={onClose} className="h-9 px-4 text-xs">
-              Close
-            </CancelButton>
-          </div>
-        </div>
-      ) : (
-        /* State F: Active Stage Evaluation Decision Controls (In Progress Only) */
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <div className="text-xs text-muted-foreground flex items-center gap-1.5">
-            <span className="font-semibold text-foreground">Decision:</span>
-            <span>Reviewing {stageName} (In Progress)</span>
           </div>
 
-          <div className="flex flex-wrap items-center gap-2.5">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => setIsRejecting(true)}
-              className="h-10 rounded-full border-rose-500/30 text-rose-600 dark:text-rose-400 hover:bg-rose-500/10 px-4 text-xs font-semibold gap-1.5 cursor-pointer"
-            >
-              <XCircle className="size-4" />
-              <span>Fail / Reject Candidate</span>
-            </Button>
-
-            <Button
-              type="button"
-              onClick={() => setIsAdvancing(true)}
-              className="h-10 rounded-full bg-emerald-600 text-white hover:bg-emerald-700 px-5 text-xs font-semibold gap-1.5 shadow-xs cursor-pointer"
-            >
-              {isFinalStage ? (
-                <>
-                  <CheckCircle2 className="size-4" />
-                  <span>Accept & Hire Candidate</span>
-                </>
-              ) : (
-                <>
-                  <CheckCircle2 className="size-4" />
-                  <span>Pass & Advance Stage</span>
-                  <ArrowRight className="size-3.5" />
-                </>
+          <div className="flex flex-wrap items-center justify-end gap-2">
+            <CancelButton onClick={onClose}>Close</CancelButton>
+            {!canMakeDecision &&
+              !isApplicationRejected &&
+              !isApplicationAccepted &&
+              hasActiveStage &&
+              !isViewingActiveStage &&
+              onGoToActiveStage && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={onGoToActiveStage}
+                  className="h-10 rounded-full bg-card px-4 text-sm"
+                >
+                  Go to Active Stage
+                </Button>
               )}
-            </Button>
+            {canMakeDecision && (
+              <>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => handleOpenConfirmation("reject")}
+                  className="h-10 gap-1.5 rounded-full border-destructive/30 bg-card px-4 text-sm text-destructive hover:bg-destructive/10 hover:text-destructive"
+                >
+                  <XCircle className="size-4" aria-hidden />
+                  Fail / Reject Candidate
+                </Button>
+                <SaveButton
+                  onClick={() => handleOpenConfirmation("advance")}
+                  icon={
+                    isFinalStage ? (
+                      <CheckCircle2 className="size-4" aria-hidden />
+                    ) : (
+                      <ArrowRight className="size-4" aria-hidden />
+                    )
+                  }
+                >
+                  {isFinalStage
+                    ? "Accept & Hire Candidate"
+                    : "Pass & Advance Stage"}
+                </SaveButton>
+              </>
+            )}
           </div>
         </div>
-      )}
-    </div>
+      </div>
+
+      <Dialog
+        open={confirmation !== null && canMakeDecision}
+        onOpenChange={(nextOpen) => {
+          if (!nextOpen) {
+            setConfirmation(null)
+            setNotes("")
+          }
+        }}
+      >
+        <DialogContent className="max-h-[90dvh] gap-0 overflow-y-auto rounded-2xl bg-card p-0 sm:max-w-md">
+          <DialogHeader className="border-b border-border p-6 pr-12 pb-4">
+            <DialogTitle className="text-base font-semibold">
+              {isRejecting
+                ? "Confirm Disqualification"
+                : isFinalStage
+                  ? "Confirm Final Acceptance"
+                  : "Confirm Stage Pass"}
+            </DialogTitle>
+            <DialogDescription className="text-sm leading-relaxed">
+              {isRejecting
+                ? "Reject this candidate at " +
+                  stageName +
+                  " and end their participation in this recruitment."
+                : isFinalStage
+                  ? "Mark this candidate as Accepted after completing all selection stages."
+                  : "Mark " +
+                    stageName +
+                    " as Passed and advance the candidate to the next stage."}
+            </DialogDescription>
+          </DialogHeader>
+
+          <form id={formId} onSubmit={handleConfirm} className="space-y-4 p-6">
+            {isRejecting && (
+              <div className="space-y-1.5">
+                <Label
+                  htmlFor={formId + "-reason"}
+                  className="text-sm font-medium"
+                >
+                  Rejection Reason <span className="text-destructive">*</span>
+                </Label>
+                <Select
+                  items={rejectionItems}
+                  value={rejectionReason}
+                  onValueChange={(value) => {
+                    if (value) setRejectionReason(value)
+                  }}
+                >
+                  <SelectTrigger
+                    id={formId + "-reason"}
+                    aria-required="true"
+                    className="w-full rounded-full border-0 bg-muted px-4 text-sm shadow-none focus-visible:ring-2 focus-visible:ring-primary data-[size=default]:h-10"
+                  >
+                    <SelectValue placeholder="Select a rejection reason" />
+                  </SelectTrigger>
+                  <SelectContent className="max-w-[calc(100vw-2rem)] rounded-xl">
+                    <SelectGroup>
+                      {rejectionItems.map((item) => (
+                        <SelectItem
+                          key={item.value}
+                          value={item.value}
+                          className="py-2 [&>span:first-child]:min-w-0 [&>span:first-child]:shrink"
+                        >
+                          <span className="whitespace-normal">
+                            {item.label}
+                          </span>
+                        </SelectItem>
+                      ))}
+                    </SelectGroup>
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+            <div className="space-y-1.5">
+              <Label
+                htmlFor={formId + "-notes"}
+                className="text-sm font-medium"
+              >
+                {isRejecting ? "Evaluation Notes" : "Stage Clearance Notes"}{" "}
+                <span className="font-normal text-muted-foreground">
+                  (Optional)
+                </span>
+              </Label>
+              <Textarea
+                id={formId + "-notes"}
+                rows={3}
+                value={notes}
+                onChange={(event) => setNotes(event.target.value)}
+                placeholder={
+                  isRejecting
+                    ? "Add context for this decision..."
+                    : "Add notes about the candidate's stage evaluation..."
+                }
+                className="min-h-24 resize-y rounded-xl border-0 bg-muted px-4 py-3 text-sm text-foreground shadow-none placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-primary"
+              />
+            </div>
+          </form>
+
+          <DialogFooter className="m-0 gap-2 border-t border-border bg-card px-6 py-4">
+            <CancelButton onClick={() => setConfirmation(null)} />
+            <SaveButton
+              type="submit"
+              form={formId}
+              disabled={!canMakeDecision || (isRejecting && !rejectionReason)}
+              icon={
+                isRejecting ? (
+                  <XCircle className="size-4" aria-hidden />
+                ) : (
+                  <CheckCircle2 className="size-4" aria-hidden />
+                )
+              }
+              className={
+                isRejecting
+                  ? "bg-destructive hover:bg-destructive/90"
+                  : undefined
+              }
+            >
+              {isRejecting
+                ? "Confirm Disqualification"
+                : isFinalStage
+                  ? "Confirm Acceptance"
+                  : "Confirm Stage Pass"}
+            </SaveButton>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
   )
 }

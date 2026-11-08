@@ -1,8 +1,10 @@
 import { useState, useMemo } from "react"
 import { useGetCandidatesQuery } from "@/features/candidates/api/candidates-api"
+import type { CandidateWithBatchesDto } from "@/features/candidates/types"
 import type { Recruitment, CandidateApplicationItem } from "../types"
 import { useRegisterCandidatesMutation } from "../api/applications-api"
 import { getRecruitmentAddRestriction } from "../utils/recruitmentUtils"
+import { stageCategoryToLegacyType } from "../utils/stageUtils"
 
 export interface UseAddFromTalentPoolProps {
   recruitment: Recruitment
@@ -11,18 +13,60 @@ export interface UseAddFromTalentPoolProps {
   onCancel?: () => void
 }
 
+function mapTalentPoolCandidate(c: CandidateWithBatchesDto) {
+  return {
+    id: c.id,
+    fullName: c.fullName,
+    email: c.email,
+    phoneNumber: c.phoneNumber || "",
+    gender: c.gender === 2 || c.gender === "Female" ? "Female" : "Male",
+    birthDate: c.birthDate || "",
+    address: c.address || "",
+    education: c.education || "",
+    institution: c.institution || "",
+    gpa: c.gpa ? String(c.gpa) : "",
+    expectedSalary: c.expectedSalary || undefined,
+    cv: c.cv || "",
+    portfolio: c.portfolio || "",
+    appliedBatches: (c.assignedBatches || []).map((b) => ({
+      batchId: b.batchId,
+      batchCode: b.batchCode,
+      batchName: b.batchName,
+      appliedAt: b.appliedAt,
+      status: String(b.applicationStatus ?? ""),
+    })),
+  }
+}
+
+export type TalentPoolCandidate = ReturnType<typeof mapTalentPoolCandidate>
+
+function isRegisteredInBatch(
+  candidate: TalentPoolCandidate,
+  recruitment: Recruitment
+) {
+  return candidate.appliedBatches.some(
+    (batch) =>
+      (batch.batchId &&
+        batch.batchId.toLowerCase() === recruitment.id.toLowerCase()) ||
+      (batch.batchCode &&
+        batch.batchCode.toLowerCase() === recruitment.batchCode.toLowerCase())
+  )
+}
+
 export function useAddFromTalentPool({
   recruitment,
   existingApplicationCount,
   onSuccess,
 }: UseAddFromTalentPoolProps) {
   const [talentSearch, setTalentSearch] = useState("")
-  const [selectedCandidateIds, setSelectedCandidateIds] = useState<string[]>([])
+  const [selectedCandidateSnapshots, setSelectedCandidateSnapshots] = useState<
+    TalentPoolCandidate[]
+  >([])
   const [error, setError] = useState<string | null>(null)
 
   // Fetch candidates from Talent Pool API
   const {
-    data: apiCandidatesData,
+    currentData: apiCandidatesData,
     isLoading: isLoadingCandidates,
     isFetching: isFetchingCandidates,
     isError: isCandidatesError,
@@ -33,72 +77,97 @@ export function useAddFromTalentPool({
     pageSize: 100,
   })
 
-  const [registerCandidatesApi, { isLoading: isApiSubmitting }] = useRegisterCandidatesMutation()
+  const [registerCandidatesApi, { isLoading: isApiSubmitting }] =
+    useRegisterCandidatesMutation()
 
   // Candidates list mapped directly from API DTOs
   const talentPoolList = useMemo(() => {
-    if (!apiCandidatesData?.items) return []
-    return apiCandidatesData.items.map((c) => ({
-      id: c.id,
-      fullName: c.fullName,
-      email: c.email,
-      phoneNumber: c.phoneNumber || "",
-      gender: c.gender === 2 || c.gender === "Female" ? "Female" : "Male",
-      birthDate: c.birthDate || "",
-      address: c.address || "",
-      education: c.education || "",
-      institution: c.institution || "",
-      gpa: c.gpa ? String(c.gpa) : "",
-      expectedSalary: c.expectedSalary || undefined,
-      cv: c.cv || "",
-      portfolio: c.portfolio || "",
-      appliedBatches: (c.assignedBatches || []).map((b) => ({
-        batchId: b.batchId,
-        batchCode: b.batchCode,
-        batchName: b.batchName,
-        appliedAt: b.appliedAt,
-        status: String(b.applicationStatus ?? ""),
-      })),
-    }))
+    return apiCandidatesData?.items.map(mapTalentPoolCandidate) ?? []
   }, [apiCandidatesData])
 
   // Filter candidates who have NOT yet applied to this recruitment batch
   const availableTalentCandidates = useMemo(() => {
-    return talentPoolList.filter((c) => {
-      const alreadyApplied = c.appliedBatches?.some(
-        (b) =>
-          (b.batchId && b.batchId.toLowerCase() === recruitment.id?.toLowerCase()) ||
-          (recruitment.batchCode && b.batchCode && b.batchCode.toLowerCase() === recruitment.batchCode.toLowerCase())
-      )
-      return !alreadyApplied
-    })
-  }, [talentPoolList, recruitment.id, recruitment.batchCode])
+    return talentPoolList.filter(
+      (candidate) => !isRegisteredInBatch(candidate, recruitment)
+    )
+  }, [talentPoolList, recruitment])
 
   const selectedCandidates = useMemo(() => {
-    return availableTalentCandidates.filter((c) => selectedCandidateIds.includes(c.id))
-  }, [availableTalentCandidates, selectedCandidateIds])
+    const latestCandidates = new Map(
+      talentPoolList.map((candidate) => [candidate.id, candidate])
+    )
+    return selectedCandidateSnapshots
+      .map((candidate) => latestCandidates.get(candidate.id) ?? candidate)
+      .filter((candidate) => !isRegisteredInBatch(candidate, recruitment))
+  }, [selectedCandidateSnapshots, talentPoolList, recruitment])
+
+  const selectedCandidateIds = useMemo(
+    () => selectedCandidates.map((candidate) => candidate.id),
+    [selectedCandidates]
+  )
 
   const isAllSelected =
     availableTalentCandidates.length > 0 &&
     availableTalentCandidates.every((c) => selectedCandidateIds.includes(c.id))
 
   const handleToggleSelectAll = () => {
-    if (isAllSelected) {
-      setSelectedCandidateIds([])
-    } else {
-      setSelectedCandidateIds(availableTalentCandidates.map((c) => c.id))
-    }
+    if (
+      isLoadingCandidates ||
+      isFetchingCandidates ||
+      isCandidatesError ||
+      isApiSubmitting
+    )
+      return
+    const visibleIds = new Set(
+      availableTalentCandidates.map((candidate) => candidate.id)
+    )
+    setSelectedCandidateSnapshots((previous) => {
+      const selectedIds = new Set(previous.map((candidate) => candidate.id))
+      if (
+        availableTalentCandidates.every((candidate) =>
+          selectedIds.has(candidate.id)
+        )
+      ) {
+        return previous.filter((candidate) => !visibleIds.has(candidate.id))
+      }
+      return [
+        ...previous,
+        ...availableTalentCandidates.filter(
+          (candidate) => !selectedIds.has(candidate.id)
+        ),
+      ]
+    })
+    setError(null)
   }
 
-  const handleToggleCandidate = (id: string) => {
-    setSelectedCandidateIds((prev) =>
-      prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
+  const handleAddCandidate = (id: string) => {
+    if (
+      isLoadingCandidates ||
+      isFetchingCandidates ||
+      isCandidatesError ||
+      isApiSubmitting
     )
-    if (error) setError(null)
+      return
+    const candidate = availableTalentCandidates.find((item) => item.id === id)
+    if (!candidate) return
+    setSelectedCandidateSnapshots((previous) =>
+      previous.some((item) => item.id === id)
+        ? previous
+        : [...previous, candidate]
+    )
+    setError(null)
+  }
+
+  const handleRemoveCandidate = (id: string) => {
+    setSelectedCandidateSnapshots((previous) =>
+      previous.filter((candidate) => candidate.id !== id)
+    )
+    setError(null)
   }
 
   const handleClearSelection = () => {
-    setSelectedCandidateIds([])
+    setSelectedCandidateSnapshots([])
+    setError(null)
   }
 
   const stages = useMemo(() => {
@@ -109,6 +178,7 @@ export function useAddFromTalentPool({
   const canAddCandidates = !addRestriction
 
   const handleSubmit = async () => {
+    if (isApiSubmitting) return
     if (addRestriction) {
       setError(addRestriction)
       return
@@ -119,9 +189,16 @@ export function useAddFromTalentPool({
       return
     }
 
-    const codeYear = recruitment.openDate ? recruitment.openDate.slice(0, 4) : "2026"
+    const codeYear = recruitment.openDate
+      ? recruitment.openDate.slice(0, 4)
+      : "2026"
     const appliedAt = new Date().toISOString()
     const firstStage = stages[0]
+    const firstStageName = firstStage
+      ? "stageName" in firstStage
+        ? firstStage.stageName
+        : firstStage.name
+      : "Stage 1"
 
     try {
       const candidatePayloads = selectedCandidates.map((cand) => ({
@@ -134,7 +211,9 @@ export function useAddFromTalentPool({
         education: cand.education || undefined,
         institution: cand.institution || undefined,
         gpa: cand.gpa ? Number(cand.gpa) : undefined,
-        expectedSalary: cand.expectedSalary ? Number(cand.expectedSalary) : undefined,
+        expectedSalary: cand.expectedSalary
+          ? Number(cand.expectedSalary)
+          : undefined,
         cv: cand.cv || undefined,
         portfolio: cand.portfolio || undefined,
       }))
@@ -146,57 +225,67 @@ export function useAddFromTalentPool({
 
       const createdItems = Array.isArray(result) ? result : []
 
-      const newApplications: CandidateApplicationItem[] = selectedCandidates.map((cand, idx) => {
-        const apiItem = createdItems[idx]
-        const codeNumber = String(existingApplicationCount + idx + 1).padStart(3, "0")
-        const codeApplication = apiItem?.codeApplication || `APP-${codeYear}-${codeNumber}`
+      const newApplications: CandidateApplicationItem[] =
+        selectedCandidates.map((cand, idx) => {
+          const apiItem = createdItems[idx]
+          const codeNumber = String(
+            existingApplicationCount + idx + 1
+          ).padStart(3, "0")
+          const codeApplication =
+            apiItem?.codeApplication || `APP-${codeYear}-${codeNumber}`
 
-        const applicationStages = stages.map((stg: any, sIdx) => ({
-          stageIndex: sIdx,
-          stageId: stg.id,
-          stageName: stg.stageName || stg.name,
-          stageType: stg.stageCategory?.toLowerCase() || stg.type,
-          passingScore: stg.passingScore ?? 70,
-          status: sIdx === 0 ? "in_progress" : "upcoming",
-          totalScore: null,
-          startedAt: sIdx === 0 ? appliedAt : null,
-          completedAt: null,
-          notes: null,
-        }))
+          const applicationStages = stages.map((stg, sIdx) => ({
+            stageIndex: sIdx,
+            stageId: stg.id,
+            stageName: "stageName" in stg ? stg.stageName : stg.name,
+            stageType: stageCategoryToLegacyType(
+              stg.stageCategory ?? ("type" in stg ? stg.type : undefined)
+            ),
+            passingScore: stg.passingScore ?? 70,
+            status: sIdx === 0 ? "in_progress" : "upcoming",
+            totalScore: null,
+            startedAt: sIdx === 0 ? appliedAt : null,
+            completedAt: null,
+            notes: null,
+          }))
 
-        return {
-          id: apiItem?.id || `app-man-${Date.now()}-${idx}`,
-          candidateId: apiItem?.candidateId || cand.id,
-          recruitmentBatchId: recruitment.id,
-          codeApplication,
-          appliedAt: apiItem?.appliedAt || appliedAt,
-          status: "in_progress",
-          finalStatus: "pending",
-          note: null,
-          fileOfferingLetter: null,
-          offeringLetterStatus: null,
-          candidateName: cand.fullName,
-          candidateEmail: cand.email,
-          candidatePhone: cand.phoneNumber,
-          candidateEducation: cand.education,
-          candidateInstitution: cand.institution,
-          candidateGpa: cand.gpa,
-          candidateCv: cand.cv,
-          candidatePortfolio: cand.portfolio,
-          currentStageIndex: 0,
-          currentStageName: firstStage ? (firstStage as any).stageName || (firstStage as any).name : "Stage 1",
-          currentStageScore: null,
-          currentStageStatus: "in_progress",
-          applicationStages,
-        }
-      })
+          return {
+            id: apiItem?.id || `app-man-${Date.now()}-${idx}`,
+            candidateId: apiItem?.candidateId || cand.id,
+            recruitmentBatchId: recruitment.id,
+            codeApplication,
+            appliedAt: apiItem?.appliedAt || appliedAt,
+            status: "in_progress",
+            finalStatus: "pending",
+            note: null,
+            fileOfferingLetter: null,
+            offeringLetterStatus: null,
+            candidateName: cand.fullName,
+            candidateEmail: cand.email,
+            candidatePhone: cand.phoneNumber,
+            candidateEducation: cand.education,
+            candidateInstitution: cand.institution,
+            candidateGpa: cand.gpa,
+            candidateCv: cand.cv,
+            candidatePortfolio: cand.portfolio,
+            currentStageIndex: 0,
+            currentStageName: firstStageName,
+            currentStageScore: null,
+            currentStageStatus: "in_progress",
+            applicationStages,
+          }
+        })
 
       onSuccess(newApplications)
-    } catch (err: any) {
+    } catch (err) {
       console.error("Failed to register candidates via API:", err)
+      const apiError = err as {
+        data?: { message?: string; detail?: string; title?: string }
+      }
       const errMsg =
-        err?.data?.message ||
-        err?.data?.title ||
+        apiError?.data?.message ||
+        apiError?.data?.detail ||
+        apiError?.data?.title ||
         "Failed to register candidates on server. Please try again."
       setError(errMsg)
     }
@@ -210,7 +299,8 @@ export function useAddFromTalentPool({
     selectedCandidates,
     isAllSelected,
     handleToggleSelectAll,
-    handleToggleCandidate,
+    handleAddCandidate,
+    handleRemoveCandidate,
     handleClearSelection,
     error,
     canAddCandidates,
