@@ -10,6 +10,8 @@ import {
   useGetBatchInterviewSessionsQuery,
   useReviewRescheduleRequestMutation,
 } from "../api/interviews-api"
+import { getRecruitmentAddRestriction } from "../utils/recruitmentUtils"
+import { getRecruitmentInterviewStages } from "../utils/stageUtils"
 
 export function mapBackendStatusToSessionStatus(
   status: number | string | undefined | null
@@ -107,6 +109,9 @@ export function useInterviewsTab({
   onScheduleInterview,
   onReviewReschedule,
 }: UseInterviewsTabProps) {
+  const scheduleRestriction = getRecruitmentAddRestriction(recruitment, "interview")
+  const canScheduleInterview = !scheduleRestriction
+
   const isRealBatch = useMemo(
     () => IS_GUID_REGEX.test(recruitment.id),
     [recruitment.id]
@@ -177,28 +182,8 @@ export function useInterviewsTab({
 
   // Available interview stages in this batch
   const interviewStages = useMemo(() => {
-    if (recruitment.batchStages && recruitment.batchStages.length > 0) {
-      return recruitment.batchStages
-        .filter((bs) => {
-          const cat = (bs.stageCategory || "").toLowerCase()
-          const name = (bs.stageName || "").toLowerCase()
-          return (
-            cat.includes("interview") ||
-            name.includes("interview") ||
-            name.includes("hr") ||
-            name.includes("user")
-          )
-        })
-        .map((bs) => ({ id: bs.id, name: bs.stageName }))
-    }
-    return (recruitment.stages || []).filter(
-      (stg) =>
-        stg.type === "interview" ||
-        stg.name.toLowerCase().includes("interview") ||
-        stg.name.toLowerCase().includes("hr") ||
-        stg.name.toLowerCase().includes("user")
-    )
-  }, [recruitment.batchStages, recruitment.stages])
+    return getRecruitmentInterviewStages(recruitment)
+  }, [recruitment])
 
   // Dropdown filter options
   const stageFilterItems = useMemo(() => {
@@ -270,10 +255,11 @@ export function useInterviewsTab({
 
   // Handlers
   const handleOpenScheduleNew = useCallback(() => {
+    if (!canScheduleInterview) return
     setSessionToReschedule(null)
     setIsScheduleOpen(true)
     onScheduleInterview?.()
-  }, [onScheduleInterview])
+  }, [canScheduleInterview, onScheduleInterview])
 
   const handleOpenAdjustSchedule = useCallback((session: InterviewSessionItem) => {
     setSessionToReschedule(session)
@@ -282,6 +268,7 @@ export function useInterviewsTab({
 
   const handleSaveSession = useCallback(
     (savedSession: InterviewSessionItem) => {
+      if (!sessionToReschedule && !canScheduleInterview) return
       if (sessionToReschedule) {
         setSessions((prev) =>
           prev.map((s) => (s.id === savedSession.id ? savedSession : s))
@@ -293,7 +280,7 @@ export function useInterviewsTab({
       setSelectedDate(savedSession.scheduledStart.slice(0, 10))
       setIsFilterPendingReschedule(false)
     },
-    [sessionToReschedule]
+    [sessionToReschedule, canScheduleInterview]
   )
 
   const handleOpenReviewReschedule = useCallback(
@@ -416,6 +403,8 @@ export function useInterviewsTab({
   }, [])
 
   return {
+    canScheduleInterview,
+    scheduleRestriction,
     sessions,
     filteredSessions,
     pendingReschedules,

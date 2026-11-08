@@ -1,6 +1,7 @@
 import { useState, useMemo } from "react"
 import type { Recruitment, CandidateApplicationItem } from "../types"
 import { useRegisterCandidatesMutation } from "../api/applications-api"
+import { getRecruitmentAddRestriction } from "../utils/recruitmentUtils"
 
 export interface UseRegisterNewCandidateProps {
   recruitment: Recruitment
@@ -38,18 +39,17 @@ export function useRegisterNewCandidate({
   const [registerCandidatesApi, { isLoading: isApiSubmitting }] = useRegisterCandidatesMutation()
 
   const stages = useMemo(() => {
-    return recruitment.batchStages && recruitment.batchStages.length > 0
-      ? recruitment.batchStages
-      : recruitment.stages || []
+    return recruitment.batchStages ?? recruitment.stages ?? []
   }, [recruitment.batchStages, recruitment.stages])
 
-  const hasStages = stages.length > 0
+  const addRestriction = getRecruitmentAddRestriction(recruitment, "candidate")
+  const canAddCandidates = !addRestriction
 
   const handleSubmit = async () => {
     setSubmitError(null)
 
-    if (!hasStages) {
-      setSubmitError("Cannot register candidate because no selection stages have been configured for this recruitment batch. Please configure stages first.")
+    if (addRestriction) {
+      setSubmitError(addRestriction)
       return
     }
 
@@ -193,7 +193,7 @@ export function useRegisterNewCandidate({
     errors,
     setErrors,
     submitError,
-    hasStages,
+    canAddCandidates,
     isSubmitting: isApiSubmitting,
     clearFieldError,
     handleSubmit,

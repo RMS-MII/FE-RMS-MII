@@ -36,6 +36,10 @@ export interface CreateBatchRequest {
   endDate: string
 }
 
+export interface UpdateBatchStatusRequest {
+  status: BatchStatus
+}
+
 /**
  * Matches RecruitmentBatch from BE-RMS-MII API
  * Includes convenience aliases for legacy UI compatibility

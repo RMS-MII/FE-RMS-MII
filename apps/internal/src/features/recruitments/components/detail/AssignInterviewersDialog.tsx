@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import {
   Dialog,
   DialogContent,
@@ -9,7 +9,7 @@ import {
 } from "@workspace/ui/components/dialog"
 import { CancelButton, SaveButton } from "@/shared/components"
 import { safeFormatDate } from "@/shared/lib/format"
-import type { Stage, StageEmployeeStatus, StageInterviewerAssignment } from "../../types"
+import type { Stage, StageInterviewerAssignment } from "../../types"
 import { InterviewerAssignSection } from "../InterviewerAssignSection"
 
 export interface AssignInterviewersDialogProps {
@@ -18,7 +18,7 @@ export interface AssignInterviewersDialogProps {
   stage: Stage | null
   stageIndex?: number
   batchName?: string
-  onSave: (stageId: string, assignments: StageInterviewerAssignment[]) => void
+  onSave: (stageId: string, assignments: StageInterviewerAssignment[]) => Promise<void>
 }
 
 export function AssignInterviewersDialog({
@@ -27,40 +27,29 @@ export function AssignInterviewersDialog({
   stage,
   onSave,
 }: AssignInterviewersDialogProps) {
-  const [assignments, setAssignments] = useState<StageInterviewerAssignment[]>([])
+  const [assignments, setAssignments] = useState<StageInterviewerAssignment[]>(
+    () => stage?.assignedInterviewers ?? []
+  )
   const [isSaved, setIsSaved] = useState(false)
+  const [isSaving, setIsSaving] = useState(false)
+  const [saveError, setSaveError] = useState<string | null>(null)
 
-  // Sync state whenever the stage prop changes or dialog opens
-  useEffect(() => {
-    if (stage) {
-      if (stage.assignedInterviewers && stage.assignedInterviewers.length > 0) {
-        setAssignments(stage.assignedInterviewers)
-      } else {
-        const fallbackIds =
-          stage.interviewerIds && stage.interviewerIds.length > 0
-            ? stage.interviewerIds
-            : stage.ownerId
-              ? [stage.ownerId]
-              : []
-        setAssignments(
-          fallbackIds.map((id) => ({
-            employeeId: id,
-            status: "pending" as StageEmployeeStatus,
-          }))
-        )
-      }
-      setIsSaved(false)
+  const handleSave = async () => {
+    if (!stage || isSaving) return
+    setIsSaving(true)
+    setSaveError(null)
+    try {
+      await onSave(stage.id, assignments)
+      setIsSaved(true)
+      setTimeout(() => {
+        setIsSaved(false)
+        onOpenChange(false)
+      }, 400)
+    } catch {
+      setSaveError("Failed to save interviewers. Please try again.")
+    } finally {
+      setIsSaving(false)
     }
-  }, [stage, open])
-
-  const handleSave = () => {
-    if (!stage) return
-    onSave(stage.id, assignments)
-    setIsSaved(true)
-    setTimeout(() => {
-      setIsSaved(false)
-      onOpenChange(false)
-    }, 400)
   }
 
   if (!stage) return null
@@ -101,11 +90,14 @@ export function AssignInterviewersDialog({
             assignments={assignments}
             onChange={setAssignments}
           />
+          {saveError && (
+            <p role="alert" className="text-sm text-destructive">{saveError}</p>
+          )}
         </div>
 
         <DialogFooter className="px-9 pb-9 border-t border-border bg-card gap-2">
           <CancelButton onClick={() => onOpenChange(false)} />
-          <SaveButton onClick={handleSave} isSaved={isSaved}>
+          <SaveButton onClick={handleSave} isSaved={isSaved} isLoading={isSaving} disabled={isSaved}>
             Save
           </SaveButton>
         </DialogFooter>

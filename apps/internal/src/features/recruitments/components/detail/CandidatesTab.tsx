@@ -12,6 +12,7 @@ import {
   ErrorState,
 } from "@/shared/components"
 import { safeFormatDate } from "@/shared/lib/format"
+import { getRecruitmentAddRestriction } from "../../utils/recruitmentUtils"
 import { CandidateApplicationDetailDialog } from "./CandidateApplicationDetailDialog"
 import { AddCandidateDialog } from "./AddCandidateDialog"
 import {
@@ -39,7 +40,7 @@ import {
   type UseCandidatesTabProps,
 } from "../../hooks/useCandidatesTab"
 
-export interface CandidatesTabProps extends UseCandidatesTabProps {}
+export type CandidatesTabProps = UseCandidatesTabProps
 
 export function CandidatesTab({
   recruitment,
@@ -87,6 +88,12 @@ export function CandidatesTab({
   })
 
   const parsedStageIndex = stageFilter !== "all" ? Number(stageFilter) : null
+  const addRestriction = getRecruitmentAddRestriction(recruitment, "candidate")
+  const canAddCandidates = !addRestriction
+
+  const handleAddDialogOpenChange = (open: boolean) => {
+    if (!open || canAddCandidates) setIsAddOpen(open)
+  }
 
   return (
     <>
@@ -148,16 +155,12 @@ export function CandidatesTab({
           <div className="flex flex-wrap items-center gap-3 self-start sm:self-center shrink-0">
             <Button
               type="button"
-              onClick={() => hasStages && setIsAddOpen(true)}
-              disabled={!hasStages}
-              title={
-                !hasStages
-                  ? "Configure selection stages first before adding candidates"
-                  : "Add candidate"
-              }
+              onClick={() => handleAddDialogOpenChange(true)}
+              disabled={!canAddCandidates}
+              title={addRestriction ?? "Add candidate"}
               className={cn(
                 "h-10 gap-1.5 rounded-full border-0 px-4 text-sm font-medium shadow-none shrink-0 transition-all",
-                hasStages
+                canAddCandidates
                   ? "bg-primary text-primary-foreground hover:bg-primary/90 focus-visible:ring-2 focus-visible:ring-primary cursor-pointer"
                   : "bg-muted text-muted-foreground opacity-60 cursor-not-allowed hover:bg-muted"
               )}
@@ -168,13 +171,13 @@ export function CandidatesTab({
           </div>
         </div>
 
-        {/* Warning Banner when recruitment batch has no stages yet */}
-        {!hasStages && (
+        {/* Explain the requirements for adding candidates. */}
+        {addRestriction && (
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-border bg-amber-500/10 px-5 py-3 text-xs text-amber-700 dark:text-amber-400">
             <div className="flex items-center gap-2.5">
               <AlertCircle className="size-4 shrink-0 text-amber-600 dark:text-amber-400" />
               <p>
-                <strong className="font-semibold">Selection stages required:</strong> Candidates can only be added once this recruitment batch has configured selection stages.
+                {addRestriction}
               </p>
             </div>
           </div>
@@ -304,7 +307,9 @@ export function CandidatesTab({
                             <Button
                               variant="ghost"
                               size="sm"
-                              onClick={() => setIsAddOpen(true)}
+                              onClick={() => handleAddDialogOpenChange(true)}
+                              disabled={!canAddCandidates}
+                              title={addRestriction ?? "Add your first candidate"}
                               className="rounded-full border-0 bg-muted/60 text-foreground hover:bg-muted cursor-pointer"
                             >
                               Add your first candidate
@@ -443,8 +448,8 @@ export function CandidatesTab({
       {/* Add Candidate Manual Dialog (Talent Pool & Direct Register) */}
       <AddCandidateDialog
         recruitment={recruitment}
-        open={isAddOpen}
-        onOpenChange={setIsAddOpen}
+        open={isAddOpen && canAddCandidates}
+        onOpenChange={handleAddDialogOpenChange}
         onAddCandidates={handleAddCandidates}
         existingApplicationCount={totalCount}
       />

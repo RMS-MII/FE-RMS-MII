@@ -1,4 +1,28 @@
 import type { Recruitment } from "../types"
+import { getRecruitmentInterviewStages } from "./stageUtils"
+
+/** Explain why new candidates or interviews cannot be added to a batch. */
+export function getRecruitmentAddRestriction(
+  recruitment: Recruitment,
+  action: "candidate" | "interview"
+): string | null {
+  const actionLabel = action === "candidate" ? "adding candidates" : "scheduling interviews"
+  const stages = recruitment.batchStages ?? recruitment.stages ?? []
+  if (stages.length === 0) {
+    return `Configure selection stages before ${actionLabel}.`
+  }
+
+  const status = String(recruitment.status).trim().toLowerCase()
+  if (status !== "open" && status !== "running" && status !== "2") {
+    return `This recruitment batch must be Open before ${actionLabel}.`
+  }
+
+  if (action === "interview" && getRecruitmentInterviewStages(recruitment).length === 0) {
+    return "Configure an interview stage before scheduling interviews."
+  }
+
+  return null
+}
 
 /** Generate auto-incremented batch code e.g. REC-2026-006 */
 export function generateBatchCode(existingCount: number, year = new Date().getFullYear()): string {

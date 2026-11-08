@@ -8,7 +8,7 @@ import {
   type UseAddFromTalentPoolProps,
 } from "../../hooks/useAddFromTalentPool"
 
-export interface AddFromTalentPoolTabProps extends UseAddFromTalentPoolProps {}
+export type AddFromTalentPoolTabProps = UseAddFromTalentPoolProps
 
 export function AddFromTalentPoolTab({
   recruitment,
@@ -27,7 +27,7 @@ export function AddFromTalentPoolTab({
     handleToggleCandidate,
     handleClearSelection,
     error,
-    hasStages,
+    canAddCandidates,
     isLoadingCandidates,
     isCandidatesError,
     refetchCandidates,
@@ -196,7 +196,7 @@ export function AddFromTalentPoolTab({
         <CancelButton onClick={onCancel} disabled={isSubmitting} />
         <SaveButton
           onClick={handleSubmit}
-          disabled={!hasStages || selectedCandidates.length === 0}
+          disabled={!canAddCandidates || selectedCandidates.length === 0}
           isLoading={isSubmitting}
           loadingText="Adding Candidates..."
         >

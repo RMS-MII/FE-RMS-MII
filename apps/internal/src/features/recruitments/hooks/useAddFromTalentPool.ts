@@ -2,6 +2,7 @@ import { useState, useMemo } from "react"
 import { useGetCandidatesQuery } from "@/features/candidates/api/candidates-api"
 import type { Recruitment, CandidateApplicationItem } from "../types"
 import { useRegisterCandidatesMutation } from "../api/applications-api"
+import { getRecruitmentAddRestriction } from "../utils/recruitmentUtils"
 
 export interface UseAddFromTalentPoolProps {
   recruitment: Recruitment
@@ -101,16 +102,15 @@ export function useAddFromTalentPool({
   }
 
   const stages = useMemo(() => {
-    return recruitment.batchStages && recruitment.batchStages.length > 0
-      ? recruitment.batchStages
-      : recruitment.stages || []
+    return recruitment.batchStages ?? recruitment.stages ?? []
   }, [recruitment.batchStages, recruitment.stages])
 
-  const hasStages = stages.length > 0
+  const addRestriction = getRecruitmentAddRestriction(recruitment, "candidate")
+  const canAddCandidates = !addRestriction
 
   const handleSubmit = async () => {
-    if (!hasStages) {
-      setError("Cannot add candidates because no selection stages have been configured for this recruitment batch. Please configure stages first.")
+    if (addRestriction) {
+      setError(addRestriction)
       return
     }
 
@@ -213,7 +213,7 @@ export function useAddFromTalentPool({
     handleToggleCandidate,
     handleClearSelection,
     error,
-    hasStages,
+    canAddCandidates,
     isLoadingCandidates: isLoadingCandidates || isFetchingCandidates,
     isCandidatesError,
     refetchCandidates,

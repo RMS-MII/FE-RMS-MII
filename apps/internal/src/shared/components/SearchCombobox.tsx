@@ -1,11 +1,11 @@
-import * as React from "react"
-import { Search, ChevronDown, X, Check, Plus } from "lucide-react"
+import { cn } from "@/shared/lib/utils"
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
 } from "@workspace/ui/components/popover"
-import { cn } from "@/shared/lib/utils"
+import { Check, ChevronDown, Plus, Search, X } from "lucide-react"
+import * as React from "react"
 
 export interface SearchComboboxOption<T = unknown> {
   id: string
@@ -99,7 +99,7 @@ export function SearchCombobox<T = unknown>({
       <PopoverContent
         align="start"
         sideOffset={6}
-        className="w-[320px] sm:w-95 rounded-2xl border border-border bg-popover p-3 shadow-xl z-50"
+        className="w-[320px] sm:w-95 rounded-2xl bg-popover p-3 shadow-xs z-50"
       >
         {/* Search bar inside popover */}
         <div className="relative mb-2.5">

@@ -32,6 +32,8 @@ import { mockEmployees } from "../../data/mock"
 import type { Recruitment, InterviewSessionItem, InterviewerAssignmentItem } from "../../types"
 import { Video, MapPin, Check, User, AlertTriangle } from "lucide-react"
 import { cn } from "@/shared/lib/utils"
+import { getRecruitmentAddRestriction } from "../../utils/recruitmentUtils"
+import { getRecruitmentInterviewStages } from "../../utils/stageUtils"
 
 export interface ScheduleInterviewDialogProps {
   open: boolean
@@ -52,22 +54,14 @@ export function ScheduleInterviewDialog({
 }: ScheduleInterviewDialogProps) {
   const formId = useId()
   const isRescheduleMode = Boolean(sessionToReschedule)
+  const scheduleRestriction = isRescheduleMode
+    ? null
+    : getRecruitmentAddRestriction(recruitment, "interview")
 
   // Interview stage options
   const interviewStages = useMemo(() => {
-    const stages = (recruitment.stages || []).filter(
-      (stg) =>
-        stg.type === "interview" ||
-        stg.name.toLowerCase().includes("interview") ||
-        stg.name.toLowerCase().includes("hr") ||
-        stg.name.toLowerCase().includes("user")
-    )
-    if (stages.length > 0) return stages
-    return [
-      { id: "s3", name: "HR Interview" },
-      { id: "s4", name: "User / Technical Interview" },
-    ]
-  }, [recruitment.stages])
+    return getRecruitmentInterviewStages(recruitment)
+  }, [recruitment])
 
   const stageOptions = useMemo(() => {
     return interviewStages.map((stg) => ({
@@ -204,8 +198,11 @@ export function ScheduleInterviewDialog({
 
   const validate = () => {
     const errs: Record<string, string> = {}
+    if (scheduleRestriction) errs.recruitment = scheduleRestriction
     if (!selectedCandidate) errs.candidateId = "Candidate is required."
-    if (!stageId) errs.stageId = "Interview stage is required."
+    if (!stageOptions.some((stage) => stage.value === stageId)) {
+      errs.stageId = "Select a configured interview stage."
+    }
     if (!sessionName.trim()) errs.sessionName = "Session title is required."
     if (!scheduledDate) errs.scheduledDate = "Date is required."
     if (!startTime) errs.startTime = "Start time is required."
@@ -299,6 +296,13 @@ export function ScheduleInterviewDialog({
               : "Configure session details, date, mode, and assigned interviewers for this batch."}
           </DialogDescription>
         </DialogHeader>
+
+        {scheduleRestriction && (
+          <div role="alert" className="flex items-center gap-2.5 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-xs text-amber-700 dark:text-amber-400">
+            <AlertTriangle className="size-4 shrink-0" aria-hidden />
+            <p>{scheduleRestriction}</p>
+          </div>
+        )}
 
         {/* Reschedule Context Banner */}
         {isRescheduleMode && sessionToReschedule?.rescheduleRequest && (
@@ -639,7 +643,7 @@ export function ScheduleInterviewDialog({
 
         <DialogFooter className="mt-4 gap-2 sm:gap-2 bg-white">
           <CancelButton onClick={() => onOpenChange(false)} />
-          <SaveButton type="submit" form={formId}>
+          <SaveButton type="submit" form={formId} disabled={Boolean(scheduleRestriction)}>
             {isRescheduleMode ? "Save & Reschedule" : "Schedule Interview"}
           </SaveButton>
         </DialogFooter>
