@@ -437,7 +437,7 @@ export function MyInterviewsPage() {
 
         {/* 4. Pagination directly at bottom of Panel */}
         {totalItems > 0 && (
-          <DataTablePagination
+          <DataTablePagination className="p-5 border-t border-border"
             page={safePage}
             pageSize={pageSize}
             totalItems={totalItems}
