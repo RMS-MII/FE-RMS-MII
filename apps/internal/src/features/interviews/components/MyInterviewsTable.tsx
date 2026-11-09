@@ -23,7 +23,8 @@ import {
   TableHeader,
   TableRow,
 } from "@workspace/ui/components/table"
-import { TableSortHeader, EmptyState } from "@/shared/components"
+import { TableSortHeader, EmptyState, ErrorState, TableSkeleton } from "@/shared/components"
+import { getApiError } from "@/shared/api/api-error"
 import { Button } from "@workspace/ui/components/button"
 import {
   Popover,
@@ -56,6 +57,11 @@ export interface MyInterviewsTableProps {
   onRequestReschedule?: (item: MyInterviewItem) => void
   onResetFilters?: () => void
   hasActiveFilters?: boolean
+  isLoading?: boolean
+  isFetching?: boolean
+  isError?: boolean
+  error?: unknown
+  onRetry?: () => void
 }
 
 export function MyInterviewsTable({
@@ -69,6 +75,11 @@ export function MyInterviewsTable({
   onRequestReschedule,
   onResetFilters,
   hasActiveFilters = false,
+  isLoading = false,
+  isFetching = false,
+  isError = false,
+  error,
+  onRetry,
 }: MyInterviewsTableProps) {
   const [copiedId, setCopiedId] = React.useState<string | null>(null)
 
@@ -79,7 +90,7 @@ export function MyInterviewsTable({
   }
 
   return (
-    <div className="overflow-x-auto">
+    <div className={cn("overflow-x-auto", isFetching && !isLoading && "opacity-60")}>
       <Table>
         <TableHeader className="bg-card">
           <TableRow className="border-b border-border hover:bg-transparent">
@@ -143,7 +154,19 @@ export function MyInterviewsTable({
         </TableHeader>
 
         <TableBody>
-          {interviews.length === 0 ? (
+          {isLoading ? (
+            <TableSkeleton colCount={8} rowCount={5} />
+          ) : isError ? (
+            <TableRow>
+              <TableCell colSpan={8} className="h-64 text-center">
+                <ErrorState
+                  title={getApiError(error).kind === "forbidden" ? "Access denied" : "Unable to load interviews"}
+                  description={getApiError(error, "Unable to load your interview sessions.").message}
+                  onRetry={getApiError(error).kind === "forbidden" ? undefined : onRetry}
+                />
+              </TableCell>
+            </TableRow>
+          ) : interviews.length === 0 ? (
             <TableRow>
               <TableCell colSpan={8} className="h-64 text-center">
                 <EmptyState

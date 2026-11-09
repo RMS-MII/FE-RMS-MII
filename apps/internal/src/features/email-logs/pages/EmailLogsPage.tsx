@@ -1,15 +1,19 @@
-import { useEffect, useState } from "react"
+import { useState } from "react"
 import { format } from "date-fns"
 import { AlertTriangle, MailCheck, MailX } from "lucide-react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@workspace/ui/components/select"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@workspace/ui/components/table"
+import {
+  DataTablePagination,
+  EmptyState,
+  ErrorState,
+  PageHeader,
+  Panel,
+  SearchInput,
+  StatusBadge,
+  TableSkeleton,
+} from "@/shared/components"
 import { DatePicker } from "@/shared/components/DatePicker"
-import { DataTablePagination } from "@/shared/components/DataTablePagination"
-import { ErrorState } from "@/shared/components/ErrorState"
-import { PageHeader } from "@/shared/components/PageHeader"
-import { Panel } from "@/shared/components/Panel"
-import { SearchInput } from "@/shared/components/SearchInput"
-import { StatusBadge } from "@/shared/components/StatusBadge"
 import { useDebounce } from "@/shared/hooks/useDebounce"
 import { cn } from "@/shared/lib/utils"
 import { useGetEmailLogsQuery } from "../api/email-logs-api"
@@ -27,6 +31,15 @@ const emailTypes: { value: EmailType; label: string }[] = [
   { value: "Rejection", label: "Rejection" },
   { value: "FinalResult", label: "Final result" },
 ]
+const emailStatusItems = [
+  { label: "All Status", value: "all" },
+  { label: "Sent", value: "Sent" },
+  { label: "Failed", value: "Failed" },
+]
+const emailTypeItems = [
+  { label: "All email types", value: "all" },
+  ...emailTypes,
+]
 
 function formatDate(value: string | null) {
   if (!value) return "—"
@@ -41,7 +54,7 @@ function getErrorMessage(error: unknown) {
       return data.detail
     }
   }
-  return "Unable to load email logs. Please try again."
+  return "Something went wrong while fetching email logs. Please check your connection and try again."
 }
 
 export function EmailLogsPage() {
@@ -53,11 +66,7 @@ export function EmailLogsPage() {
   const [to, setTo] = useState("")
   const [page, setPage] = useState(1)
 
-  useEffect(() => {
-    setPage(1)
-  }, [debouncedSearch, status, type, from, to])
-
-  const { data, error, isLoading, isFetching, refetch } = useGetEmailLogsQuery({
+  const { data, error, isLoading, isFetching, isError, refetch } = useGetEmailLogsQuery({
     search: debouncedSearch,
     status: status === "all" ? undefined : status,
     type: type === "all" ? undefined : type,
@@ -77,100 +86,145 @@ export function EmailLogsPage() {
       />
 
       <Panel>
-        <div className="flex flex-col gap-3 border-b border-border p-4 md:flex-row md:flex-wrap md:items-center">
-          <SearchInput
-            value={search}
-            onChange={setSearch}
-            placeholder="Search recipient or subject..."
-            containerClassName="w-full md:w-72"
-          />
-          <Select value={status} onValueChange={(value) => setStatus(value as EmailDeliveryStatus | "all")}>
-            <SelectTrigger className="h-10 w-full rounded-full border-0 bg-muted px-4 text-sm shadow-none md:w-36">
-              <SelectValue placeholder="All statuses" />
-            </SelectTrigger>
-            <SelectContent className="rounded-xl">
-              <SelectItem value="all">All statuses</SelectItem>
-              <SelectItem value="Sent">Sent</SelectItem>
-              <SelectItem value="Failed">Failed</SelectItem>
-            </SelectContent>
-          </Select>
-          <Select value={type} onValueChange={(value) => setType(value as EmailType | "all")}>
-            <SelectTrigger className="h-10 w-full rounded-full border-0 bg-muted px-4 text-sm shadow-none md:w-56">
-              <SelectValue placeholder="All email types" />
-            </SelectTrigger>
-            <SelectContent className="rounded-xl">
-              <SelectItem value="all">All email types</SelectItem>
-              {emailTypes.map((item) => (
-                <SelectItem key={item.value} value={item.value}>{item.label}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <div className="flex w-full flex-col gap-2 sm:flex-row md:ml-auto md:w-auto">
-            <DatePicker value={from} onChange={setFrom} placeholder="From date" className="md:w-40" />
-            <DatePicker value={to} onChange={setTo} placeholder="To date" minDate={from || undefined} className="md:w-40" />
+        <div className="flex flex-col gap-3 border-b border-border px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex flex-1 flex-wrap items-center gap-2.5">
+            <SearchInput
+              value={search}
+              onChange={(value) => {
+                setSearch(value)
+                setPage(1)
+              }}
+              placeholder="Search recipient or subject..."
+              containerClassName="sm:w-80"
+            />
+            <Select items={emailStatusItems} value={status} onValueChange={(value) => {
+              setStatus(value === null ? "all" : value as EmailDeliveryStatus | "all")
+              setPage(1)
+            }}>
+              <SelectTrigger className="h-10 w-40 rounded-full border-0 bg-muted px-4 text-sm text-foreground transition-all duration-150 shadow-none hover:bg-muted/40 focus-visible:ring-2 focus-visible:ring-primary">
+                <SelectValue placeholder="All Status" />
+              </SelectTrigger>
+              <SelectContent className="rounded-xl bg-card p-1 shadow-md">
+                <SelectItem value="all" className="cursor-pointer rounded-lg text-sm">All Status</SelectItem>
+                <SelectItem value="Sent" className="cursor-pointer rounded-lg text-sm">Sent</SelectItem>
+                <SelectItem value="Failed" className="cursor-pointer rounded-lg text-sm">Failed</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select items={emailTypeItems} value={type} onValueChange={(value) => {
+              setType(value === null ? "all" : value as EmailType | "all")
+              setPage(1)
+            }}>
+              <SelectTrigger className="h-10 w-52 rounded-full border-0 bg-muted px-4 text-sm text-foreground transition-all duration-150 shadow-none hover:bg-muted/40 focus-visible:ring-2 focus-visible:ring-primary">
+                <SelectValue placeholder="All Email Types" />
+              </SelectTrigger>
+              <SelectContent className="rounded-xl bg-card p-1 shadow-md">
+                <SelectItem value="all" className="cursor-pointer rounded-lg text-sm">All Email Types</SelectItem>
+                {emailTypes.map((item) => (
+                  <SelectItem key={item.value} value={item.value} className="cursor-pointer rounded-lg text-sm">
+                    {item.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="flex w-full flex-col gap-2 sm:flex-row sm:justify-end md:w-auto">
+            <DatePicker
+              value={from}
+              onChange={(value) => { setFrom(value); setPage(1) }}
+              placeholder="From date"
+              className="sm:w-40"
+            />
+            <DatePicker
+              value={to}
+              onChange={(value) => { setTo(value); setPage(1) }}
+              placeholder="To date"
+              minDate={from || undefined}
+              className="sm:w-40"
+            />
           </div>
         </div>
 
-        {error ? (
-          <ErrorState
-            title="Could not load email logs"
-            description={getErrorMessage(error)}
-            onRetry={refetch}
-          />
-        ) : (
-          <>
-            <div className={cn("overflow-x-auto", isFetching && !isLoading && "opacity-60")}>
-              <Table>
-                <TableHeader>
-                  <TableRow className="hover:bg-transparent">
-                    <TableHead className="pl-5">Attempted at</TableHead>
-                    <TableHead>Recipient</TableHead>
-                    <TableHead>Subject</TableHead>
-                    <TableHead>Email type</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead className="pr-5">Details</TableHead>
+        <div className={cn("overflow-x-auto", isFetching && !isLoading && "opacity-60")}>
+          <Table>
+            <TableHeader className="bg-card">
+              <TableRow className="hover:bg-transparent">
+                <TableHead className="pl-5">Attempted at</TableHead>
+                <TableHead>Recipient</TableHead>
+                <TableHead>Subject</TableHead>
+                <TableHead>Email type</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead className="pr-5">Details</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {isLoading ? (
+                <TableSkeleton
+                  rowCount={5}
+                  colWidths={["w-32", "w-36", "w-44", "w-28", "w-16", ["w-32", "w-24"]]}
+                  cellClassNames={["pl-5", "", "", "", "", "pr-5"]}
+                />
+              ) : isError ? (
+                <TableRow>
+                  <TableCell colSpan={6} className="h-64 text-center">
+                    <ErrorState
+                      title="Failed to load email logs"
+                      description={getErrorMessage(error)}
+                      onRetry={() => refetch()}
+                    />
+                  </TableCell>
+                </TableRow>
+              ) : logs.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={6} className="h-64 text-center">
+                    <EmptyState
+                      title="No email logs found"
+                      description="Change your search or filters to view other delivery attempts."
+                    />
+                  </TableCell>
+                </TableRow>
+              ) : (
+                logs.map((log) => (
+                  <TableRow key={log.id} className="border-b border-border transition-colors hover:bg-muted/40">
+                    <TableCell className="whitespace-nowrap py-3.5 pl-5 text-sm">{formatDate(log.attemptedAt)}</TableCell>
+                    <TableCell className="max-w-56 truncate py-3.5 text-sm" title={log.recipientEmail}>{log.recipientEmail}</TableCell>
+                    <TableCell className="max-w-72 truncate py-3.5 text-sm font-medium" title={log.subject}>{log.subject}</TableCell>
+                    <TableCell className="whitespace-nowrap py-3.5 text-sm">
+                      {emailTypes.find((item) => item.value === log.type)?.label ?? log.type}
+                    </TableCell>
+                    <TableCell className="py-3.5">
+                      <StatusBadge
+                        tone={log.status === "Sent" ? "success" : "danger"}
+                        icon={log.status === "Sent" ? <MailCheck /> : <MailX />}
+                      >
+                        {log.status}
+                      </StatusBadge>
+                    </TableCell>
+                    <TableCell className="min-w-52 max-w-sm py-3.5 pr-5 text-sm">
+                      {log.status === "Failed" ? (
+                        <div className="flex items-start gap-2 text-danger" title={log.errorMessage ?? undefined}>
+                          <AlertTriangle className="mt-0.5 size-4 shrink-0" />
+                          <span className="line-clamp-2">{log.errorMessage || "Email delivery failed."}</span>
+                        </div>
+                      ) : (
+                        <span className="text-muted-foreground">Sent {formatDate(log.sentAt)}</span>
+                      )}
+                    </TableCell>
                   </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {isLoading ? (
-                    <TableRow><TableCell colSpan={6} className="h-32 text-center text-muted-foreground">Loading email logs...</TableCell></TableRow>
-                  ) : logs.length === 0 ? (
-                    <TableRow><TableCell colSpan={6} className="h-32 text-center text-muted-foreground">No email logs found.</TableCell></TableRow>
-                  ) : logs.map((log) => (
-                    <TableRow key={log.id}>
-                      <TableCell className="whitespace-nowrap pl-5 text-sm">{formatDate(log.attemptedAt)}</TableCell>
-                      <TableCell className="max-w-56 truncate text-sm" title={log.recipientEmail}>{log.recipientEmail}</TableCell>
-                      <TableCell className="max-w-72 truncate text-sm font-medium" title={log.subject}>{log.subject}</TableCell>
-                      <TableCell className="whitespace-nowrap text-sm">{emailTypes.find((item) => item.value === log.type)?.label ?? log.type}</TableCell>
-                      <TableCell>
-                        <StatusBadge tone={log.status === "Sent" ? "success" : "danger"} icon={log.status === "Sent" ? <MailCheck /> : <MailX />}>
-                          {log.status}
-                        </StatusBadge>
-                      </TableCell>
-                      <TableCell className="min-w-52 max-w-sm pr-5 text-sm">
-                        {log.status === "Failed" ? (
-                          <div className="flex items-start gap-2 text-danger" title={log.errorMessage ?? undefined}>
-                            <AlertTriangle className="mt-0.5 size-4 shrink-0" />
-                            <span className="line-clamp-2">{log.errorMessage || "Email delivery failed."}</span>
-                          </div>
-                        ) : (
-                          <span className="text-muted-foreground">Sent {formatDate(log.sentAt)}</span>
-                        )}
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-            <div className="border-t border-border px-5 py-4">
-              <DataTablePagination
-                page={page}
-                pageSize={PAGE_SIZE}
-                totalItems={data?.totalItems ?? 0}
-                onPageChange={setPage}
-              />
-            </div>
-          </>
+                ))
+              )}
+            </TableBody>
+          </Table>
+        </div>
+
+        {!isLoading && !isError && (data?.totalItems ?? 0) > 0 && (
+          <div className="border-t border-border px-5 py-4">
+            <DataTablePagination
+              page={page}
+              pageSize={PAGE_SIZE}
+              totalItems={data?.totalItems ?? 0}
+              onPageChange={setPage}
+            />
+          </div>
         )}
       </Panel>
     </div>

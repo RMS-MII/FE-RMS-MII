@@ -31,6 +31,7 @@ export function CandidatesListPage() {
     candidates,
     totalItems,
     isLoading,
+    isFetching,
     isError,
     refetch,
     selectedCandidate,
@@ -59,7 +60,7 @@ export function CandidatesListPage() {
               value={searchTerm}
               onChange={setSearchTerm}
               placeholder="Search by name, email, campus, or address..."
-              containerClassName="sm:w-96"
+              containerClassName="sm:w-80"
             />
 
             <Select
@@ -121,6 +122,7 @@ export function CandidatesListPage() {
           hasActiveFilters={activeChips.length > 0}
           onResetFilters={handleResetFilters}
           isLoading={isLoading}
+          isFetching={isFetching}
           isError={isError}
           onRetry={() => refetch()}
         />
