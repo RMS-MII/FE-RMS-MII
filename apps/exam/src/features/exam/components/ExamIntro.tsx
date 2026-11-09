@@ -2,7 +2,6 @@ import {
   ArrowRight,
   CalendarClock,
   ClipboardList,
-  Clock3,
   Info,
   ListChecks,
   Play,
@@ -23,7 +22,10 @@ import { Brand } from "./Brand"
 
 interface ExamIntroProps {
   test: CandidateTest
-  remainingMs: number | null
+  canStart: boolean
+  startMessage: string | null
+  starting: boolean
+  startError: string | null
   onStart: () => void
 }
 
@@ -35,7 +37,14 @@ const RULES = [
   "Pastikan koneksi internet stabil dan jangan menutup halaman sebelum tes selesai.",
 ]
 
-export function ExamIntro({ test, remainingMs, onStart }: ExamIntroProps) {
+export function ExamIntro({
+  test,
+  canStart,
+  startMessage,
+  starting,
+  startError,
+  onStart,
+}: ExamIntroProps) {
   const questionCount = test.totalQuestions || test.questions.length
   const durationMs = parseTimeSpanToMs(test.durationTest)
   const durationLabel =
@@ -169,17 +178,6 @@ export function ExamIntro({ test, remainingMs, onStart }: ExamIntroProps) {
 
               <div className="space-y-3 border-t pt-4">
                 <div className="flex items-center justify-between gap-3 text-xs">
-                  <span className="flex items-center gap-1.5 text-muted-foreground">
-                    <Clock3 className="size-3.5" />
-                    Sisa waktu
-                  </span>
-                  <span className="font-semibold tabular-nums">
-                    {remainingMs === null
-                      ? "Belum berjalan"
-                      : formatCountdown(remainingMs)}
-                  </span>
-                </div>
-                <div className="flex items-center justify-between gap-3 text-xs">
                   <span className="text-muted-foreground">Total soal</span>
                   <span className="font-semibold">{questionCount}</span>
                 </div>
@@ -187,19 +185,32 @@ export function ExamIntro({ test, remainingMs, onStart }: ExamIntroProps) {
             </CardContent>
 
             <CardFooter className="flex-col items-stretch gap-3 border-t bg-muted/40 px-5 py-5">
-              <Button
-                size="lg"
-                className="h-11 w-full rounded-full text-sm font-semibold"
-                onClick={onStart}
-                disabled={remainingMs !== null && remainingMs <= 0}
-              >
-                <Play className="size-4" />
-                Mulai Tes
-                <ArrowRight className="size-4" />
-              </Button>
-              <p className="text-center text-[11px] leading-relaxed text-muted-foreground">
-                Dengan menekan tombol di atas, waktu pengerjaan mulai berjalan.
-              </p>
+              {canStart ? (
+                <Button
+                  size="lg"
+                  className="h-11 w-full rounded-full text-sm font-semibold"
+                  onClick={onStart}
+                  disabled={starting}
+                >
+                  <Play className="size-4" />
+                  {starting ? "Memulai..." : "Mulai Tes"}
+                  <ArrowRight className="size-4" />
+                </Button>
+              ) : null}
+
+              {startError ? (
+                <p className="text-center text-[11px] leading-relaxed text-destructive">
+                  {startError}
+                </p>
+              ) : !canStart ? (
+                <p className="text-center text-[11px] leading-relaxed text-muted-foreground">
+                  {startMessage ?? "Tombol Mulai Tes belum tersedia."}
+                </p>
+              ) : (
+                <p className="text-center text-[11px] leading-relaxed text-muted-foreground">
+                  Dengan menekan tombol di atas, waktu pengerjaan mulai berjalan.
+                </p>
+              )}
             </CardFooter>
           </Card>
         </aside>

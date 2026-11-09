@@ -28,6 +28,7 @@ export interface CandidateTest {
   stageCategory: string
   startedAt: string
   endAt: string
+  attemptStartedAt: string | null
   serverTimeUtc: string
   durationTest: string | null
   isAttempts: boolean
@@ -44,6 +45,13 @@ export interface SubmitTestCommand {
   candidateId: string
   stageId: string
   answers: SubmitTestAnswer[]
+}
+
+export interface StartTestResult {
+  applicationStageId: string
+  attemptStartedAt: string
+  deadline: string | null
+  serverTimeUtc: string
 }
 
 export interface SubmitTestResult {
