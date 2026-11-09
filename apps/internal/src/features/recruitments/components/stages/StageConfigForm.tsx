@@ -1,3 +1,6 @@
+import { format } from "date-fns"
+import { CalendarDays } from "lucide-react"
+import type { DateRange } from "react-day-picker"
 import { Button } from "@workspace/ui/components/button"
 import { Input } from "@workspace/ui/components/input"
 import {
@@ -8,7 +11,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@workspace/ui/components/select"
-import { Panel, PanelHeader, DatePicker } from "@/shared/components"
+import { Panel, PanelHeader } from "@/shared/components"
+import { Calendar } from "@workspace/ui/components/calendar"
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@workspace/ui/components/popover"
 import type { StageTypeDto } from "../../types"
 import { formatStageCategory, stageCategoryToLegacyType } from "../../utils"
 import type { EditableStage } from "./types"
@@ -36,6 +45,19 @@ export function StageConfigForm({
   onFieldChange,
   onRemoveStage,
 }: StageConfigFormProps) {
+  const dateRange: DateRange | undefined = (() => {
+    if (!selectedStage?.startDate) return undefined
+    const parseLocalDate = (value: string) => {
+      const [year, month, day] = value.slice(0, 10).split("-").map(Number)
+      return year && month && day ? new Date(year, month - 1, day) : undefined
+    }
+    const from = parseLocalDate(selectedStage.startDate)
+    const to = selectedStage.endDate
+      ? parseLocalDate(selectedStage.endDate)
+      : undefined
+    return from ? { from, ...(to ? { to } : {}) } : undefined
+  })()
+
   if (!selectedStage) {
     return (
       <Panel className="sticky top-20 p-8 text-center text-muted-foreground">
@@ -140,29 +162,40 @@ export function StageConfigForm({
           />
         </div>
 
-        {/* Schedule: Start Date & End Date */}
-        <div className="grid gap-3 sm:grid-cols-2">
-          <div className="space-y-1.5">
-            <label className="text-xs font-semibold text-foreground">
-              Start Date
-            </label>
-            <DatePicker
-              value={selectedStage.startDate}
-              onChange={(val) => onFieldChange("startDate", val)}
-              placeholder="dd/mm/yyyy"
-            />
-          </div>
-
-          <div className="space-y-1.5">
-            <label className="text-xs font-semibold text-foreground">
-              End Date
-            </label>
-            <DatePicker
-              value={selectedStage.endDate}
-              onChange={(val) => onFieldChange("endDate", val)}
-              placeholder="dd/mm/yyyy"
-            />
-          </div>
+        {/* Schedule date range */}
+        <div className="space-y-1.5">
+          <label className="text-xs font-semibold text-foreground">
+            Stage Period
+          </label>
+          <Popover>
+            <PopoverTrigger className={`flex h-10 w-full items-center justify-between gap-2 rounded-full border-0 bg-muted px-4 text-sm transition-all hover:bg-muted/40 focus-visible:bg-card focus-visible:ring-2 focus-visible:ring-primary ${dateRange ? "text-foreground" : "text-muted-foreground"}`}>
+              <span className="truncate">
+                {dateRange?.from
+                  ? `${format(dateRange.from, "dd/MM/yyyy")} – ${dateRange.to ? format(dateRange.to, "dd/MM/yyyy") : "Select end date"}`
+                  : "Select start and end dates"}
+              </span>
+              <CalendarDays className="size-4 shrink-0 text-muted-foreground" aria-hidden />
+            </PopoverTrigger>
+            <PopoverContent align="start" className="w-auto rounded-2xl border border-border bg-card p-3 shadow-float">
+              <Calendar
+                mode="range"
+                selected={dateRange}
+                onSelect={(range) => {
+                  onFieldChange(
+                    "startDate",
+                    range?.from ? format(range.from, "yyyy-MM-dd") : ""
+                  )
+                  onFieldChange(
+                    "endDate",
+                    range?.to ? format(range.to, "yyyy-MM-dd") : ""
+                  )
+                }}
+                numberOfMonths={2}
+                defaultMonth={dateRange?.from}
+                autoFocus
+              />
+            </PopoverContent>
+          </Popover>
         </div>
 
         {/* Delete Stage */}

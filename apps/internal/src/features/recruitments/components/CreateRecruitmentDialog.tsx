@@ -1,4 +1,7 @@
-import { useId } from "react"
+import { useId, useMemo, useState } from "react"
+import { format } from "date-fns"
+import { CalendarDays } from "lucide-react"
+import type { DateRange } from "react-day-picker"
 import {
   Dialog,
   DialogContent,
@@ -18,9 +21,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@workspace/ui/components/select"
-import { DatePicker } from "@/shared/components"
 import { SaveButton } from "@/shared/components"
 import { CancelButton } from "@/shared/components"
+import { Calendar } from "@workspace/ui/components/calendar"
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@workspace/ui/components/popover"
 
 import type { Recruitment } from "../types"
 import { useCreateRecruitmentForm } from "../hooks/useCreateRecruitmentForm"
@@ -39,6 +47,7 @@ export function CreateRecruitmentDialog({
   existingCount = 5,
 }: CreateRecruitmentDialogProps) {
   const formId = useId()
+  const [isDateRangeOpen, setIsDateRangeOpen] = useState(false)
 
   const {
     name,
@@ -64,6 +73,20 @@ export function CreateRecruitmentDialog({
     onSuccess,
     onOpenChange,
   })
+
+  const dateRange = useMemo<DateRange | undefined>(() => {
+    const parseLocalDate = (value: string) => {
+      const [year, month, day] = value.split("-").map(Number)
+      return year && month && day ? new Date(year, month - 1, day) : undefined
+    }
+    const from = parseLocalDate(openDate)
+    const to = parseLocalDate(closeDate)
+    return from ? { from, ...(to ? { to } : {}) } : undefined
+  }, [openDate, closeDate])
+
+  const dateRangeLabel = openDate
+    ? `${format(dateRange!.from!, "dd/MM/yyyy")} – ${dateRange?.to ? format(dateRange.to, "dd/MM/yyyy") : "Select end date"}`
+    : "Select start and end dates"
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -153,46 +176,42 @@ export function CreateRecruitmentDialog({
             />
           </div>
 
-          {/* Tanggal Buka & Tanggal Berakhir */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div className="space-y-1.5">
-              <Label htmlFor="recruitment-start" className="text-sm font-medium px-1">
-                Start Date <span className="text-destructive">*</span>
-              </Label>
-              <DatePicker
-                id="recruitment-start"
-                value={openDate}
-                onChange={(val) => {
-                  setOpenDate(val)
-                  clearFieldError("openDate")
-                }}
-                aria-invalid={!!errors.openDate}
-                placeholder="dd/mm/yyyy"
-              />
-              {errors.openDate && (
-                <p className="text-xs text-destructive px-1">{errors.openDate}</p>
-              )}
-            </div>
-
-            <div className="space-y-1.5">
-              <Label htmlFor="recruitment-end" className="text-sm font-medium px-1">
-                End Date <span className="text-destructive">*</span>
-              </Label>
-              <DatePicker
-                id="recruitment-end"
-                value={closeDate}
-                minDate={openDate || undefined}
-                onChange={(val) => {
-                  setCloseDate(val)
-                  clearFieldError("closeDate")
-                }}
-                aria-invalid={!!errors.closeDate}
-                placeholder="dd/mm/yyyy"
-              />
-              {errors.closeDate && (
-                <p className="text-xs text-destructive px-1">{errors.closeDate}</p>
-              )}
-            </div>
+          {/* Recruitment date range */}
+          <div className="space-y-1.5">
+            <Label htmlFor="recruitment-date-range" className="text-sm font-medium px-1">
+              Recruitment Period <span className="text-destructive">*</span>
+            </Label>
+            <Popover open={isDateRangeOpen} onOpenChange={setIsDateRangeOpen}>
+              <PopoverTrigger
+                id="recruitment-date-range"
+                disabled={isSubmitting}
+                aria-invalid={Boolean(errors.openDate || errors.closeDate)}
+                className={`flex h-10 w-full items-center justify-between gap-2 rounded-full border-0 bg-muted px-4 text-sm transition-all hover:bg-muted/60 focus-visible:bg-card focus-visible:ring-2 focus-visible:ring-primary ${dateRange ? "text-foreground" : "text-muted-foreground"} ${(errors.openDate || errors.closeDate) ? "ring-2 ring-destructive" : ""}`}
+              >
+                <span className="truncate">{dateRangeLabel}</span>
+                <CalendarDays className="size-4 shrink-0 text-muted-foreground" aria-hidden />
+              </PopoverTrigger>
+              <PopoverContent align="start" className="w-auto rounded-2xl border border-border bg-card p-3 shadow-float">
+                <Calendar
+                  mode="range"
+                  selected={dateRange}
+                  onSelect={(range) => {
+                    setOpenDate(range?.from ? format(range.from, "yyyy-MM-dd") : "")
+                    setCloseDate(range?.to ? format(range.to, "yyyy-MM-dd") : "")
+                    clearFieldError("openDate")
+                    clearFieldError("closeDate")
+                  }}
+                  numberOfMonths={2}
+                  defaultMonth={dateRange?.from}
+                  autoFocus
+                />
+              </PopoverContent>
+            </Popover>
+            {(errors.openDate || errors.closeDate) && (
+              <p className="px-1 text-xs text-destructive">
+                {errors.openDate || errors.closeDate}
+              </p>
+            )}
           </div>
         </form>
 
