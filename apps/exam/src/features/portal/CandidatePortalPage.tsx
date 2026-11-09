@@ -37,34 +37,42 @@ function useCandidateTasks(candidateId: string) {
   useEffect(() => {
     const controller = new AbortController()
 
-    setLoading(true)
-    setError(null)
+    // Lihat catatan pada useCandidateTest: penundaan ini mencegah request
+    // ganda yang dipicu double-effect StrictMode di development.
+    const timer = window.setTimeout(() => {
+      getCandidateTasks(candidateId, controller.signal)
+        .then((response) => {
+          if (!controller.signal.aborted) {
+            setData(response)
+          }
+        })
+        .catch((failure: unknown) => {
+          if (!controller.signal.aborted) {
+            setError(failure)
+          }
+        })
+        .finally(() => {
+          if (!controller.signal.aborted) {
+            setLoading(false)
+          }
+        })
+    }, 0)
 
-    getCandidateTasks(candidateId, controller.signal)
-      .then((response) => {
-        if (!controller.signal.aborted) {
-          setData(response)
-        }
-      })
-      .catch((failure: unknown) => {
-        if (!controller.signal.aborted) {
-          setError(failure)
-        }
-      })
-      .finally(() => {
-        if (!controller.signal.aborted) {
-          setLoading(false)
-        }
-      })
-
-    return () => controller.abort()
+    return () => {
+      window.clearTimeout(timer)
+      controller.abort()
+    }
   }, [candidateId, reloadToken])
 
   return {
     data,
     error,
     loading,
-    reload: () => setReloadToken((current) => current + 1),
+    reload: () => {
+      setLoading(true)
+      setError(null)
+      setReloadToken((current) => current + 1)
+    },
   }
 }
 

@@ -5,18 +5,27 @@ const dateTimeFormatter = new Intl.DateTimeFormat("id-ID", {
   timeStyle: "short",
 })
 
-export function formatDateTime(value?: string | null): string {
+export function parseServerDate(value?: string | null): number {
   if (!value) {
+    return Number.NaN
+  }
+
+  // Backend mengirim DateTime dari database tanpa penanda timezone (mis.
+  // "2026-11-09T03:24:32") padahal nilainya UTC. Tanpa "Z", browser akan
+  // membacanya sebagai waktu lokal sehingga bisa selisih beberapa jam.
+  const hasTimezone = /(?:Z|[+-]\d{2}:?\d{2})$/i.test(value)
+
+  return new Date(hasTimezone ? value : `${value}Z`).getTime()
+}
+
+export function formatDateTime(value?: string | null): string {
+  const timestamp = parseServerDate(value)
+
+  if (Number.isNaN(timestamp)) {
     return "-"
   }
 
-  const date = new Date(value)
-
-  if (Number.isNaN(date.getTime())) {
-    return "-"
-  }
-
-  return dateTimeFormatter.format(date)
+  return dateTimeFormatter.format(new Date(timestamp))
 }
 
 export function formatCountdown(milliseconds: number): string {
@@ -53,7 +62,7 @@ export function parseTimeSpanToMs(value: string | null): number | null {
 }
 
 export function getTestDeadline(test: CandidateTest): number | null {
-  const endAt = new Date(test.endAt).getTime()
+  const endAt = parseServerDate(test.endAt)
 
   if (Number.isNaN(endAt)) {
     return null
@@ -61,11 +70,13 @@ export function getTestDeadline(test: CandidateTest): number | null {
 
   const durationMs = parseTimeSpanToMs(test.durationTest)
 
-  if (durationMs === null) {
+  // Durasi 0 / "00:00:00" berarti tes tidak memiliki batas durasi khusus,
+  // jadi deadline mengikuti endAt saja.
+  if (durationMs === null || durationMs <= 0) {
     return endAt
   }
 
-  const startedAt = new Date(test.startedAt).getTime()
+  const startedAt = parseServerDate(test.startedAt)
 
   if (Number.isNaN(startedAt)) {
     return endAt

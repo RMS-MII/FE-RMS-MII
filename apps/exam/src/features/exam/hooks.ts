@@ -25,31 +25,38 @@ export function useCandidateTest(candidateId: string, stageId: string) {
   useEffect(() => {
     const controller = new AbortController()
 
-    getCandidateTest(candidateId, stageId, controller.signal)
-      .then((data) => {
-        setState({
-          data,
-          draft: loadExamDraft(data.candidateId, data.applicationStageId),
-          receivedAt: Date.now(),
-          error: null,
-          loading: false,
+    // Tunda request ke macrotask berikutnya. Di StrictMode development React
+    // menjalankan effect dua kali (setup -> cleanup -> setup) secara sinkron;
+    // tanpa penundaan ini request pertama sudah terlanjur dikirim lalu
+    // dibatalkan, sehingga server menerima dua request untuk data yang sama.
+    const timer = window.setTimeout(() => {
+      getCandidateTest(candidateId, stageId, controller.signal)
+        .then((data) => {
+          setState({
+            data,
+            draft: loadExamDraft(data.candidateId, data.applicationStageId),
+            receivedAt: Date.now(),
+            error: null,
+            loading: false,
+          })
         })
-      })
-      .catch((error: unknown) => {
-        if (controller.signal.aborted) {
-          return
-        }
+        .catch((error: unknown) => {
+          if (controller.signal.aborted) {
+            return
+          }
 
-        setState({
-          data: null,
-          draft: null,
-          receivedAt: 0,
-          error,
-          loading: false,
+          setState({
+            data: null,
+            draft: null,
+            receivedAt: 0,
+            error,
+            loading: false,
+          })
         })
-      })
+    }, 0)
 
     return () => {
+      window.clearTimeout(timer)
       controller.abort()
     }
   }, [candidateId, stageId, reloadKey])

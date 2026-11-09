@@ -7,6 +7,7 @@ import {
   formatDateTime,
   getMissingRequiredQuestions,
   isMultipleChoice,
+  parseServerDate,
 } from "./utils"
 import { ExamIntro } from "./components/ExamIntro"
 import { ExamResult } from "./components/ExamResult"
@@ -308,7 +309,7 @@ function ExamRunner({ test, initialDraft, receivedAt }: ExamRunnerProps) {
       return <ExamExpiredScreen deadline={formatDateTime(test.endAt)} />
     }
 
-    const startsAt = new Date(test.startedAt).getTime()
+    const startsAt = parseServerDate(test.startedAt)
 
     if (!Number.isNaN(startsAt) && timer.serverNow < startsAt) {
       return <ExamNotStartedScreen startedAt={formatDateTime(test.startedAt)} />

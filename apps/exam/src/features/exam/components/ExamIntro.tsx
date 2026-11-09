@@ -39,7 +39,9 @@ export function ExamIntro({ test, remainingMs, onStart }: ExamIntroProps) {
   const questionCount = test.totalQuestions || test.questions.length
   const durationMs = parseTimeSpanToMs(test.durationTest)
   const durationLabel =
-    durationMs === null ? "Sesuai jadwal" : formatCountdown(durationMs)
+    durationMs === null || durationMs <= 0
+      ? "Sesuai jadwal"
+      : formatCountdown(durationMs)
 
   return (
     <div className="relative min-h-svh overflow-hidden bg-background">
