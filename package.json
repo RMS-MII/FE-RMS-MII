@@ -7,6 +7,8 @@
     "dev:internal": "turbo --filter @rms/internal dev",
     "build:exam": "turbo --filter @rms/exam build",
     "dev:exam": "turbo --filter @rms/exam dev",
+    "build:candidate": "turbo --filter @rms/candidate build",
+    "dev:candidate": "turbo --filter @rms/candidate dev",
     "lint": "turbo lint",
     "format": "turbo format",
     "typecheck": "turbo typecheck"
@@ -17,7 +19,7 @@
     "turbo": "^2.11.10",
     "typescript": "~6.0.2"
   },
-  "packageManager": "pnpm@11.25.0",
+  "packageManager": "pnpm@12.16.1",
   "engines": {
     "node": ">=20.19.0"
   }
