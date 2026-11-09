@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react"
 import { getCandidateTest } from "./api"
 import { loadExamDraft, type ExamDraft } from "./storage"
 import type { CandidateTest } from "./types"
-import { getTestDeadline } from "./utils"
+import { getTestDeadline, parseServerDate } from "./utils"
 
 interface CandidateTestState {
   data: CandidateTest | null
@@ -85,9 +85,7 @@ export function useExamTimer(
   const deadline = test ? getTestDeadline(test) : null
 
   const rawOffset =
-    test && receivedAt > 0
-      ? new Date(test.serverTimeUtc).getTime() - receivedAt
-      : 0
+    test && receivedAt > 0 ? parseServerDate(test.serverTimeUtc) - receivedAt : 0
   const clockOffset = Number.isNaN(rawOffset) ? 0 : rawOffset
 
   const serverNow = now + clockOffset
