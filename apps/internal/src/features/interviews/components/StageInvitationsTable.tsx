@@ -165,7 +165,7 @@ export function StageInvitationsTable({
               >
                 <TableCell className="py-3.5 pl-5">
                   <div className="space-y-1">
-                    <p className="text-sm font-semibold break-words text-foreground">
+                    <p className="text-sm font-semibold wrap-break-word text-foreground">
                       {item.recruitmentName}
                     </p>
                     <p className="font-mono text-xs text-muted-foreground">
@@ -246,12 +246,12 @@ export function StageInvitationsTable({
                       />
                       <PopoverContent
                         align="end"
-                        className="w-80 max-w-[calc(100vw-2rem)] rounded-xl border border-border bg-card p-4 text-foreground"
+                        className="w-80 max-w-[calc(100vw-2rem)] rounded-xl bg-card p-4 text-foreground"
                       >
                         <p className="mb-2 text-sm font-semibold">
                           Assignment note
                         </p>
-                        <p className="text-sm leading-relaxed break-words whitespace-pre-wrap">
+                        <p className="text-sm leading-relaxed wrap-break-word whitespace-pre-wrap">
                           {item.note}
                         </p>
                       </PopoverContent>

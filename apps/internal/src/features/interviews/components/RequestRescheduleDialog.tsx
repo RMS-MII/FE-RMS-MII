@@ -25,7 +25,8 @@ export interface RequestRescheduleDialogProps {
     proposedStart: string,
     proposedEnd: string,
     reason: string
-  ) => void
+  ) => void | Promise<void>
+  isSubmitting?: boolean
 }
 
 export function RequestRescheduleDialog({
@@ -33,6 +34,7 @@ export function RequestRescheduleDialog({
   onOpenChange,
   session,
   onSubmitRequest,
+  isSubmitting = false,
 }: RequestRescheduleDialogProps) {
   const [proposedDate, setProposedDate] = useState("")
   const [proposedStartTime, setProposedStartTime] = useState("10:00")
@@ -40,6 +42,7 @@ export function RequestRescheduleDialog({
   const [reason, setReason] = useState("")
   const [error, setError] = useState("")
 
+  // Reset the draft each time a different server session is opened for rescheduling.
   useEffect(() => {
     if (open && session) {
       // Default proposed date to 1 day after current schedule
@@ -47,6 +50,8 @@ export function RequestRescheduleDialog({
         const d = parseISO(session.scheduledStart)
         const nextDay = new Date(d)
         nextDay.setDate(nextDay.getDate() + 1)
+        // This effect intentionally initializes the dialog draft from the selected session.
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         setProposedDate(format(nextDay, "yyyy-MM-dd"))
         setProposedStartTime(format(d, "HH:mm"))
         const endD = parseISO(session.scheduledEnd)
@@ -72,7 +77,7 @@ export function RequestRescheduleDialog({
     // fallback
   }
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!proposedDate) {
       setError("Please select a proposed date.")
       return
@@ -89,16 +94,38 @@ export function RequestRescheduleDialog({
       setError("Please provide a reason for the reschedule request.")
       return
     }
+    if (reason.trim().length > 100) {
+      setError("Reason must be 100 characters or fewer.")
+      return
+    }
 
-    const proposedStartISO = `${proposedDate}T${proposedStartTime}:00`
-    const proposedEndISO = `${proposedDate}T${proposedEndTime}:00`
+    const proposedStart = new Date(`${proposedDate}T${proposedStartTime}:00`)
+    const proposedEnd = new Date(`${proposedDate}T${proposedEndTime}:00`)
+    if (proposedStart <= new Date()) {
+      setError("Proposed schedule must be in the future.")
+      return
+    }
+    if (proposedEnd <= proposedStart) {
+      setError("End time must be after start time.")
+      return
+    }
 
-    onSubmitRequest(session.id, proposedStartISO, proposedEndISO, reason.trim())
-    onOpenChange(false)
+    setError("")
+    try {
+      await onSubmitRequest(
+        session.sessionId,
+        proposedStart.toISOString(),
+        proposedEnd.toISOString(),
+        reason.trim()
+      )
+      onOpenChange(false)
+    } catch (requestError) {
+      setError(requestError instanceof Error ? requestError.message : "Unable to submit the request.")
+    }
   }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={(nextOpen) => { if (!isSubmitting) onOpenChange(nextOpen) }}>
       <DialogContent className="sm:max-w-md rounded-2xl p-0 gap-0 bg-card overflow-hidden">
         <DialogHeader className="p-6 pb-4 border-b border-border">
           <div className="flex items-center gap-2">
@@ -207,6 +234,8 @@ export function RequestRescheduleDialog({
               placeholder="Explain why you need to reschedule this interview session..."
               rows={3}
               value={reason}
+              maxLength={100}
+              disabled={isSubmitting}
               onChange={(e) => {
                 setReason(e.target.value)
                 if (error) setError("")
@@ -221,14 +250,15 @@ export function RequestRescheduleDialog({
         </div>
 
         <DialogFooter className="px-9 pb-9 border-t border-border bg-card gap-2">
-          <CancelButton onClick={() => onOpenChange(false)} />
+          <CancelButton disabled={isSubmitting} onClick={() => onOpenChange(false)} />
           <Button
             type="button"
-            onClick={handleSubmit}
+            disabled={isSubmitting}
+            onClick={() => void handleSubmit()}
             className="h-10 rounded-full bg-amber-600 hover:bg-amber-700 text-white px-5 cursor-pointer inline-flex items-center gap-1.5 font-semibold text-xs shadow-xs"
           >
             <CalendarClock className="size-4" />
-            Submit Reschedule
+            {isSubmitting ? "Submitting..." : "Submit Reschedule"}
           </Button>
         </DialogFooter>
       </DialogContent>

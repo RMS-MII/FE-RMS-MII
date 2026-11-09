@@ -1,13 +1,101 @@
 import { baseApi } from "@/shared/api/base-api"
 import type {
+  ApiAssessmentRecommendation,
+  ConfirmInterviewResponseDto,
+  InterviewerSessionDto,
+  SubmitInterviewAssessmentDto,
   GetInterviewerInvitationsParams,
   InterviewerInvitationDto,
   RespondInvitationRequest,
   RespondInvitationResponse,
+  CreateRescheduleRequest,
+  InterviewerRescheduleRequestDto,
 } from "../types"
 
 export const interviewerApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
+    requestInterviewerReschedule: builder.mutation<
+      InterviewerRescheduleRequestDto,
+      CreateRescheduleRequest
+    >({
+      query: (body) => ({ url: "/reschedule-requests", method: "POST", body }),
+      invalidatesTags: (result) => result
+        ? [
+            { type: "Interview", id: "INTERVIEWER_SESSIONS" },
+            { type: "Interview", id: "INTERVIEWER_DASHBOARD" },
+            { type: "Interview", id: "RESCHEDULE_LIST" },
+            { type: "Candidate", id: "APPLICATION_DETAILS" },
+          ]
+        : [],
+    }),
+    getInterviewerSessions: builder.query<
+      InterviewerSessionDto[],
+      {
+        status?: "InProgress" | "Completed" | "Cancelled" | 1 | 2 | 3
+        sessionStatus?:
+          | "Scheduled"
+          | "PendingConfirmation"
+          | "Rescheduled"
+          | "AcceptedByInterviewer"
+          | "AcceptedByCandidate"
+          | 1
+          | 2
+          | 3
+          | 4
+          | 5
+        from?: string
+        to?: string
+        pendingActionOnly?: boolean
+      } | void
+    >({
+      query: (params) => ({
+        url: "/interviewer/sessions",
+        params: params ?? undefined,
+      }),
+      providesTags: [{ type: "Interview", id: "INTERVIEWER_SESSIONS" }],
+    }),
+    confirmInterviewerSession: builder.mutation<
+      ConfirmInterviewResponseDto,
+      string
+    >({
+      query: (sessionInterviewId) => ({
+        url: `/session-interviews/${sessionInterviewId}/confirm`,
+        method: "POST",
+      }),
+      invalidatesTags: (result) =>
+        result
+          ? [
+              { type: "Interview", id: "INTERVIEWER_SESSIONS" },
+              { type: "Interview", id: "INTERVIEWER_DASHBOARD" },
+            ]
+          : [],
+    }),
+    submitInterviewerAssessment: builder.mutation<
+      SubmitInterviewAssessmentDto,
+      {
+        sessionInterviewId: string
+        body: {
+          score: number
+          recommendation: ApiAssessmentRecommendation
+          notes: string
+        }
+      }
+    >({
+      query: ({ sessionInterviewId, body }) => ({
+        url: `/session-interviews/${sessionInterviewId}/assessment`,
+        method: "POST",
+        body,
+      }),
+      invalidatesTags: (result) =>
+        result
+          ? [
+              { type: "Interview", id: "INTERVIEWER_SESSIONS" },
+              { type: "Interview", id: "INTERVIEWER_DASHBOARD" },
+              { type: "Candidate", id: "APPLICATION_DETAILS" },
+              { type: "Candidate", id: "LIST" },
+            ]
+          : [],
+    }),
     getInterviewerInvitations: builder.query<
       InterviewerInvitationDto[],
       GetInterviewerInvitationsParams
@@ -42,6 +130,10 @@ export const interviewerApi = baseApi.injectEndpoints({
 })
 
 export const {
+  useGetInterviewerSessionsQuery,
+  useRequestInterviewerRescheduleMutation,
+  useConfirmInterviewerSessionMutation,
+  useSubmitInterviewerAssessmentMutation,
   useGetInterviewerInvitationsQuery,
   useRespondToInterviewerInvitationMutation,
 } = interviewerApi

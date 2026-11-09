@@ -82,6 +82,32 @@ function mapStage(
       : category === "2" || category === "interview"
         ? "interview"
         : "other"
+  const evaluationReady =
+    stageType === "test"
+      ? mapApplicationStageStatus(stage.status) === "submitted"
+      : stageType === "interview"
+        ? (() => {
+            const sessions = stage.interviewSessions.filter(
+              (session) =>
+                !["3", "rescheduled"].includes(
+                  String(session.status).toLowerCase()
+                )
+            )
+            const activeAssignments = sessions.flatMap((session) =>
+              session.interviewers.filter(
+                (interviewer) =>
+                  !["3", "cancelled"].includes(
+                    String(interviewer.status).toLowerCase()
+                  )
+              )
+            )
+            return (
+              sessions.length > 0 &&
+              activeAssignments.length > 0 &&
+              activeAssignments.every((interviewer) => interviewer.assessment)
+            )
+          })()
+        : false
   return {
     stageIndex: index,
     sequence: stage.sequence,
@@ -99,6 +125,7 @@ function mapStage(
     isStarted: stage.isStarted,
     isCompleted: stage.isCompleted,
     isPassed: stage.isPassed,
+    evaluationReady,
     totalScore: stage.totalScore,
     startDate: stage.startDate,
     endDate: stage.endDate,

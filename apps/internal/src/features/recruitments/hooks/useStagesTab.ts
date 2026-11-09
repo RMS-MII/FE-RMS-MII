@@ -36,6 +36,7 @@ export function mapBatchStagesToStages(
         employeeName: inv.fullName,
         employeeEmail: inv.email,
         jobTitle: inv.jobTitle,
+        note: inv.note ?? undefined,
       })
     )
 

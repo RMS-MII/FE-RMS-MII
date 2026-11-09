@@ -198,6 +198,8 @@ export interface CandidateApplicationStageItem {
   isStarted?: boolean
   isCompleted?: boolean
   isPassed?: boolean
+  /** Whether recorded BE data satisfies the category-specific stage evaluation preconditions. */
+  evaluationReady?: boolean
   startDate?: string
   endDate?: string
   endAt?: string | null

@@ -44,21 +44,6 @@ function toDate(val: string | Date | undefined): Date | undefined {
   return undefined
 }
 
-const months = [
-  "January",
-  "February",
-  "March",
-  "April",
-  "May",
-  "June",
-  "July",
-  "August",
-  "September",
-  "October",
-  "November",
-  "December",
-]
-
 export function DatePicker({
   id,
   value,
@@ -87,23 +72,19 @@ export function DatePicker({
 
   React.useEffect(() => {
     if (selectedDate) {
+      // Keep the controlled calendar month aligned when the input value changes.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setDisplayMonth(selectedDate)
     } else if (defaultMonth) {
       const d = toDate(defaultMonth)
-      if (d) setDisplayMonth(d)
+      if (d) {
+        setDisplayMonth(d)
+      }
     }
   }, [selectedDate, defaultMonth])
 
-  const currentYear = new Date().getFullYear()
   const startYear = fromYear || (min ? min.getFullYear() : 1950)
-  const endYear = toYear || (max ? max.getFullYear() : currentYear + 10)
-  const years = React.useMemo(() => {
-    const list: number[] = []
-    for (let y = endYear; y >= startYear; y--) {
-      list.push(y)
-    }
-    return list
-  }, [startYear, endYear])
+  const endYear = toYear || (max ? max.getFullYear() : new Date().getFullYear() + 10)
 
   const handleSelect = (date: Date | undefined) => {
     if (date) {
@@ -164,46 +145,13 @@ export function DatePicker({
           side="bottom"
           sideOffset={6}
           container={typeof document !== "undefined" ? document.body : undefined}
-          className="w-auto p-3 rounded-2xl border border-border bg-card shadow-float z-60"
+          className="w-auto p-3 rounded-2xl bg-card shadow-float z-60"
         >
-          {showDropdowns && (
-            <div className="flex items-center justify-between gap-2 px-1 pb-2.5 border-b border-border">
-              <select
-                aria-label="Select month"
-                value={displayMonth.getMonth()}
-                onChange={(e) => {
-                  const newMonth = new Date(displayMonth.getFullYear(), Number(e.target.value), 1)
-                  setDisplayMonth(newMonth)
-                }}
-                className="h-8 flex-1 rounded-lg border border-border bg-muted/60 px-2 text-xs font-semibold text-foreground outline-none cursor-pointer hover:bg-muted transition-colors"
-              >
-                {months.map((m, i) => (
-                  <option key={i} value={i} className="bg-card text-foreground">
-                    {m}
-                  </option>
-                ))}
-              </select>
-
-              <select
-                aria-label="Select year"
-                value={displayMonth.getFullYear()}
-                onChange={(e) => {
-                  const newMonth = new Date(Number(e.target.value), displayMonth.getMonth(), 1)
-                  setDisplayMonth(newMonth)
-                }}
-                className="h-8 w-24 rounded-lg border border-border bg-muted/60 px-2 text-xs font-semibold text-foreground outline-none cursor-pointer hover:bg-muted transition-colors"
-              >
-                {years.map((y) => (
-                  <option key={y} value={y} className="bg-card text-foreground">
-                    {y}
-                  </option>
-                ))}
-              </select>
-            </div>
-          )}
-
           <Calendar
             mode="single"
+            captionLayout={showDropdowns ? "dropdown" : "label"}
+            startMonth={new Date(startYear, 0)}
+            endMonth={new Date(endYear, 11)}
             month={displayMonth}
             onMonthChange={setDisplayMonth}
             selected={selectedDate}

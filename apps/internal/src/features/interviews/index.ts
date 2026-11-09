@@ -1,6 +1,6 @@
 export * from "./types"
-export * from "./data/myInterviewsMock"
 export * from "./api/interviewer-api"
+export * from "./utils/interviewerSessionAdapter"
 export * from "./components"
 export * from "./pages/MyInterviewsPage"
 export * from "./pages/StageInvitationsPage"
