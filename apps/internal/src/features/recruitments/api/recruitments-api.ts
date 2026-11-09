@@ -10,6 +10,7 @@ import type {
   UpdateBatchStagesRequest,
   AssignInterviewersRequest,
   AssignInterviewersResponse,
+  BatchStageTransitionDto,
 } from "../types"
 
 export const recruitmentsApi = baseApi.injectEndpoints({
@@ -122,6 +123,48 @@ export const recruitmentsApi = baseApi.injectEndpoints({
             ]
           : [],
     }),
+    activateBatchStage: builder.mutation<
+      BatchStageTransitionDto,
+      { batchId: string; stageId: string }
+    >({
+      query: ({ batchId, stageId }) => ({
+        url: `/batches/${batchId}/stages/${stageId}/activate`,
+        method: "POST",
+      }),
+      invalidatesTags: (result, _err, { batchId }) =>
+        result
+          ? [
+              { type: "Stage", id: batchId },
+              { type: "Recruitment", id: batchId },
+              { type: "Recruitment", id: "LIST" },
+              { type: "Candidate", id: `BATCH_${batchId}` },
+              { type: "Candidate", id: `APPLICATION_BATCH_${batchId}` },
+              { type: "Interview", id: `BATCH_${batchId}` },
+            ]
+          : [],
+    }),
+    completeBatchStage: builder.mutation<
+      BatchStageTransitionDto,
+      { batchId: string; stageId: string }
+    >({
+      query: ({ batchId, stageId }) => ({
+        url: `/batches/${batchId}/stages/${stageId}/complete`,
+        method: "POST",
+      }),
+      invalidatesTags: (result, _err, { batchId }) =>
+        result
+          ? [
+              { type: "Stage", id: batchId },
+              { type: "Recruitment", id: batchId },
+              { type: "Recruitment", id: "LIST" },
+              { type: "Candidate", id: `BATCH_${batchId}` },
+              { type: "Candidate", id: `APPLICATION_BATCH_${batchId}` },
+              { type: "Candidate", id: "LIST" },
+              { type: "Interview", id: `BATCH_${batchId}` },
+              { type: "OfferingLetter", id: "LIST" },
+            ]
+          : [],
+    }),
   }),
 })
 
@@ -135,4 +178,6 @@ export const {
   useUpdateBatchStatusMutation,
   useUpdateBatchStagesMutation,
   useAssignStageInterviewersMutation,
+  useActivateBatchStageMutation,
+  useCompleteBatchStageMutation,
 } = recruitmentsApi

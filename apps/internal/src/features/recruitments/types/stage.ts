@@ -9,6 +9,13 @@ export type LegacyStageType =
   "screening" | "interview" | "test" | "offering" | "other"
 
 export type StageType = LegacyStageType
+export type BatchStageLifecycleStatus =
+  | "Inactive"
+  | "Active"
+  | "Completed"
+  | 0
+  | 1
+  | 2
 
 /** Matches StageType table in ERD.sql */
 export interface StageTypeDto {
@@ -41,6 +48,7 @@ export interface BatchStage {
   stageCategory?: string | null
   stageName: string
   isActive: boolean
+  lifecycleStatus?: BatchStageLifecycleStatus
   passingScore?: number | null
   startDate?: string | null
   endDate?: string | null
@@ -66,6 +74,17 @@ export interface AssignedInterviewer {
 
 export interface BatchStageWithInterviewers extends BatchStage {
   interviewers: AssignedInterviewer[]
+}
+
+export interface BatchStageTransitionDto {
+  batchStageId: string
+  lifecycleStatus: BatchStageLifecycleStatus
+  candidatesStarted: number
+  candidatesPassed: number
+  candidatesRejected: number
+  candidatesDropped: number
+  candidatesExpired: number
+  alreadyApplied: boolean
 }
 
 export interface AssignInterviewersResponse {
@@ -98,6 +117,7 @@ export interface Stage {
   startDate: string | null
   endDate: string | null
   isActive: boolean
+  lifecycleStatus?: BatchStageLifecycleStatus
   nextStageId?: string | null
   sequence?: number
 }

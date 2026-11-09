@@ -13,6 +13,15 @@ import {
   TooltipTrigger,
 } from "@workspace/ui/components/tooltip"
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@workspace/ui/components/dialog"
+import { Button } from "@workspace/ui/components/button"
+import {
   Panel,
   PanelHeader,
   StatusBadge,
@@ -20,14 +29,25 @@ import {
   ErrorState,
   CreateButton,
   EditButton,
+  TableSkeleton,
+  CancelButton,
+  SaveButton,
 } from "@/shared/components"
+import { getApiError } from "@/shared/api/api-error"
 import { safeFormatDate } from "@/shared/lib/format"
 import { cn } from "@/shared/lib/utils"
 import { formatStageCategory } from "../../utils"
-import type { Recruitment, StageEmployeeStatus } from "../../types"
+import type {
+  BatchStageLifecycleStatus,
+  BatchStageTransitionDto,
+  Recruitment,
+  Stage,
+  StageEmployeeStatus,
+} from "../../types"
 import { AssignInterviewersDialog } from "./AssignInterviewersDialog"
 import { useStagesTab } from "../../hooks/useStagesTab"
-import { UserPlus, Pencil, Loader2 } from "lucide-react"
+import { CheckCircle2, CirclePlay, Pencil, UserPlus, X } from "lucide-react"
+import { useState } from "react"
 
 export interface StagesTabProps {
   recruitment: Recruitment
@@ -59,6 +79,35 @@ const statusLabels: Record<StageEmployeeStatus, string> = {
   declined: "Declined",
 }
 
+type StageTransitionAction = "activate" | "complete"
+
+function normalizeLifecycleStatus(
+  value: BatchStageLifecycleStatus | undefined
+): "inactive" | "active" | "completed" | undefined {
+  if (value === undefined) return undefined
+  const normalized = String(value).toLowerCase()
+  if (normalized === "0" || normalized === "inactive") return "inactive"
+  if (normalized === "1" || normalized === "active") return "active"
+  if (normalized === "2" || normalized === "completed") return "completed"
+  return undefined
+}
+
+function getTransitionCounts(
+  result: BatchStageTransitionDto,
+  action: StageTransitionAction
+) {
+  const counts = [
+    ["Candidates assigned", result.candidatesStarted],
+    ["Passed", result.candidatesPassed],
+    ["Rejected", result.candidatesRejected],
+    ["Dropped", result.candidatesDropped],
+    ["Expired", result.candidatesExpired],
+  ] as const
+  return action === "complete"
+    ? counts.filter(([label]) => label !== "Candidates assigned")
+    : counts
+}
+
 export function StagesTab({
   recruitment,
   onCreateStage,
@@ -76,17 +125,80 @@ export function StagesTab({
     setIsDialogOpen,
     handleOpenAssignDialog,
     handleSaveInterviewers,
+    handleActivateStage,
+    handleCompleteStage,
+    isTransitioning,
   } = useStagesTab({ recruitment })
+  const [pendingTransition, setPendingTransition] = useState<{
+    stage: Stage
+    action: StageTransitionAction
+  } | null>(null)
+  const [transitionError, setTransitionError] = useState<string | null>(null)
+  const [transitionResult, setTransitionResult] = useState<{
+    action: StageTransitionAction
+    result: BatchStageTransitionDto
+  } | null>(null)
+
+  const configuredStages = stages.filter((stage) => stage.isActive)
+  const activeStage = stages.find(
+    (stage) => normalizeLifecycleStatus(stage.lifecycleStatus) === "active"
+  )
+  const activeStageIndex = activeStage
+    ? configuredStages.findIndex((stage) => stage.id === activeStage.id)
+    : -1
+  const nextStageToActivate = activeStage
+    ? activeStageIndex >= 0
+      ? configuredStages[activeStageIndex + 1]
+      : undefined
+    : configuredStages[0]
+  const isFinalActiveStage =
+    activeStage !== undefined &&
+    activeStageIndex >= 0 &&
+    activeStageIndex === configuredStages.length - 1
+  const hasStartedLifecycle = stages.some((stage) => {
+    const lifecycleStatus = normalizeLifecycleStatus(stage.lifecycleStatus)
+    return lifecycleStatus === "active" || lifecycleStatus === "completed"
+  })
+
+  const handleConfirmTransition = async () => {
+    if (!pendingTransition) return
+    setTransitionError(null)
+
+    try {
+      const result =
+        pendingTransition.action === "activate"
+          ? await handleActivateStage(pendingTransition.stage.id)
+          : await handleCompleteStage(pendingTransition.stage.id)
+      setTransitionResult({ action: pendingTransition.action, result })
+      setPendingTransition(null)
+    } catch (error) {
+      setTransitionError(getApiError(error).message)
+    }
+  }
 
   if (isLoading) {
     return (
-      <Panel className="p-8">
-        <div
-          role="status"
-          className="flex items-center justify-center gap-2 text-sm text-muted-foreground"
-        >
-          <Loader2 className="size-4 animate-spin" aria-hidden />
-          Loading stages...
+      <Panel className="space-y-0 overflow-hidden">
+        <PanelHeader title="Selection Pipeline" meta="Loading stages..." />
+        <div className="overflow-x-auto">
+          <Table>
+            <TableHeader className="bg-muted/50">
+              <TableRow>
+                <TableHead className="w-14 pl-5 text-center">#</TableHead>
+                <TableHead className="min-w-48">Stage Name</TableHead>
+                <TableHead className="min-w-44">Schedule</TableHead>
+                <TableHead className="w-24 text-center">Passing</TableHead>
+                <TableHead className="min-w-56 text-center">
+                  Interviewers
+                </TableHead>
+                <TableHead className="w-28 text-center">Status</TableHead>
+                <TableHead className="w-40 pr-5 text-center">Action</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              <TableSkeleton colCount={7} rowCount={5} />
+            </TableBody>
+          </Table>
         </div>
       </Panel>
     )
@@ -131,10 +243,71 @@ export function StagesTab({
             meta={`${stages.length} stages • ~${totalDays} days total`}
             actions={
               <div className="flex items-center gap-2">
-                <EditButton onClick={onEditStage}>Edit Stages</EditButton>
+                <EditButton
+                  onClick={onEditStage}
+                  disabled={hasStartedLifecycle}
+                  title={
+                    hasStartedLifecycle
+                      ? "Stages cannot be reconfigured after activation"
+                      : undefined
+                  }
+                >
+                  Edit Stages
+                </EditButton>
               </div>
             }
           />
+
+          {transitionError && (
+            <div
+              role="alert"
+              className="mx-5 mt-4 flex items-start justify-between gap-3 rounded-xl bg-danger-soft px-4 py-3 text-sm text-danger"
+            >
+              <span>{transitionError}</span>
+              <button
+                type="button"
+                className="shrink-0"
+                aria-label="Dismiss error"
+                onClick={() => setTransitionError(null)}
+              >
+                <X className="size-4" aria-hidden />
+              </button>
+            </div>
+          )}
+          {transitionResult && (
+            <div
+              role="status"
+              className="mx-5 mt-4 flex items-start justify-between gap-3 rounded-xl border border-border bg-muted/40 px-4 py-3 text-sm"
+            >
+              <div className="space-y-1">
+                <p className="font-medium text-foreground">
+                  {transitionResult.action === "activate"
+                    ? transitionResult.result.alreadyApplied
+                      ? "Stage is already active"
+                      : "Stage activated"
+                    : transitionResult.result.alreadyApplied
+                      ? "Stage was already completed"
+                      : "Stage completed"}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  {getTransitionCounts(
+                    transitionResult.result,
+                    transitionResult.action
+                  )
+                    .map(([label, count]) => `${label}: ${count}`)
+                    .join(" · ")}
+                </p>
+              </div>
+              <button
+                type="button"
+                className="shrink-0 text-muted-foreground hover:text-foreground"
+                aria-label="Dismiss result"
+                onClick={() => setTransitionResult(null)}
+              >
+                <X className="size-4" aria-hidden />
+              </button>
+            </div>
+          )}
 
           <div className="overflow-x-auto">
             <Table>
@@ -148,18 +321,35 @@ export function StagesTab({
                     Interviewers
                   </TableHead>
                   <TableHead className="w-28 text-center">Status</TableHead>
+                  <TableHead className="w-40 pr-5 text-center">Action</TableHead>
                 </TableRow>
               </TableHeader>
 
               <TableBody>
                 {stages.map((stage, index) => {
-                  const isCurrent = index === 0
-                  const isDone = false
-                  const status = isDone
-                    ? { label: "Completed", tone: "success" as const }
-                    : isCurrent
-                      ? { label: "In Progress", tone: "info" as const }
-                      : { label: "Upcoming", tone: "neutral" as const }
+                  const lifecycleStatus = normalizeLifecycleStatus(
+                    stage.lifecycleStatus
+                  )
+                  const status = !stage.isActive
+                    ? { label: "Disabled", tone: "neutral" as const }
+                    : lifecycleStatus === "completed"
+                      ? { label: "Completed", tone: "success" as const }
+                      : lifecycleStatus === "active"
+                        ? { label: "Active", tone: "info" as const }
+                        : lifecycleStatus === "inactive"
+                          ? { label: "Inactive", tone: "neutral" as const }
+                          : index === 0
+                            ? { label: "In Progress", tone: "info" as const }
+                            : { label: "Upcoming", tone: "neutral" as const }
+                  const transitionAction: StageTransitionAction | null =
+                    lifecycleStatus === "inactive" &&
+                    nextStageToActivate?.id === stage.id
+                      ? "activate"
+                      : lifecycleStatus === "active" &&
+                          isFinalActiveStage &&
+                          activeStage?.id === stage.id
+                        ? "complete"
+                        : null
 
                   const isInterviewStage =
                     stage.type === "interview" ||
@@ -311,6 +501,36 @@ export function StagesTab({
                           {status.label}
                         </StatusBadge>
                       </TableCell>
+
+                      <TableCell className="py-3.5 pr-5 text-center">
+                        {transitionAction ? (
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant={transitionAction === "complete" ? "default" : "outline"}
+                            className="rounded-full"
+                            disabled={isTransitioning}
+                            onClick={() => {
+                              setTransitionError(null)
+                              setPendingTransition({ stage, action: transitionAction })
+                            }}
+                          >
+                            {transitionAction === "activate" ? (
+                              <>
+                                <CirclePlay className="mr-1.5 size-3.5" aria-hidden />
+                                Activate
+                              </>
+                            ) : (
+                              <>
+                                <CheckCircle2 className="mr-1.5 size-3.5" aria-hidden />
+                                Complete Stage
+                              </>
+                            )}
+                          </Button>
+                        ) : (
+                          <span className="text-xs text-muted-foreground">—</span>
+                        )}
+                      </TableCell>
                     </TableRow>
                   )
                 })}
@@ -330,6 +550,65 @@ export function StagesTab({
           onSave={handleSaveInterviewers}
         />
       )}
+
+      <Dialog
+        open={pendingTransition !== null}
+        onOpenChange={(open) => {
+          if (!isTransitioning && !open) setPendingTransition(null)
+        }}
+      >
+        <DialogContent className="rounded-2xl sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>
+              {pendingTransition?.action === "activate"
+                ? "Activate selection stage?"
+                : "Complete final stage?"}
+            </DialogTitle>
+            <DialogDescription>
+              {pendingTransition?.action === "activate"
+                ? activeStage
+                  ? `This will complete ${activeStage.name} and start ${pendingTransition.stage.name} for candidates who passed.`
+                  : `This will start ${pendingTransition.stage.name} for all eligible candidates in this batch.`
+                : `This will complete the recruitment process and record final results for candidates in ${pendingTransition?.stage.name}.`}
+            </DialogDescription>
+          </DialogHeader>
+          {transitionError && (
+            <p
+              role="alert"
+              className="rounded-xl bg-danger-soft p-3 text-sm text-danger"
+            >
+              {transitionError}
+            </p>
+          )}
+          <DialogFooter>
+            <CancelButton
+              disabled={isTransitioning}
+              onClick={() => setPendingTransition(null)}
+            />
+            <SaveButton
+              disabled={!pendingTransition || isTransitioning}
+              isLoading={isTransitioning}
+              loadingText={
+                pendingTransition?.action === "activate"
+                  ? "Activating..."
+                  : "Completing..."
+              }
+              icon={
+                pendingTransition?.action === "activate" ? (
+                  <CirclePlay className="size-4" aria-hidden />
+                ) : (
+                  <CheckCircle2 className="size-4" aria-hidden />
+                )
+              }
+              onClick={() => void handleConfirmTransition()}
+            >
+              {pendingTransition?.action === "activate"
+                ? "Activate Stage"
+                : "Complete Stage"}
+            </SaveButton>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </TooltipProvider>
   )
 }
