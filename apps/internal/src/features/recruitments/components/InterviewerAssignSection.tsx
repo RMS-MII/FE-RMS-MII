@@ -4,7 +4,11 @@ import { Label } from "@workspace/ui/components/label"
 import { Button } from "@workspace/ui/components/button"
 import { SearchCombobox, type SearchComboboxOption } from "@/shared/components"
 import { mockDepartments, mockEmployees } from "../data/mock"
-import type { StageEmployeeStatus, StageInterviewerAssignment, Employee } from "../types"
+import type {
+  StageEmployeeStatus,
+  StageInterviewerAssignment,
+  Employee,
+} from "../types"
 import { useGetEmployeesQuery } from "../api/employees-api"
 import { useGetDepartmentsQuery } from "../api/departments-api"
 
@@ -21,12 +25,14 @@ export interface InterviewerAssignSectionProps {
 }
 
 const statusBadgeStyles: Record<StageEmployeeStatus, string> = {
+  unknown: "bg-neutral-soft text-neutral",
   pending: "bg-amber-500/10 text-amber-700 dark:text-amber-400",
   accepted: "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400",
   declined: "bg-rose-500/10 text-rose-700 dark:text-rose-400",
 }
 
 const statusBadgeLabels: Record<StageEmployeeStatus, string> = {
+  unknown: "Unknown",
   pending: "Pending",
   accepted: "Accepted",
   declined: "Declined",
@@ -44,12 +50,10 @@ export function InterviewerAssignSection({
   isLoadingEmployees: propIsLoadingEmployees,
 }: InterviewerAssignSectionProps) {
   // Query employees if not passed from parent
-  const {
-    data: apiEmployees,
-    isLoading: isFetchingEmployees,
-  } = useGetEmployeesQuery(undefined, {
-    skip: Boolean(propEmployees),
-  })
+  const { data: apiEmployees, isLoading: isFetchingEmployees } =
+    useGetEmployeesQuery(undefined, {
+      skip: Boolean(propEmployees),
+    })
 
   // Query departments for grouping in combobox
   const { data: apiDepartments } = useGetDepartmentsQuery()
@@ -105,13 +109,14 @@ export function InterviewerAssignSection({
         }
       })
       .filter(Boolean) as (Employee & {
-        status: StageEmployeeStatus
-        departmentName: string
-      })[]
+      status: StageEmployeeStatus
+      departmentName: string
+    })[]
   }, [assignments, finalEmployees, finalDepartments])
 
   const handleAdd = (employeeId: string) => {
-    if (!employeeId || assignments.some((a) => a.employeeId === employeeId)) return
+    if (!employeeId || assignments.some((a) => a.employeeId === employeeId))
+      return
     // Default status: pending (awaiting confirmation)
     const updated: StageInterviewerAssignment[] = [
       ...assignments,
@@ -128,11 +133,16 @@ export function InterviewerAssignSection({
   return (
     <div className={`space-y-2 ${className || ""}`}>
       <div className="flex items-center justify-between px-1">
-        <Label htmlFor={id} className="text-sm font-medium flex items-center gap-1.5">
+        <Label
+          htmlFor={id}
+          className="flex items-center gap-1.5 text-sm font-medium"
+        >
           <Users className="size-3.5 text-muted-foreground" />
           <span>{label}</span>
           {optional && (
-            <span className="text-muted-foreground font-normal text-xs">(Optional)</span>
+            <span className="text-xs font-normal text-muted-foreground">
+              (Optional)
+            </span>
           )}
         </Label>
         <div className="flex items-center gap-2">
@@ -143,7 +153,7 @@ export function InterviewerAssignSection({
             </span>
           )}
           {assignedEmployees.length > 0 && (
-            <span className="text-xs text-muted-foreground tabular-nums font-normal">
+            <span className="text-xs font-normal text-muted-foreground tabular-nums">
               {assignedEmployees.length} assigned
             </span>
           )}
@@ -154,7 +164,9 @@ export function InterviewerAssignSection({
         id={id}
         options={employeeOptions}
         categories={departmentCategories}
-        placeholder={isLoading ? "Loading interviewers..." : "+ Add interviewer..."}
+        placeholder={
+          isLoading ? "Loading interviewers..." : "+ Add interviewer..."
+        }
         searchPlaceholder="Search by name, title, or employee ID..."
         emptyText="No interviewers found in this department."
         selectedIds={selectedIds}
@@ -164,17 +176,17 @@ export function InterviewerAssignSection({
       />
 
       {helperText && (
-        <p className="text-xs text-muted-foreground px-1">{helperText}</p>
+        <p className="px-1 text-xs text-muted-foreground">{helperText}</p>
       )}
 
       {assignedEmployees.length > 0 && (
-        <div className="max-h-52 space-y-1.5 overflow-y-auto pr-1 pt-1">
+        <div className="max-h-52 space-y-1.5 overflow-y-auto pt-1 pr-1">
           {assignedEmployees.map((emp) => (
             <div
               key={emp.id}
               className="flex items-center justify-between gap-3 rounded-xl border border-border bg-card p-2.5 transition-colors hover:bg-muted/30"
             >
-              <div className="flex items-center gap-2.5 min-w-0">
+              <div className="flex min-w-0 items-center gap-2.5">
                 <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-bold text-primary">
                   {emp.fullName.charAt(0)}
                 </span>
@@ -184,7 +196,7 @@ export function InterviewerAssignSection({
                       {emp.fullName}
                     </p>
                     <span
-                      className={`inline-flex items-center rounded-full px-1.5 py-0.2 text-[10px] font-medium ${statusBadgeStyles[emp.status]}`}
+                      className={`py-0.2 inline-flex items-center rounded-full px-1.5 text-[10px] font-medium ${statusBadgeStyles[emp.status]}`}
                     >
                       {statusBadgeLabels[emp.status]}
                     </span>
@@ -201,7 +213,7 @@ export function InterviewerAssignSection({
                 size="icon-xs"
                 onClick={() => handleRemove(emp.id)}
                 title={`Remove ${emp.fullName}`}
-                className="size-7 shrink-0 rounded-full border-0 text-muted-foreground hover:bg-destructive/10 hover:text-destructive cursor-pointer"
+                className="size-7 shrink-0 cursor-pointer rounded-full border-0 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
               >
                 <Trash2 className="size-3.5" />
               </Button>

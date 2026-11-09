@@ -1,4 +1,5 @@
 import { useState, useMemo } from "react"
+import { RefreshCw } from "lucide-react"
 import {
   PageHeader,
   Panel,
@@ -7,6 +8,7 @@ import {
   DataTablePagination,
   type Chip,
 } from "@/shared/components"
+import { Button } from "@workspace/ui/components/button"
 import {
   Select,
   SelectContent,
@@ -15,8 +17,16 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@workspace/ui/components/select"
-import { getStageInvitations } from "../data/stageInvitationsMock"
-import type { StageInvitationItem, StageInvitationStatus } from "../types"
+import {
+  useGetInterviewerInvitationsQuery,
+  useRespondToInterviewerInvitationMutation,
+} from "../api/interviewer-api"
+import { mapInterviewerInvitation } from "../utils/invitationAdapter"
+import type {
+  GetInterviewerInvitationsParams,
+  StageInvitationFilter,
+  StageInvitationItem,
+} from "../types"
 import {
   StageInvitationsTable,
   ConfirmAcceptStageDialog,
@@ -24,180 +34,186 @@ import {
   type StageSortKey,
 } from "../components"
 
-const statusItems: { label: string; value: StageInvitationStatus | "all" }[] = [
+const statusItems: { label: string; value: StageInvitationFilter }[] = [
   { label: "All Status", value: "all" },
-  { label: "Pending Response", value: "pending" },
-  { label: "Accepted (Active)", value: "accepted" },
+  { label: "Pending", value: "pending" },
+  { label: "Accepted", value: "accepted" },
   { label: "Declined", value: "declined" },
 ]
+const apiStatuses: Record<
+  Exclude<StageInvitationFilter, "all">,
+  GetInterviewerInvitationsParams["status"]
+> = {
+  pending: "Pending",
+  accepted: "Accepted",
+  declined: "Declined",
+}
 
 export function StageInvitationsPage() {
-  const [invitations, setInvitations] = useState<StageInvitationItem[]>(() =>
-    getStageInvitations()
-  )
-
-  // Filters state
   const [search, setSearch] = useState("")
-  const [statusFilter, setStatusFilter] = useState<StageInvitationStatus | "all">("all")
-
-  // Sorting and pagination state
+  const [statusFilter, setStatusFilter] = useState<StageInvitationFilter>("all")
   const [sortKey, setSortKey] = useState<StageSortKey>("recruitment")
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc")
   const [page, setPage] = useState(1)
   const pageSize = 5
+  const [action, setAction] = useState<{
+    id: string
+    response: "Accepted" | "Declined"
+  } | null>(null)
+  const [notice, setNotice] = useState<string | null>(null)
 
-  // Action dialog states
-  const [stageToAccept, setStageToAccept] = useState<StageInvitationItem | null>(null)
-  const [stageToDecline, setStageToDecline] = useState<StageInvitationItem | null>(null)
+  const { currentData, isLoading, isFetching, isError, error, refetch } =
+    useGetInterviewerInvitationsQuery(
+      {
+        status: statusFilter === "all" ? undefined : apiStatuses[statusFilter],
+      },
+      { refetchOnMountOrArgChange: true }
+    )
+  const [respondToInvitation, { isLoading: isResponding }] =
+    useRespondToInterviewerInvitationMutation()
+  const invitations = useMemo(
+    () => (currentData ?? []).map(mapInterviewerInvitation),
+    [currentData]
+  )
+  const selectedInvitation =
+    invitations.find((item) => item.id === action?.id) ?? null
 
-  // Filtered invitations list
   const filteredInvitations = useMemo(() => {
-    let result = [...invitations]
-
-    if (search.trim()) {
-      const q = search.toLowerCase()
-      result = result.filter(
-        (i) =>
-          i.recruitmentName.toLowerCase().includes(q) ||
-          i.recruitmentBatchCode.toLowerCase().includes(q) ||
-          i.stageName.toLowerCase().includes(q) ||
-          i.department.toLowerCase().includes(q)
-      )
-    }
-
-    if (statusFilter !== "all") {
-      result = result.filter((i) => i.status === statusFilter)
-    }
-
+    const query = search.trim().toLowerCase()
+    const result = invitations.filter(
+      (item) =>
+        !query ||
+        item.recruitmentName.toLowerCase().includes(query) ||
+        item.recruitmentBatchCode.toLowerCase().includes(query) ||
+        item.stageName.toLowerCase().includes(query) ||
+        item.stageTypeName.toLowerCase().includes(query)
+    )
     return result.sort((a, b) => {
-      let comparison = 0
-      if (sortKey === "recruitment") {
-        comparison = a.recruitmentName.localeCompare(b.recruitmentName)
-      } else if (sortKey === "stage") {
-        comparison = a.stageName.localeCompare(b.stageName)
-      } else if (sortKey === "period") {
-        comparison = new Date(a.startDate).getTime() - new Date(b.startDate).getTime()
-      } else if (sortKey === "candidates") {
-        comparison = a.estimatedCandidates - b.estimatedCandidates
-      } else if (sortKey === "status") {
-        comparison = a.status.localeCompare(b.status)
+      let comparison: number
+      switch (sortKey) {
+        case "recruitment":
+          comparison = a.recruitmentName.localeCompare(b.recruitmentName)
+          break
+        case "stage":
+          comparison = a.stageName.localeCompare(b.stageName)
+          break
+        case "period":
+          comparison =
+            new Date(a.startDate).getTime() - new Date(b.startDate).getTime()
+          break
+        case "status":
+          comparison = a.status.localeCompare(b.status)
+          break
       }
       return sortDirection === "asc" ? comparison : -comparison
     })
-  }, [invitations, search, statusFilter, sortKey, sortDirection])
-
-  // Pagination slice
+  }, [invitations, search, sortKey, sortDirection])
   const totalItems = filteredInvitations.length
-  const totalPages = Math.ceil(totalItems / pageSize) || 1
-  const safePage = Math.min(page, totalPages)
-
-  const paginatedInvitations = useMemo(() => {
-    const start = (safePage - 1) * pageSize
-    return filteredInvitations.slice(start, start + pageSize)
-  }, [filteredInvitations, safePage, pageSize])
+  const safePage = Math.min(page, Math.max(1, Math.ceil(totalItems / pageSize)))
+  const start = (safePage - 1) * pageSize
+  const paginatedInvitations = filteredInvitations.slice(
+    start,
+    start + pageSize
+  )
 
   const handleSort = (key: string) => {
-    const k = key as StageSortKey
-    if (sortKey === k) {
-      setSortDirection((prev) => (prev === "asc" ? "desc" : "asc"))
-    } else {
-      setSortKey(k)
-      setSortDirection("asc")
-    }
+    if (!["recruitment", "stage", "period", "status"].includes(key)) return
+    const nextKey = key as StageSortKey
+    setSortDirection(
+      sortKey === nextKey && sortDirection === "asc" ? "desc" : "asc"
+    )
+    setSortKey(nextKey)
+    setPage(1)
   }
-
-  // Active filter chips
-  const activeChips: Chip[] = useMemo(() => {
-    const chips: Chip[] = []
-    if (search.trim()) {
-      chips.push({
-        key: "search",
-        label: `Search: "${search}"`,
-        onRemove: () => setSearch(""),
-      })
-    }
-    if (statusFilter !== "all") {
-      const match = statusItems.find((s) => s.value === statusFilter)
-      chips.push({
-        key: "status",
-        label: `Status: ${match?.label || statusFilter}`,
-        onRemove: () => setStatusFilter("all"),
-      })
-    }
-    return chips
-  }, [search, statusFilter])
-
+  const activeChips: Chip[] = []
+  if (search.trim())
+    activeChips.push({
+      key: "search",
+      label: 'Search: "' + search + '"',
+      onRemove: () => {
+        setSearch("")
+        setPage(1)
+      },
+    })
+  if (statusFilter !== "all")
+    activeChips.push({
+      key: "status",
+      label:
+        "Status: " +
+        statusItems.find((item) => item.value === statusFilter)?.label,
+      onRemove: () => {
+        setStatusFilter("all")
+        setPage(1)
+      },
+    })
   const handleResetFilters = () => {
     setSearch("")
     setStatusFilter("all")
     setPage(1)
   }
 
-  const handleConfirmAccept = () => {
-    if (!stageToAccept) return
-    const id = stageToAccept.id
-    setInvitations((prev) =>
-      prev.map((item) => {
-        if (item.id !== id) return item
-        return {
-          ...item,
-          status: "accepted",
-          declineReason: null,
-          respondedAt: new Date().toISOString(),
-        }
-      })
-    )
-    setStageToAccept(null)
+  const openResponse = (
+    item: StageInvitationItem,
+    response: "Accepted" | "Declined"
+  ) => {
+    setNotice(null)
+    setAction({ id: item.id, response })
   }
-
-  const handleConfirmDecline = (reason: string) => {
-    if (!stageToDecline) return
-    const id = stageToDecline.id
-    setInvitations((prev) =>
-      prev.map((item) => {
-        if (item.id !== id) return item
-        return {
-          ...item,
-          status: "declined",
-          declineReason: reason,
-          respondedAt: new Date().toISOString(),
-        }
-      })
+  const handleResponse = async (note: string | null) => {
+    if (
+      !action ||
+      !selectedInvitation ||
+      selectedInvitation.status !== "pending"
+    ) {
+      throw new Error(
+        "Refresh the invitation list before responding to this assignment."
+      )
+    }
+    if (isResponding) return
+    await respondToInvitation({
+      invitationId: action.id,
+      body: { response: action.response, note },
+    }).unwrap()
+    setNotice(
+      action.response === "Accepted"
+        ? "Stage invitation accepted."
+        : "Stage invitation declined."
     )
-    setStageToDecline(null)
+    setAction(null)
   }
 
   return (
     <div className="space-y-6">
       <PageHeader
         title="Stage Interviewer Invitations"
-        description="Review and respond to recruitment stage assignments from HR. Accepting a stage mandate confirms your role before candidate interviews are scheduled."
+        description="Review and respond to your recruitment stage assignments."
       />
-
       <Panel>
-        {/* Top Search & Filter Bar */}
         <div className="flex flex-col gap-3 border-b border-border px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex flex-1 flex-wrap items-center gap-2.5">
             <SearchInput
               value={search}
-              onChange={(val) => {
-                setSearch(val)
+              onChange={(value) => {
+                setSearch(value)
                 setPage(1)
               }}
-              placeholder="Search batch, stage name, or department..."
+              placeholder="Search batch or stage..."
               containerClassName="sm:w-80"
             />
-
-            {/* Status Filter */}
             <Select
               items={statusItems}
               value={statusFilter}
-              onValueChange={(val) => {
-                setStatusFilter((val as StageInvitationStatus | "all") ?? "all")
-                setPage(1)
+              onValueChange={(value) => {
+                const next = statusItems.find(
+                  (item) => item.value === value
+                )?.value
+                if (next) {
+                  setStatusFilter(next)
+                  setPage(1)
+                }
               }}
             >
-              <SelectTrigger className="h-10 w-48 rounded-full border-0 bg-muted px-4 text-sm text-foreground transition-all duration-150 hover:bg-muted/40 focus-visible:ring-2 focus-visible:ring-primary shadow-none">
+              <SelectTrigger className="h-10 w-48 rounded-full border-0 bg-muted px-4 text-sm text-foreground shadow-none focus-visible:ring-2 focus-visible:ring-primary">
                 <SelectValue placeholder="All Status" />
               </SelectTrigger>
               <SelectContent className="rounded-xl">
@@ -211,12 +227,24 @@ export function StageInvitationsPage() {
               </SelectContent>
             </Select>
           </div>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            disabled={isFetching || isResponding}
+            onClick={() => void refetch()}
+            className="h-9 gap-2 rounded-full bg-card px-4"
+          >
+            <RefreshCw className="size-4" aria-hidden />
+            Refresh
+          </Button>
         </div>
-
-        {/* Removable Active Filter Chips */}
         <FilterChips chips={activeChips} onReset={handleResetFilters} />
-
-        {/* Stage Invitations Table */}
+        {notice && (
+          <p role="status" className="px-5 py-3 text-sm text-success">
+            {notice}
+          </p>
+        )}
         <StageInvitationsTable
           invitations={paginatedInvitations}
           sortKey={sortKey}
@@ -224,12 +252,14 @@ export function StageInvitationsPage() {
           onSort={handleSort}
           hasActiveFilters={activeChips.length > 0}
           onResetFilters={handleResetFilters}
-          onAccept={(item) => setStageToAccept(item)}
-          onDecline={(item) => setStageToDecline(item)}
+          isLoading={isLoading || isFetching}
+          isError={isError}
+          error={error}
+          onRetry={() => void refetch()}
+          onAccept={(item) => openResponse(item, "Accepted")}
+          onDecline={(item) => openResponse(item, "Declined")}
         />
-
-        {/* Pagination directly at bottom of Panel */}
-        {totalItems > 0 && (
+        {!isFetching && !isError && totalItems > 0 && (
           <DataTablePagination
             page={safePage}
             pageSize={pageSize}
@@ -239,25 +269,28 @@ export function StageInvitationsPage() {
         )}
       </Panel>
 
-      {/* Confirm Accept Dialog Component */}
-      <ConfirmAcceptStageDialog
-        open={Boolean(stageToAccept)}
-        onOpenChange={(open) => {
-          if (!open) setStageToAccept(null)
-        }}
-        item={stageToAccept}
-        onConfirm={handleConfirmAccept}
-      />
-
-      {/* Confirm Decline Dialog Component */}
-      <ConfirmDeclineStageDialog
-        open={Boolean(stageToDecline)}
-        onOpenChange={(open) => {
-          if (!open) setStageToDecline(null)
-        }}
-        item={stageToDecline}
-        onConfirm={handleConfirmDecline}
-      />
+      {action?.response === "Accepted" && selectedInvitation && (
+        <ConfirmAcceptStageDialog
+          key={action.id}
+          open
+          onOpenChange={(open) => {
+            if (!open && !isResponding) setAction(null)
+          }}
+          item={selectedInvitation}
+          onConfirm={() => handleResponse(null)}
+        />
+      )}
+      {action?.response === "Declined" && selectedInvitation && (
+        <ConfirmDeclineStageDialog
+          key={action.id}
+          open
+          onOpenChange={(open) => {
+            if (!open && !isResponding) setAction(null)
+          }}
+          item={selectedInvitation}
+          onConfirm={(note) => handleResponse(note)}
+        />
+      )}
     </div>
   )
 }

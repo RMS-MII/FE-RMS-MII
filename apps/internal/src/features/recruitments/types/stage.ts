@@ -1,15 +1,12 @@
 import type { Employee } from "./employee"
+import type { StageEmployeeStatusValue } from "./api-status"
 
 // =====================================================================
 // Matches BatchStage, StageType, StageEmployee tables in Document/ERD.sql
 // =====================================================================
 
 export type LegacyStageType =
-  | "screening"
-  | "interview"
-  | "test"
-  | "offering"
-  | "other"
+  "screening" | "interview" | "test" | "offering" | "other"
 
 export type StageType = LegacyStageType
 
@@ -52,16 +49,30 @@ export interface BatchStage {
   updatedAt?: string | null
   // UI Relations
   stageType?: StageTypeEntity | StageTypeDto
-  interviewers?: {
-    stageEmployeeId: string
-    employeeId: string
-    fullName: string
-    email: string
-    jobTitle: string
-    departmentName: string
-    status: number | string
-    statusName?: string
-  }[]
+  interviewers?: AssignedInterviewer[]
+}
+
+export interface AssignedInterviewer {
+  stageEmployeeId: string
+  employeeId: string
+  fullName: string
+  email: string
+  jobTitle: string
+  departmentName: string
+  status: StageEmployeeStatusValue
+  statusName?: string
+}
+
+export interface BatchStageWithInterviewers extends BatchStage {
+  interviewers: AssignedInterviewer[]
+}
+
+export interface AssignInterviewersResponse {
+  batchId: string
+  batchName: string
+  stageId: string
+  stageName: string
+  interviewers: AssignedInterviewer[]
 }
 
 /**
@@ -103,9 +114,11 @@ export interface StageEmployee {
   updatedAt?: string | null
 }
 
-export type StageEmployeeStatus = "pending" | "accepted" | "declined"
+export type StageEmployeeStatus =
+  "pending" | "accepted" | "declined" | "unknown"
 
 export interface StageInterviewerAssignment {
+  stageEmployeeId?: string
   employeeId: string
   status: StageEmployeeStatus
   note?: string

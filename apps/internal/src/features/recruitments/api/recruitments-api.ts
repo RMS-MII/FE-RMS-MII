@@ -4,14 +4,20 @@ import type {
   PagedResult,
   GetBatchesParams,
   CreateBatchRequest,
+  UpdateBatchStatusRequest,
   BatchStage,
+  BatchStageWithInterviewers,
   UpdateBatchStagesRequest,
   AssignInterviewersRequest,
+  AssignInterviewersResponse,
 } from "../types"
 
 export const recruitmentsApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
-    getBatches: builder.query<PagedResult<Recruitment>, GetBatchesParams | void>({
+    getBatches: builder.query<
+      PagedResult<Recruitment>,
+      GetBatchesParams | void
+    >({
       query: (params) => ({
         url: "/batches",
         method: "GET",
@@ -28,7 +34,10 @@ export const recruitmentsApi = baseApi.injectEndpoints({
       providesTags: (result) =>
         result
           ? [
-              ...result.items.map(({ id }) => ({ type: "Recruitment" as const, id })),
+              ...result.items.map(({ id }) => ({
+                type: "Recruitment" as const,
+                id,
+              })),
               { type: "Recruitment", id: "LIST" },
             ]
           : [{ type: "Recruitment", id: "LIST" }],
@@ -37,13 +46,36 @@ export const recruitmentsApi = baseApi.injectEndpoints({
       query: (id) => `/batches/${id}`,
       providesTags: (_result, _err, id) => [{ type: "Recruitment", id }],
     }),
+    getBatchStages: builder.query<BatchStageWithInterviewers[], string>({
+      query: (id) => `/batches/${id}/stages`,
+      providesTags: (_result, _err, id) => [{ type: "Stage", id }],
+    }),
     createBatch: builder.mutation<Recruitment, CreateBatchRequest>({
       query: (body) => ({
         url: "/batches",
         method: "POST",
         body,
       }),
-      invalidatesTags: [{ type: "Recruitment", id: "LIST" }],
+      invalidatesTags: (result) =>
+        result ? [{ type: "Recruitment", id: "LIST" }] : [],
+    }),
+    updateBatchStatus: builder.mutation<
+      Recruitment,
+      { id: string; body: UpdateBatchStatusRequest }
+    >({
+      query: ({ id, body }) => ({
+        url: `/batches/${id}/status`,
+        method: "PATCH",
+        body,
+      }),
+      invalidatesTags: (result, _err, { id }) =>
+        result
+          ? [
+              { type: "Recruitment", id },
+              { type: "Recruitment", id: "LIST" },
+              { type: "Candidate", id: `APPLICATION_BATCH_${id}` },
+            ]
+          : [],
     }),
     updateBatchStages: builder.mutation<
       BatchStage[],
@@ -54,13 +86,22 @@ export const recruitmentsApi = baseApi.injectEndpoints({
         method: "PUT",
         body,
       }),
-      invalidatesTags: (_result, _err, { id }) => [
-        { type: "Recruitment", id },
-        { type: "Recruitment", id: "LIST" },
-      ],
+      invalidatesTags: (result, _err, { id }) =>
+        result
+          ? [
+              { type: "Stage", id },
+              { type: "Recruitment", id },
+              { type: "Recruitment", id: "LIST" },
+              { type: "Candidate", id: `APPLICATION_BATCH_${id}` },
+              { type: "Interview", id: `BATCH_${id}` },
+              { type: "Interview", id: "INVITATIONS" },
+              { type: "Interview", id: "INTERVIEWER_DASHBOARD" },
+              { type: "Interview", id: "AVAILABLE_INTERVIEWERS" },
+            ]
+          : [],
     }),
     assignStageInterviewers: builder.mutation<
-      any,
+      AssignInterviewersResponse,
       { batchId: string; stageId: string; body: AssignInterviewersRequest }
     >({
       query: ({ batchId, stageId, body }) => ({
@@ -68,9 +109,18 @@ export const recruitmentsApi = baseApi.injectEndpoints({
         method: "POST",
         body,
       }),
-      invalidatesTags: (_result, _err, { batchId }) => [
-        { type: "Recruitment", id: batchId },
-      ],
+      invalidatesTags: (result, _err, { batchId }) =>
+        result
+          ? [
+              { type: "Stage", id: batchId },
+              { type: "Recruitment", id: batchId },
+              { type: "Candidate", id: `APPLICATION_BATCH_${batchId}` },
+              { type: "Interview", id: `BATCH_${batchId}` },
+              { type: "Interview", id: "INVITATIONS" },
+              { type: "Interview", id: "INTERVIEWER_DASHBOARD" },
+              { type: "Interview", id: "AVAILABLE_INTERVIEWERS" },
+            ]
+          : [],
     }),
   }),
 })
@@ -78,9 +128,11 @@ export const recruitmentsApi = baseApi.injectEndpoints({
 export const {
   useGetBatchesQuery,
   useGetBatchByIdQuery,
+  useGetBatchStagesQuery,
   useLazyGetBatchesQuery,
   useLazyGetBatchByIdQuery,
   useCreateBatchMutation,
+  useUpdateBatchStatusMutation,
   useUpdateBatchStagesMutation,
   useAssignStageInterviewersMutation,
 } = recruitmentsApi

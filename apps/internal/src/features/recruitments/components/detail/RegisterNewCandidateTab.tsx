@@ -16,7 +16,7 @@ import {
   type UseRegisterNewCandidateProps,
 } from "../../hooks/useRegisterNewCandidate"
 
-export interface RegisterNewCandidateTabProps extends UseRegisterNewCandidateProps {}
+export type RegisterNewCandidateTabProps = UseRegisterNewCandidateProps
 
 export function RegisterNewCandidateTab({
   recruitment,
@@ -52,7 +52,7 @@ export function RegisterNewCandidateTab({
     errors,
     setErrors,
     submitError,
-    hasStages,
+    canAddCandidates,
     isSubmitting,
     handleSubmit,
   } = useRegisterNewCandidate({
@@ -300,7 +300,7 @@ export function RegisterNewCandidateTab({
         <SaveButton
           type="button"
           onClick={handleSubmit}
-          disabled={!hasStages}
+          disabled={!canAddCandidates}
           isLoading={isSubmitting}
           loadingText="Saving..."
         >

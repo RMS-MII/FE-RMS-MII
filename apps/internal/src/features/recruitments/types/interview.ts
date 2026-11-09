@@ -1,5 +1,11 @@
+import type {
+  InterviewSessionStatusValue,
+  RescheduleStatusValue,
+  SessionInterviewStatusValue,
+} from "./api-status"
+
 // =====================================================================
-// Matches InterviewSession, SessionInterview, InterviewAssessment, 
+// Matches InterviewSession, SessionInterview, InterviewAssessment,
 // and RescheduleRequest tables in Document/ERD.sql
 // =====================================================================
 
@@ -9,6 +15,10 @@ export type InterviewSessionStatus =
   | "completed"
   | "cancelled"
   | "rescheduled"
+  | "pending_confirmation"
+  | "accepted_by_interviewer"
+  | "accepted_by_candidate"
+  | "unknown"
 
 export type InterviewMode = "online" | "onsite"
 
@@ -47,7 +57,8 @@ export interface InterviewAssessment {
   id: string
   sessionInterviewId: string
   notes?: string | null
-  recommendation?: "Strong Hire" | "Recommend" | "Neutral" | "Do Not Recommend" | string | null
+  recommendation?:
+    "Strong Hire" | "Recommend" | "Neutral" | "Do Not Recommend" | string | null
   score?: number | null
   createdAt?: string
   updatedAt?: string | null
@@ -79,17 +90,28 @@ export interface ScheduledInterviewerDto {
   email: string
   jobTitle: string
   departmentName: string
-  status: number | string
+  status: SessionInterviewStatusValue
+  statusName?: string
+}
+
+export interface AvailableInterviewerDto {
+  stageEmployeeId: string
+  employeeId: string
+  fullName: string
+  email: string
+  jobTitle: string
+  departmentName: string
+  status: string | number
   statusName?: string
 }
 
 export interface BatchInterviewSessionDto {
   id: string
   applicationStageId: string
-  batchStageId?: string
-  recruitmentBatchId?: string
-  candidateId?: string
-  codeApplication?: string
+  batchStageId: string
+  recruitmentBatchId: string
+  candidateId: string
+  codeApplication: string
   candidateName: string
   candidateEmail: string
   batchName: string
@@ -100,7 +122,7 @@ export interface BatchInterviewSessionDto {
   isOnline: boolean
   location?: string | null
   meetingUrl?: string | null
-  status: number | string
+  status: InterviewSessionStatusValue
   statusName?: string
   interviewers: ScheduledInterviewerDto[]
   hasPendingReschedule: boolean
@@ -133,7 +155,7 @@ export interface RescheduleRequestDto {
   proposedStart: string
   proposedEnd: string
   reason: string
-  status: number | string
+  status: RescheduleStatusValue
   statusName?: string
   reviewedBy?: string | null
   reviewedAt?: string | null
@@ -142,7 +164,7 @@ export interface RescheduleRequestDto {
 }
 
 export interface ReviewRescheduleRequest {
-  decision: number // 1 = Approve, 2 = Reject
+  decision: "Approved" | "Rejected"
   reviewNotes?: string | null
 }
 
@@ -157,11 +179,21 @@ export interface InterviewerAssignmentItem {
   employeeName: string
   employeeEmail: string
   role?: string
-  status: "assigned" | "accepted" | "declined" | "completed" | "pending"
+  status:
+    | "assigned"
+    | "accepted"
+    | "declined"
+    | "completed"
+    | "pending"
+    | "in_progress"
+    | "cancelled"
+    | "unknown"
+  apiStatus?: SessionInterviewStatusValue
   assessment?: {
     id: string
     score: number
-    recommendation: "Strong Hire" | "Recommend" | "Neutral" | "Do Not Recommend" | string
+    recommendation:
+      "Strong Hire" | "Recommend" | "Neutral" | "Do Not Recommend" | string
     notes?: string
     assessedAt?: string
   } | null
@@ -188,9 +220,11 @@ export interface RescheduleRequestItem {
  */
 export interface InterviewSessionItem {
   id: string // InterviewSession.Id
-  applicationStageId: string
+  applicationStageId: string | null
   recruitmentBatchId: string
   stageId: string
+  batchStageId?: string
+  apiStatus?: InterviewSessionStatusValue
   stageName: string
   sessionName: string
   scheduledStart: string

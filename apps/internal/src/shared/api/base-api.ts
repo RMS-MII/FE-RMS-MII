@@ -1,7 +1,4 @@
-import {
-  createApi,
-  fetchBaseQuery,
-} from "@reduxjs/toolkit/query/react"
+import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react"
 import type {
   BaseQueryFn,
   FetchArgs,
@@ -36,7 +33,17 @@ const baseQueryWithReauth: BaseQueryFn<
   unknown,
   FetchBaseQueryError
 > = async (args, api, extraOptions) => {
+  const requestToken = (api.getState() as AuthSliceState).auth?.accessToken
   const result = await rawBaseQuery(args, api, extraOptions)
+  // A late response from an earlier login must not affect the current session.
+  if (requestToken !== (api.getState() as AuthSliceState).auth?.accessToken) {
+    return {
+      error: {
+        status: "CUSTOM_ERROR",
+        error: "The active session has changed.",
+      },
+    }
+  }
 
   // Tangani 401 Unauthorized
   if (result.error && result.error.status === 401) {

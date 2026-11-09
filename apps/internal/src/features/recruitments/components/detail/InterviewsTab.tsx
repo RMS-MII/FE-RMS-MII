@@ -1,5 +1,6 @@
 import type { Recruitment, InterviewSessionItem } from "../../types"
-import { Panel, SearchInput } from "@/shared/components"
+import { Panel, SearchInput, ErrorState } from "@/shared/components"
+import { getApiError } from "@/shared/api/api-error"
 import { InterviewMiniCalendar } from "./InterviewMiniCalendar"
 import { InterviewSessionTable } from "./InterviewSessionTable"
 import { ScheduleInterviewDialog } from "./ScheduleInterviewDialog"
@@ -30,9 +31,15 @@ export function InterviewsTab({
   onReviewReschedule,
 }: InterviewsTabProps) {
   const {
+    canScheduleInterview,
+    scheduleRestriction,
     sessions,
     filteredSessions,
     pendingReschedules,
+    isLoading,
+    isError,
+    apiError,
+    refetch,
 
     // Filter states & options
     search,
@@ -52,8 +59,6 @@ export function InterviewsTab({
     // Dialog states
     isScheduleOpen,
     setIsScheduleOpen,
-    sessionToReschedule,
-    setSessionToReschedule,
     rescheduleSessionToReview,
     isReviewRescheduleOpen,
     setIsReviewRescheduleOpen,
@@ -63,8 +68,8 @@ export function InterviewsTab({
     handleTogglePendingReschedule,
     handleClearDateFilter,
     handleOpenScheduleNew,
-    handleOpenAdjustSchedule,
     handleSaveSession,
+    isSchedulingInterview,
     handleOpenReviewReschedule,
     handleApproveReschedule,
     handleRejectReschedule,
@@ -75,19 +80,24 @@ export function InterviewsTab({
   })
 
   return (
-    <Panel className="p-4 sm:p-6 space-y-6 bg-card border-border">
+    <Panel className="space-y-0">
       {/* Top Pending Reschedule Banner Alert (if any) */}
       {pendingReschedules.length > 0 && !isFilterPendingReschedule && (
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 rounded-2xl bg-amber-50 px-4 py-3 text-xs text-amber-950">
+        <div className="flex flex-col items-start justify-between gap-3 border-b border-border bg-amber-50 px-5 py-3 text-xs text-amber-950 sm:flex-row sm:items-center">
           <div className="flex items-center gap-2.5">
-            <AlertTriangle className="size-4 text-amber-600 dark:text-amber-400 shrink-0" />
+            <AlertTriangle className="size-4 shrink-0 text-amber-600 dark:text-amber-400" />
             <div>
               <span className="font-semibold">
-                {pendingReschedules.length} candidate requested a schedule change:
+                {pendingReschedules.length} candidate requested a schedule
+                change:
               </span>{" "}
               <span className="text-amber-800 dark:text-amber-300">
                 {pendingReschedules[0]?.candidateName} requested reschedule to{" "}
-                {pendingReschedules[0]?.rescheduleRequest?.proposedStart.slice(0, 10)}.
+                {pendingReschedules[0]?.rescheduleRequest?.proposedStart.slice(
+                  0,
+                  10
+                )}
+                .
               </span>
             </div>
           </div>
@@ -95,7 +105,7 @@ export function InterviewsTab({
             <button
               type="button"
               onClick={handleTogglePendingReschedule}
-              className="shrink-0 rounded-full border-none bg-amber-200/40 text-amber-900 border border-amber-300 px-3 py-1.5 text-xs font-semibold hover:bg-amber-200 transition-colors cursor-pointer"
+              className="shrink-0 cursor-pointer rounded-full border border-none border-amber-300 bg-amber-200/40 px-3 py-1.5 text-xs font-semibold text-amber-900 transition-colors hover:bg-amber-200"
             >
               Filter in Table
             </button>
@@ -106,7 +116,7 @@ export function InterviewsTab({
                   handleOpenReviewReschedule(pendingReschedules[0])
                 }
               }}
-              className="shrink-0 rounded-full bg-amber-600 px-3.5 py-1.5 text-xs font-semibold text-white hover:bg-amber-700 transition-colors cursor-pointer shadow-xs"
+              className="shrink-0 cursor-pointer rounded-full bg-amber-600 px-3.5 py-1.5 text-xs font-semibold text-white shadow-xs transition-colors hover:bg-amber-700"
             >
               Review Request
             </button>
@@ -115,7 +125,7 @@ export function InterviewsTab({
       )}
 
       {/* Top Filter & Action Toolbar */}
-      <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+      <div className="flex flex-col gap-3 border-b border-border px-5 py-4 lg:flex-row lg:items-center lg:justify-between">
         <div className="flex flex-1 flex-wrap items-center gap-2.5">
           {/* Search Input */}
           <SearchInput
@@ -131,7 +141,7 @@ export function InterviewsTab({
             value={stageFilter}
             onValueChange={(val) => setStageFilter(val ?? "all")}
           >
-            <SelectTrigger className="h-10 w-44 rounded-full border-0 bg-muted px-4 text-xs font-medium text-foreground hover:bg-muted/70 shadow-none">
+            <SelectTrigger className="h-10 w-44 rounded-full border-0 bg-muted px-4 text-xs font-medium text-foreground shadow-none hover:bg-muted/70">
               <SelectValue placeholder="All Stages" />
             </SelectTrigger>
             <SelectContent className="rounded-xl">
@@ -151,7 +161,7 @@ export function InterviewsTab({
             value={statusFilter}
             onValueChange={(val) => setStatusFilter(val ?? "all")}
           >
-            <SelectTrigger className="h-10 w-36 rounded-full border-0 bg-muted px-4 text-xs font-medium text-foreground hover:bg-muted/70 shadow-none">
+            <SelectTrigger className="h-10 w-36 rounded-full border-0 bg-muted px-4 text-xs font-medium text-foreground shadow-none hover:bg-muted/70">
               <SelectValue placeholder="All Status" />
             </SelectTrigger>
             <SelectContent className="rounded-xl">
@@ -171,7 +181,7 @@ export function InterviewsTab({
             value={modeFilter}
             onValueChange={(val) => setModeFilter(val ?? "all")}
           >
-            <SelectTrigger className="h-10 w-36 rounded-full border-0 bg-muted px-4 text-xs font-medium text-foreground hover:bg-muted/70 shadow-none">
+            <SelectTrigger className="h-10 w-36 rounded-full border-0 bg-muted px-4 text-xs font-medium text-foreground shadow-none hover:bg-muted/70">
               <SelectValue placeholder="All Modes" />
             </SelectTrigger>
             <SelectContent className="rounded-xl">
@@ -187,11 +197,13 @@ export function InterviewsTab({
         </div>
 
         {/* Schedule Interview Button */}
-        <div className="flex items-center gap-2 self-start lg:self-center shrink-0">
+        <div className="flex shrink-0 items-center gap-2 self-start lg:self-center">
           <Button
             type="button"
             onClick={handleOpenScheduleNew}
-            className="h-10 gap-2 rounded-full border-0 bg-primary px-4 text-xs font-semibold text-primary-foreground shadow-none hover:bg-primary/90 cursor-pointer shrink-0"
+            disabled={!canScheduleInterview}
+            title={scheduleRestriction ?? "Schedule Interview"}
+            className="h-10 shrink-0 cursor-pointer gap-2 rounded-full border-0 bg-primary px-4 text-xs font-semibold text-primary-foreground shadow-none hover:bg-primary/90 disabled:bg-muted disabled:text-muted-foreground"
           >
             <CalendarPlus className="size-4" />
             <span>Schedule Interview</span>
@@ -199,49 +211,82 @@ export function InterviewsTab({
         </div>
       </div>
 
-      {/* 2-Column Split Layout: Mini Calendar (Left) + Table (Right) */}
-      <div className="flex flex-col md:flex-row gap-6 pt-2">
-        {/* Left Column: Mini Calendar (fixed sidebar) */}
-        <div className="w-full md:w-72 lg:w-80 shrink-0">
-          <InterviewMiniCalendar
-            sessions={filteredSessions}
-            selectedDate={selectedDate}
-            onSelectDate={handleSelectDate}
-            currentDate="2026-03-10"
-            isFilterPendingReschedule={isFilterPendingReschedule}
-            onTogglePendingReschedule={handleTogglePendingReschedule}
-          />
+      {scheduleRestriction && (
+        <div className="flex items-center gap-2.5 border-b border-border bg-amber-500/10 px-5 py-3 text-xs text-amber-700 dark:text-amber-400">
+          <AlertTriangle className="size-4 shrink-0" aria-hidden />
+          <p>{scheduleRestriction}</p>
         </div>
+      )}
 
-        {/* Right Column: Interview Sessions Table with Pagination */}
-        <div className="flex-1 min-w-0">
-          <InterviewSessionTable
-            sessions={filteredSessions}
-            selectedDate={selectedDate}
-            onClearDateFilter={handleClearDateFilter}
-            onViewDetail={onViewSessionDetail}
-            onReviewReschedule={handleOpenReviewReschedule}
-            onAdjustSchedule={handleOpenAdjustSchedule}
-            isFilterPendingReschedule={isFilterPendingReschedule}
-          />
+      {/* 2-Column Split Layout: Mini Calendar (Left) + Table (Right) */}
+      {isLoading ? (
+        <div role="status" className="p-6 text-sm text-muted-foreground">
+          Loading interview sessions...
         </div>
-      </div>
+      ) : isError ? (
+        <ErrorState
+          title={
+            getApiError(apiError).kind === "forbidden"
+              ? "Access denied"
+              : "Failed to load interviews"
+          }
+          description={
+            getApiError(
+              apiError,
+              "Unable to load interview sessions. Please try again."
+            ).message
+          }
+          onRetry={
+            getApiError(apiError).kind === "forbidden"
+              ? undefined
+              : () => refetch()
+          }
+        />
+      ) : (
+        <div className="flex flex-col gap-6 p-5 md:flex-row">
+          {/* Left Column: Mini Calendar (fixed sidebar) */}
+          <div className="w-full shrink-0 md:w-72 lg:w-80">
+            <InterviewMiniCalendar
+              sessions={filteredSessions}
+              selectedDate={selectedDate}
+              onSelectDate={handleSelectDate}
+              isFilterPendingReschedule={isFilterPendingReschedule}
+              onTogglePendingReschedule={handleTogglePendingReschedule}
+            />
+          </div>
+
+          {/* Right Column: Interview Sessions Table with Pagination */}
+          <div className="min-w-0 flex-1">
+            <InterviewSessionTable
+              sessions={filteredSessions}
+              selectedDate={selectedDate}
+              onClearDateFilter={handleClearDateFilter}
+              onViewDetail={onViewSessionDetail}
+              onReviewReschedule={handleOpenReviewReschedule}
+              isFilterPendingReschedule={isFilterPendingReschedule}
+            />
+          </div>
+        </div>
+      )}
 
       {/* Schedule Interview Dialog */}
       <ScheduleInterviewDialog
-        open={isScheduleOpen}
+        open={
+          isScheduleOpen &&
+          canScheduleInterview
+        }
         onOpenChange={(open) => {
           setIsScheduleOpen(open)
-          if (!open) setSessionToReschedule(null)
         }}
         recruitment={recruitment}
         existingSessions={sessions}
-        sessionToReschedule={sessionToReschedule}
         onSchedule={handleSaveSession}
+        isScheduling={isSchedulingInterview}
       />
 
       {/* Review Reschedule Dialog */}
       <ReviewRescheduleDialog
+        key={rescheduleSessionToReview?.rescheduleRequest?.id ?? "no-request"}
         open={isReviewRescheduleOpen}
         onOpenChange={setIsReviewRescheduleOpen}
         session={rescheduleSessionToReview}

@@ -1,51 +1,26 @@
-import { useState, useMemo, useEffect, useCallback } from "react"
+import { useState, useMemo, useCallback } from "react"
 import type {
   Recruitment,
   InterviewSessionItem,
-  InterviewSessionStatus,
   BatchInterviewSessionDto,
 } from "../types"
-import { mockInterviewSessions, getRecruitmentInterviewSessions } from "../data/interviewMock"
+import {
+  mapInterviewSessionStatus,
+  mapSessionInterviewStatus,
+} from "../utils/statusAdapters"
 import {
   useGetBatchInterviewSessionsQuery,
+  useScheduleInterviewSessionMutation,
   useReviewRescheduleRequestMutation,
 } from "../api/interviews-api"
+import type { ScheduleInterviewSessionRequest } from "../types"
+import { getRecruitmentAddRestriction } from "../utils/recruitmentUtils"
+import { getRecruitmentInterviewStages } from "../utils/stageUtils"
 
-export function mapBackendStatusToSessionStatus(
-  status: number | string | undefined | null
-): InterviewSessionStatus {
-  if (status === null || status === undefined) return "scheduled"
-  const s = String(status).toLowerCase()
-  if (
-    s === "1" ||
-    s === "scheduled" ||
-    s === "pendingconfirmation" ||
-    s === "2" ||
-    s === "acceptedbyinterviewer" ||
-    s === "4" ||
-    s === "acceptedbycandidate" ||
-    s === "5"
-  ) {
-    return "scheduled"
-  }
-  if (s === "3" || s === "rescheduled") return "rescheduled"
-  if (s === "completed") return "completed"
-  if (s === "cancelled") return "cancelled"
-  if (s === "in_progress" || s === "inprogress") return "in_progress"
-  return "scheduled"
-}
-
-export function mapInterviewerStatus(
-  status: number | string | undefined | null
-): "assigned" | "accepted" | "declined" | "completed" | "pending" {
-  if (status === null || status === undefined) return "pending"
-  const s = String(status).toLowerCase()
-  if (s === "2" || s === "accepted") return "accepted"
-  if (s === "3" || s === "declined") return "declined"
-  if (s === "completed") return "completed"
-  if (s === "assigned") return "assigned"
-  return "pending"
-}
+export {
+  mapInterviewSessionStatus as mapBackendStatusToSessionStatus,
+  mapSessionInterviewStatus as mapInterviewerStatus,
+} from "../utils/statusAdapters"
 
 export function mapDtoToSessionItem(
   dto: BatchInterviewSessionDto,
@@ -55,7 +30,9 @@ export function mapDtoToSessionItem(
     id: dto.id,
     applicationStageId: dto.applicationStageId,
     recruitmentBatchId: dto.recruitmentBatchId || recruitmentBatchId,
-    stageId: dto.batchStageId || "",
+    stageId: dto.batchStageId,
+    batchStageId: dto.batchStageId,
+    apiStatus: dto.status,
     stageName: dto.stageName,
     sessionName: dto.sessionName,
     scheduledStart: dto.scheduledStart,
@@ -63,7 +40,7 @@ export function mapDtoToSessionItem(
     isOnline: dto.isOnline,
     location: dto.location,
     meetingUrl: dto.meetingUrl,
-    status: mapBackendStatusToSessionStatus(dto.status),
+    status: mapInterviewSessionStatus(dto.status),
     candidateId: dto.candidateId || "",
     candidateName: dto.candidateName,
     candidateEmail: dto.candidateEmail,
@@ -75,18 +52,22 @@ export function mapDtoToSessionItem(
       employeeName: inv.fullName,
       employeeEmail: inv.email,
       role: inv.jobTitle || "Interviewer",
-      status: mapInterviewerStatus(inv.status),
+      status: mapSessionInterviewStatus(inv.status),
+      apiStatus: inv.status,
       assessment: null,
     })),
     rescheduleRequest:
-      dto.hasPendingReschedule && dto.pendingRescheduleId
+      dto.hasPendingReschedule &&
+      dto.pendingRescheduleId &&
+      dto.proposedStart &&
+      dto.proposedEnd
         ? {
             id: dto.pendingRescheduleId,
             interviewSessionId: dto.id,
             requesterEmail: dto.candidateEmail,
-            proposedStart: dto.proposedStart || dto.scheduledStart,
-            proposedEnd: dto.proposedEnd || dto.scheduledEnd,
-            reason: dto.rescheduleReason || "Candidate requested reschedule",
+            proposedStart: dto.proposedStart,
+            proposedEnd: dto.proposedEnd,
+            reason: dto.rescheduleReason ?? "",
             status: "pending",
           }
         : null,
@@ -107,6 +88,12 @@ export function useInterviewsTab({
   onScheduleInterview,
   onReviewReschedule,
 }: UseInterviewsTabProps) {
+  const scheduleRestriction = getRecruitmentAddRestriction(
+    recruitment,
+    "interview"
+  )
+  const canScheduleInterview = !scheduleRestriction
+
   const isRealBatch = useMemo(
     () => IS_GUID_REGEX.test(recruitment.id),
     [recruitment.id]
@@ -114,7 +101,8 @@ export function useInterviewsTab({
 
   // API query for batch interview sessions
   const {
-    data: apiSessions,
+    currentData: apiSessions,
+    error: apiError,
     isLoading: isApiLoading,
     isFetching: isApiFetching,
     isError: isApiError,
@@ -125,31 +113,17 @@ export function useInterviewsTab({
   )
 
   const [reviewRescheduleMutation] = useReviewRescheduleRequestMutation()
+  const [scheduleInterviewMutation, { isLoading: isSchedulingInterview }] =
+    useScheduleInterviewSessionMutation()
 
-  // Initial sessions computation
-  const initialSessions = useMemo(() => {
-    if (isRealBatch) {
-      if (apiSessions) {
-        return apiSessions.map((dto) => mapDtoToSessionItem(dto, recruitment.id))
-      }
-      return []
-    }
-    const list = getRecruitmentInterviewSessions(recruitment.id)
-    return list.length > 0 ? list : mockInterviewSessions
-  }, [isRealBatch, apiSessions, recruitment.id])
-
-  const [sessions, setSessions] = useState<InterviewSessionItem[]>(initialSessions)
-
-  // Keep state synchronized when API data or initialSessions change
-  useEffect(() => {
-    if (isRealBatch) {
-      if (apiSessions) {
-        setSessions(apiSessions.map((dto) => mapDtoToSessionItem(dto, recruitment.id)))
-      }
-    } else {
-      setSessions(initialSessions)
-    }
-  }, [isRealBatch, apiSessions, initialSessions, recruitment.id])
+  // The query remains authoritative; failed or pending mutations do not rewrite its data.
+  const sessions = useMemo(
+    () =>
+      (apiSessions ?? []).map((dto) =>
+        mapDtoToSessionItem(dto, recruitment.id)
+      ),
+    [apiSessions, recruitment.id]
+  )
 
   // Filter states
   const [search, setSearch] = useState("")
@@ -162,8 +136,6 @@ export function useInterviewsTab({
 
   // Dialog states
   const [isScheduleOpen, setIsScheduleOpen] = useState<boolean>(false)
-  const [sessionToReschedule, setSessionToReschedule] =
-    useState<InterviewSessionItem | null>(null)
   const [rescheduleSessionToReview, setRescheduleSessionToReview] =
     useState<InterviewSessionItem | null>(null)
   const [isReviewRescheduleOpen, setIsReviewRescheduleOpen] =
@@ -177,28 +149,8 @@ export function useInterviewsTab({
 
   // Available interview stages in this batch
   const interviewStages = useMemo(() => {
-    if (recruitment.batchStages && recruitment.batchStages.length > 0) {
-      return recruitment.batchStages
-        .filter((bs) => {
-          const cat = (bs.stageCategory || "").toLowerCase()
-          const name = (bs.stageName || "").toLowerCase()
-          return (
-            cat.includes("interview") ||
-            name.includes("interview") ||
-            name.includes("hr") ||
-            name.includes("user")
-          )
-        })
-        .map((bs) => ({ id: bs.id, name: bs.stageName }))
-    }
-    return (recruitment.stages || []).filter(
-      (stg) =>
-        stg.type === "interview" ||
-        stg.name.toLowerCase().includes("interview") ||
-        stg.name.toLowerCase().includes("hr") ||
-        stg.name.toLowerCase().includes("user")
-    )
-  }, [recruitment.batchStages, recruitment.stages])
+    return getRecruitmentInterviewStages(recruitment)
+  }, [recruitment])
 
   // Dropdown filter options
   const stageFilterItems = useMemo(() => {
@@ -215,9 +167,10 @@ export function useInterviewsTab({
     return [
       { label: "All Status", value: "all" },
       { label: "Scheduled", value: "scheduled" },
-      { label: "Completed", value: "completed" },
+      { label: "Pending Confirmation", value: "pending_confirmation" },
+      { label: "Accepted by Interviewer", value: "accepted_by_interviewer" },
+      { label: "Accepted by Candidate", value: "accepted_by_candidate" },
       { label: "Rescheduled", value: "rescheduled" },
-      { label: "Cancelled", value: "cancelled" },
     ]
   }, [])
 
@@ -270,30 +223,23 @@ export function useInterviewsTab({
 
   // Handlers
   const handleOpenScheduleNew = useCallback(() => {
-    setSessionToReschedule(null)
+    if (!canScheduleInterview) return
     setIsScheduleOpen(true)
     onScheduleInterview?.()
-  }, [onScheduleInterview])
-
-  const handleOpenAdjustSchedule = useCallback((session: InterviewSessionItem) => {
-    setSessionToReschedule(session)
-    setIsScheduleOpen(true)
-  }, [])
+  }, [canScheduleInterview, onScheduleInterview])
 
   const handleSaveSession = useCallback(
-    (savedSession: InterviewSessionItem) => {
-      if (sessionToReschedule) {
-        setSessions((prev) =>
-          prev.map((s) => (s.id === savedSession.id ? savedSession : s))
-        )
-        setSessionToReschedule(null)
-      } else {
-        setSessions((prev) => [savedSession, ...prev])
-      }
-      setSelectedDate(savedSession.scheduledStart.slice(0, 10))
-      setIsFilterPendingReschedule(false)
+    async (input: {
+      applicationId: string
+      applicationStageId: string
+      body: ScheduleInterviewSessionRequest
+    }) => {
+      await scheduleInterviewMutation({
+        ...input,
+        batchId: recruitment.id,
+      }).unwrap()
     },
-    [sessionToReschedule]
+    [scheduleInterviewMutation, recruitment.id]
   )
 
   const handleOpenReviewReschedule = useCallback(
@@ -305,99 +251,45 @@ export function useInterviewsTab({
     [onReviewReschedule]
   )
 
+  const reviewReschedule = useCallback(
+    async (
+      sessionId: string,
+      decision: "Approved" | "Rejected",
+      notes?: string
+    ) => {
+      const requestId = sessions.find((session) => session.id === sessionId)
+        ?.rescheduleRequest?.id
+      if (!requestId)
+        throw new Error(
+          "Refresh the interview list before reviewing this request."
+        )
+      await reviewRescheduleMutation({
+        id: requestId,
+        body: { decision, reviewNotes: notes?.trim() || undefined },
+        batchId: recruitment.id,
+      }).unwrap()
+      setIsFilterPendingReschedule(false)
+    },
+    [sessions, recruitment.id, reviewRescheduleMutation]
+  )
+
   const handleApproveReschedule = useCallback(
     async (
       sessionId: string,
-      proposedStart: string,
-      proposedEnd: string,
+      _proposedStart: string,
+      _proposedEnd: string,
       notes?: string
     ) => {
-      const target = sessions.find((s) => s.id === sessionId)
-      const requestId = target?.rescheduleRequest?.id
-
-      // Optimistic update
-      setSessions((prev) =>
-        prev.map((s) => {
-          if (s.id !== sessionId) return s
-          return {
-            ...s,
-            scheduledStart: proposedStart,
-            scheduledEnd: proposedEnd,
-            status: "rescheduled",
-            rescheduleRequest: s.rescheduleRequest
-              ? {
-                  ...s.rescheduleRequest,
-                  status: "approved",
-                  reviewedAt: new Date().toISOString(),
-                  reviewNotes: notes || null,
-                }
-              : null,
-          }
-        })
-      )
-      setSelectedDate(proposedStart.slice(0, 10))
-      setIsFilterPendingReschedule(false)
-
-      if (isRealBatch && requestId) {
-        try {
-          await reviewRescheduleMutation({
-            id: requestId,
-            body: {
-              decision: 1, // Approve
-              reviewNotes: notes || undefined,
-            },
-            batchId: recruitment.id,
-          }).unwrap()
-          refetch()
-        } catch (err) {
-          console.error("Failed to approve reschedule request on server:", err)
-        }
-      }
+      await reviewReschedule(sessionId, "Approved", notes)
     },
-    [sessions, isRealBatch, recruitment.id, reviewRescheduleMutation, refetch]
+    [reviewReschedule]
   )
 
   const handleRejectReschedule = useCallback(
     async (sessionId: string, notes: string) => {
-      const target = sessions.find((s) => s.id === sessionId)
-      const requestId = target?.rescheduleRequest?.id
-
-      // Optimistic update
-      setSessions((prev) =>
-        prev.map((s) => {
-          if (s.id !== sessionId) return s
-          return {
-            ...s,
-            rescheduleRequest: s.rescheduleRequest
-              ? {
-                  ...s.rescheduleRequest,
-                  status: "rejected",
-                  reviewedAt: new Date().toISOString(),
-                  reviewNotes: notes,
-                }
-              : null,
-          }
-        })
-      )
-      setIsFilterPendingReschedule(false)
-
-      if (isRealBatch && requestId) {
-        try {
-          await reviewRescheduleMutation({
-            id: requestId,
-            body: {
-              decision: 2, // Reject
-              reviewNotes: notes,
-            },
-            batchId: recruitment.id,
-          }).unwrap()
-          refetch()
-        } catch (err) {
-          console.error("Failed to reject reschedule request on server:", err)
-        }
-      }
+      await reviewReschedule(sessionId, "Rejected", notes)
     },
-    [sessions, isRealBatch, recruitment.id, reviewRescheduleMutation, refetch]
+    [reviewReschedule]
   )
 
   const handleSelectDate = useCallback((date: string | null) => {
@@ -416,13 +308,16 @@ export function useInterviewsTab({
   }, [])
 
   return {
+    canScheduleInterview,
+    scheduleRestriction,
     sessions,
     filteredSessions,
     pendingReschedules,
     isRealBatch,
-    isLoading: isRealBatch && isApiLoading,
+    isLoading: isRealBatch && (isApiLoading || (isApiFetching && !apiSessions)),
     isFetching: isRealBatch && isApiFetching,
     isError: isRealBatch && isApiError,
+    apiError,
     refetch,
 
     // Filter states & options
@@ -443,8 +338,6 @@ export function useInterviewsTab({
     // Dialog states
     isScheduleOpen,
     setIsScheduleOpen,
-    sessionToReschedule,
-    setSessionToReschedule,
     rescheduleSessionToReview,
     isReviewRescheduleOpen,
     setIsReviewRescheduleOpen,
@@ -454,8 +347,8 @@ export function useInterviewsTab({
     handleTogglePendingReschedule,
     handleClearDateFilter,
     handleOpenScheduleNew,
-    handleOpenAdjustSchedule,
     handleSaveSession,
+    isSchedulingInterview,
     handleOpenReviewReschedule,
     handleApproveReschedule,
     handleRejectReschedule,

@@ -17,21 +17,17 @@ import {
   PanelHeader,
   StatusBadge,
   EmptyState,
+  ErrorState,
   CreateButton,
   EditButton,
 } from "@/shared/components"
 import { safeFormatDate } from "@/shared/lib/format"
 import { cn } from "@/shared/lib/utils"
-import { mockEmployees } from "../../data/mock"
 import { formatStageCategory } from "../../utils"
-import type {
-  Recruitment,
-  StageEmployeeStatus,
-} from "../../types"
+import type { Recruitment, StageEmployeeStatus } from "../../types"
 import { AssignInterviewersDialog } from "./AssignInterviewersDialog"
 import { useStagesTab } from "../../hooks/useStagesTab"
-import { useGetEmployeesQuery } from "../../api/employees-api"
-import { UserPlus, Pencil } from "lucide-react"
+import { UserPlus, Pencil, Loader2 } from "lucide-react"
 
 export interface StagesTabProps {
   recruitment: Recruitment
@@ -40,6 +36,7 @@ export interface StagesTabProps {
 }
 
 const statusColors: Record<StageEmployeeStatus, string> = {
+  unknown: "bg-neutral-soft text-neutral",
   pending:
     "bg-amber-500/15 text-amber-800 dark:text-amber-300 hover:bg-amber-500/25",
   accepted:
@@ -48,15 +45,30 @@ const statusColors: Record<StageEmployeeStatus, string> = {
     "bg-rose-500/15 text-rose-800 dark:text-rose-300 hover:bg-rose-500/25",
 }
 
-const statusLabels: Record<StageEmployeeStatus, string> = {
-  pending: "Pending (Menunggu Persetujuan)",
-  accepted: "Accepted (Menyetujui)",
-  declined: "Declined (Menolak)",
+const statusTextColors: Record<StageEmployeeStatus, string> = {
+  unknown: "text-neutral",
+  pending: "text-amber-800",
+  accepted: "text-emerald-800",
+  declined: "text-rose-800",
 }
 
-export function StagesTab({ recruitment, onCreateStage, onEditStage }: StagesTabProps) {
+const statusLabels: Record<StageEmployeeStatus, string> = {
+  unknown: "Unknown",
+  pending: "Pending",
+  accepted: "Accepted",
+  declined: "Declined",
+}
+
+export function StagesTab({
+  recruitment,
+  onCreateStage,
+  onEditStage,
+}: StagesTabProps) {
   const {
     stages,
+    isLoading,
+    isError,
+    refetch,
     totalDays,
     assignStage,
     assignIndex,
@@ -66,7 +78,31 @@ export function StagesTab({ recruitment, onCreateStage, onEditStage }: StagesTab
     handleSaveInterviewers,
   } = useStagesTab({ recruitment })
 
-  const { data: apiEmployees } = useGetEmployeesQuery()
+  if (isLoading) {
+    return (
+      <Panel className="p-8">
+        <div
+          role="status"
+          className="flex items-center justify-center gap-2 text-sm text-muted-foreground"
+        >
+          <Loader2 className="size-4 animate-spin" aria-hidden />
+          Loading stages...
+        </div>
+      </Panel>
+    )
+  }
+
+  if (isError) {
+    return (
+      <Panel className="p-8">
+        <ErrorState
+          title="Failed to load stages"
+          description="Unable to fetch the selection stages and interviewers. Please try again."
+          onRetry={() => refetch()}
+        />
+      </Panel>
+    )
+  }
 
   if (stages.length === 0) {
     return (
@@ -89,15 +125,13 @@ export function StagesTab({ recruitment, onCreateStage, onEditStage }: StagesTab
   return (
     <TooltipProvider>
       <div className="space-y-6">
-        <Panel className="overflow-hidden space-y-0">
+        <Panel className="space-y-0 overflow-hidden">
           <PanelHeader
             title="Selection Pipeline"
             meta={`${stages.length} stages • ~${totalDays} days total`}
             actions={
               <div className="flex items-center gap-2">
-                <EditButton onClick={onEditStage}>
-                  Edit Stages
-                </EditButton>
+                <EditButton onClick={onEditStage}>Edit Stages</EditButton>
               </div>
             }
           />
@@ -110,7 +144,9 @@ export function StagesTab({ recruitment, onCreateStage, onEditStage }: StagesTab
                   <TableHead className="min-w-48">Stage Name</TableHead>
                   <TableHead className="min-w-44">Schedule</TableHead>
                   <TableHead className="w-24 text-center">Passing</TableHead>
-                  <TableHead className="min-w-56 text-center">Interviewers</TableHead>
+                  <TableHead className="min-w-56 text-center">
+                    Interviewers
+                  </TableHead>
                   <TableHead className="w-28 text-center">Status</TableHead>
                 </TableRow>
               </TableHeader>
@@ -122,34 +158,27 @@ export function StagesTab({ recruitment, onCreateStage, onEditStage }: StagesTab
                   const status = isDone
                     ? { label: "Completed", tone: "success" as const }
                     : isCurrent
-                    ? { label: "In Progress", tone: "info" as const }
-                    : { label: "Upcoming", tone: "neutral" as const }
+                      ? { label: "In Progress", tone: "info" as const }
+                      : { label: "Upcoming", tone: "neutral" as const }
 
                   const isInterviewStage =
                     stage.type === "interview" ||
                     stage.stageCategory === "Interview" ||
                     stage.stageCategory === "2" ||
-                    (stage as any).stageCategory === 2 ||
                     stage.name.toLowerCase().includes("interview") ||
                     stage.name.toLowerCase().includes("wawancara")
 
                   // Detailed interviewers with status
-                  const stageInterviewers = (stage.assignedInterviewers ?? []).map((assignment) => {
-                    const emp =
-                      assignment.employeeName
-                        ? {
-                            id: assignment.employeeId,
-                            fullName: assignment.employeeName,
-                            email: assignment.employeeEmail || "",
-                            jobTitle: assignment.jobTitle || "Interviewer",
-                          }
-                        : (apiEmployees || []).find((e) => e.id === assignment.employeeId) ||
-                          mockEmployees.find((e) => e.id === assignment.employeeId) || {
-                            id: assignment.employeeId,
-                            fullName: `Employee (${assignment.employeeId.slice(0, 6)}...)`,
-                            email: "interviewer@mii.co.id",
-                            jobTitle: "Interviewer",
-                          }
+                  const stageInterviewers = (
+                    stage.assignedInterviewers ?? []
+                  ).map((assignment) => {
+                    const emp = {
+                      id: assignment.employeeId,
+                      fullName:
+                        assignment.employeeName ||
+                        `Employee (${assignment.employeeId.slice(0, 6)}...)`,
+                      jobTitle: assignment.jobTitle || "Interviewer",
+                    }
                     return {
                       employee: emp,
                       status: assignment.status,
@@ -157,24 +186,32 @@ export function StagesTab({ recruitment, onCreateStage, onEditStage }: StagesTab
                   })
 
                   return (
-                    <TableRow key={stage.id} className="hover:bg-muted/40 transition-colors">
+                    <TableRow
+                      key={stage.id}
+                      className="transition-colors hover:bg-muted/40"
+                    >
                       <TableCell className="w-14 pl-5 text-center font-mono text-xs font-semibold text-muted-foreground">
                         {index + 1}
                       </TableCell>
 
                       <TableCell className="py-3.5">
                         <div className="flex flex-col">
-                          <span className="font-medium text-foreground">{stage.name}</span>
+                          <span className="font-medium text-foreground">
+                            {stage.name}
+                          </span>
                           <span className="text-xs text-muted-foreground capitalize">
-                            {formatStageCategory(stage.stageCategory) || stage.type} Stage
+                            {formatStageCategory(stage.stageCategory) ||
+                              stage.type}{" "}
+                            Stage
                           </span>
                         </div>
                       </TableCell>
 
-                      <TableCell className="py-3.5 text-xs text-muted-foreground whitespace-nowrap">
+                      <TableCell className="py-3.5 text-xs whitespace-nowrap text-muted-foreground">
                         {stage.startDate && stage.endDate ? (
                           <span>
-                            {safeFormatDate(stage.startDate)} - {safeFormatDate(stage.endDate)}
+                            {safeFormatDate(stage.startDate)} -{" "}
+                            {safeFormatDate(stage.endDate)}
                           </span>
                         ) : (
                           <span>{stage.durationDays} days duration</span>
@@ -194,43 +231,64 @@ export function StagesTab({ recruitment, onCreateStage, onEditStage }: StagesTab
                       {/* Interviewers column: colored badge based on status + hover tooltip + edit button at the end */}
                       <TableCell className="py-3.5 text-center">
                         {!isInterviewStage ? (
-                          <span className="text-muted-foreground text-xs">—</span>
+                          <span className="text-xs text-muted-foreground">
+                            —
+                          </span>
                         ) : stageInterviewers.length === 0 ? (
                           <button
                             type="button"
                             onClick={() => handleOpenAssignDialog(stage, index)}
-                            className="group inline-flex items-center gap-1.5 rounded-full border border-dashed border-border px-3 py-1 text-xs font-medium text-muted-foreground transition-colors hover:border-primary hover:text-primary cursor-pointer"
+                            className="group inline-flex cursor-pointer items-center gap-1.5 rounded-full border border-dashed border-border px-3 py-1 text-xs font-medium text-muted-foreground transition-colors hover:border-primary hover:text-primary"
                           >
                             <UserPlus className="size-3 text-muted-foreground group-hover:text-primary" />
                             <span>Assign</span>
                           </button>
                         ) : (
                           <div className="flex flex-wrap items-center justify-center gap-1.5">
-                            {stageInterviewers.map(({ employee, status: empStatus }) => (
-                              <Tooltip key={employee.id}>
-                                <TooltipTrigger
-                                  className={cn(
-                                    "inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium cursor-pointer transition-colors shadow-xs",
-                                    statusColors[empStatus]
-                                  )}
-                                  onClick={() => handleOpenAssignDialog(stage, index)}
-                                >
-                                  <span className="truncate max-w-30">{employee.fullName}</span>
-                                </TooltipTrigger>
-                                <TooltipContent side="top" className="text-xs max-w-xs">
-                                  <p className="font-semibold">{employee.fullName}</p>
-                                  <p className="text-muted-foreground">{employee.jobTitle || "Interviewer"}</p>
-                                  <p className="mt-1 text-primary-200">
-                                    Status: <span className="font-medium">{statusLabels[empStatus]}</span>
-                                  </p>
-                                  <p className="text-[10px] text-muted-foreground mt-0.5">Click badge to edit assignment</p>
-                                </TooltipContent>
-                              </Tooltip>
-                            ))}
+                            {stageInterviewers.map(
+                              ({ employee, status: empStatus }) => (
+                                <Tooltip key={employee.id}>
+                                  <TooltipTrigger
+                                    className={cn(
+                                      "inline-flex cursor-pointer items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium shadow-xs transition-colors",
+                                      statusColors[empStatus]
+                                    )}
+                                    onClick={() =>
+                                      handleOpenAssignDialog(stage, index)
+                                    }
+                                  >
+                                    <span className="max-w-30 truncate">
+                                      {employee.fullName}
+                                    </span>
+                                  </TooltipTrigger>
+                                  <TooltipContent
+                                    side="top"
+                                    className="max-w-xs flex-col items-start gap-0.5 border border-slate-200 bg-white px-3 py-2 text-left text-xs text-slate-900 shadow-md"
+                                  >
+                                    <p className="font-semibold">
+                                      {employee.fullName}
+                                    </p>
+                                    <p className="text-slate-600">
+                                      {employee.jobTitle || "Interviewer"}
+                                    </p>
+                                    <p
+                                      className={cn(
+                                        "mt-1 font-medium",
+                                        statusTextColors[empStatus]
+                                      )}
+                                    >
+                                      {statusLabels[empStatus]}
+                                    </p>
+                                  </TooltipContent>
+                                </Tooltip>
+                              )
+                            )}
                             <button
                               type="button"
-                              onClick={() => handleOpenAssignDialog(stage, index)}
-                              className="inline-flex size-6 shrink-0 items-center justify-center rounded-full border border-dashed border-border text-muted-foreground hover:border-primary hover:text-primary transition-colors cursor-pointer"
+                              onClick={() =>
+                                handleOpenAssignDialog(stage, index)
+                              }
+                              className="inline-flex size-6 shrink-0 cursor-pointer items-center justify-center rounded-full border border-dashed border-border text-muted-foreground transition-colors hover:border-primary hover:text-primary"
                               title="Edit interviewer"
                             >
                               <Pencil className="size-3" />
@@ -240,7 +298,9 @@ export function StagesTab({ recruitment, onCreateStage, onEditStage }: StagesTab
                       </TableCell>
 
                       <TableCell className="py-3.5 text-center">
-                        <StatusBadge tone={status.tone}>{status.label}</StatusBadge>
+                        <StatusBadge tone={status.tone}>
+                          {status.label}
+                        </StatusBadge>
                       </TableCell>
                     </TableRow>
                   )
@@ -251,14 +311,16 @@ export function StagesTab({ recruitment, onCreateStage, onEditStage }: StagesTab
         </Panel>
       </div>
 
-      <AssignInterviewersDialog
-        open={isDialogOpen}
-        onOpenChange={setIsDialogOpen}
-        stage={assignStage}
-        stageIndex={assignIndex}
-        batchName={recruitment.name}
-        onSave={handleSaveInterviewers}
-      />
+      {isDialogOpen && (
+        <AssignInterviewersDialog
+          open={isDialogOpen}
+          onOpenChange={setIsDialogOpen}
+          stage={assignStage}
+          stageIndex={assignIndex}
+          batchName={recruitment.name}
+          onSave={handleSaveInterviewers}
+        />
+      )}
     </TooltipProvider>
   )
 }

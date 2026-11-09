@@ -1,4 +1,4 @@
-import type { Stage, LegacyStageType, StageTypeDto } from "../types"
+import type { Recruitment, Stage, LegacyStageType, StageTypeDto } from "../types"
 import type { EditableStage } from "../components/stages/types"
 
 /** Reorder an array from one index to another (immutable). */
@@ -50,6 +50,22 @@ export function stageCategoryToLegacyType(
   if (str === "2" || str.includes("interview")) return "interview"
   if (str === "3" || str.includes("offering")) return "offering"
   return "screening"
+}
+
+/** Get configured interview stages from API data or legacy recruitment data. */
+export function getRecruitmentInterviewStages(recruitment: Recruitment): Pick<Stage, "id" | "name">[] {
+  const stages = recruitment.batchStages ?? recruitment.stages ?? []
+  return stages
+    .filter((stage) => {
+      const category = "type" in stage ? stage.type : stage.stageCategory
+      if (category) return stageCategoryToLegacyType(category) === "interview"
+      const name = ("stageName" in stage ? stage.stageName : stage.name).toLowerCase()
+      return name.includes("interview") || name.includes("wawancara")
+    })
+    .map((stage) => ({
+      id: stage.id,
+      name: "stageName" in stage ? stage.stageName : stage.name,
+    }))
 }
 
 /** Map StageTypeId to legacy stage category string using supplied stageTypes list */

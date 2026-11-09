@@ -1,5 +1,6 @@
-import { useNavigate } from "@tanstack/react-router"
+import { Link, useNavigate } from "@tanstack/react-router"
 import { cn } from "@/shared/lib/utils"
+import { getApiError } from "@/shared/api/api-error"
 import {
   Panel,
   SearchInput,
@@ -12,7 +13,7 @@ import {
   ErrorState,
 } from "@/shared/components"
 import { safeFormatDate } from "@/shared/lib/format"
-import { CandidateApplicationDetailDialog } from "./CandidateApplicationDetailDialog"
+import { getRecruitmentAddRestriction } from "../../utils/recruitmentUtils"
 import { AddCandidateDialog } from "./AddCandidateDialog"
 import {
   Table,
@@ -39,13 +40,9 @@ import {
   type UseCandidatesTabProps,
 } from "../../hooks/useCandidatesTab"
 
-export interface CandidatesTabProps extends UseCandidatesTabProps {}
+export type CandidatesTabProps = UseCandidatesTabProps
 
-export function CandidatesTab({
-  recruitment,
-  selectedStageIndex = null,
-  onStageChange,
-}: CandidatesTabProps) {
+export function CandidatesTab({ recruitment }: CandidatesTabProps) {
   const navigate = useNavigate()
 
   const {
@@ -60,10 +57,9 @@ export function CandidatesTab({
     hasStages,
     isApiLoading,
     isApiError,
+    apiError,
     refetchApplications,
-    selectedApplication,
-    isDetailOpen,
-    setIsDetailOpen,
+    detailSearch,
     isAddOpen,
     setIsAddOpen,
     stageItems,
@@ -79,14 +75,17 @@ export function CandidatesTab({
     handleResetFilters,
     handleOpenDetail,
     handleAddCandidates,
-    handleUpdateCandidateStatus,
   } = useCandidatesTab({
     recruitment,
-    selectedStageIndex,
-    onStageChange,
   })
 
   const parsedStageIndex = stageFilter !== "all" ? Number(stageFilter) : null
+  const addRestriction = getRecruitmentAddRestriction(recruitment, "candidate")
+  const canAddCandidates = !addRestriction
+
+  const handleAddDialogOpenChange = (open: boolean) => {
+    if (!open || canAddCandidates) setIsAddOpen(open)
+  }
 
   return (
     <>
@@ -96,10 +95,7 @@ export function CandidatesTab({
           <div className="flex flex-1 flex-wrap items-center gap-2.5">
             <SearchInput
               value={search}
-              onChange={(val) => {
-                setSearch(val)
-                handlePageChange(1)
-              }}
+              onChange={setSearch}
               placeholder="Search candidate, email, or application code..."
               containerClassName="sm:w-80"
             />
@@ -110,7 +106,7 @@ export function CandidatesTab({
               value={stageFilter}
               onValueChange={handleStageChange}
             >
-              <SelectTrigger className="h-10 w-48 rounded-full border-0 bg-muted px-4 text-sm text-foreground transition-all duration-150 hover:bg-muted/40 focus-visible:ring-2 focus-visible:ring-primary shadow-none">
+              <SelectTrigger className="h-10 w-48 rounded-full border-0 bg-muted px-4 text-sm text-foreground shadow-none transition-all duration-150 hover:bg-muted/40 focus-visible:ring-2 focus-visible:ring-primary">
                 <SelectValue placeholder="All Stages" />
               </SelectTrigger>
               <SelectContent className="rounded-xl">
@@ -130,7 +126,7 @@ export function CandidatesTab({
               value={statusFilter}
               onValueChange={handleStatusChange}
             >
-              <SelectTrigger className="h-10 w-40 rounded-full border-0 bg-muted px-4 text-sm text-foreground transition-all duration-150 hover:bg-muted/40 focus-visible:ring-2 focus-visible:ring-primary shadow-none">
+              <SelectTrigger className="h-10 w-40 rounded-full border-0 bg-muted px-4 text-sm text-foreground shadow-none transition-all duration-150 hover:bg-muted/40 focus-visible:ring-2 focus-visible:ring-primary">
                 <SelectValue placeholder="All Status" />
               </SelectTrigger>
               <SelectContent className="rounded-xl">
@@ -145,21 +141,17 @@ export function CandidatesTab({
             </Select>
           </div>
 
-          <div className="flex flex-wrap items-center gap-3 self-start sm:self-center shrink-0">
+          <div className="flex shrink-0 flex-wrap items-center gap-3 self-start sm:self-center">
             <Button
               type="button"
-              onClick={() => hasStages && setIsAddOpen(true)}
-              disabled={!hasStages}
-              title={
-                !hasStages
-                  ? "Configure selection stages first before adding candidates"
-                  : "Add candidate"
-              }
+              onClick={() => handleAddDialogOpenChange(true)}
+              disabled={!canAddCandidates}
+              title={addRestriction ?? "Add candidate"}
               className={cn(
-                "h-10 gap-1.5 rounded-full border-0 px-4 text-sm font-medium shadow-none shrink-0 transition-all",
-                hasStages
-                  ? "bg-primary text-primary-foreground hover:bg-primary/90 focus-visible:ring-2 focus-visible:ring-primary cursor-pointer"
-                  : "bg-muted text-muted-foreground opacity-60 cursor-not-allowed hover:bg-muted"
+                "h-10 shrink-0 gap-1.5 rounded-full border-0 px-4 text-sm font-medium shadow-none transition-all",
+                canAddCandidates
+                  ? "cursor-pointer bg-primary text-primary-foreground hover:bg-primary/90 focus-visible:ring-2 focus-visible:ring-primary"
+                  : "cursor-not-allowed bg-muted text-muted-foreground opacity-60 hover:bg-muted"
               )}
             >
               <UserPlus className="size-4" aria-hidden />
@@ -168,14 +160,12 @@ export function CandidatesTab({
           </div>
         </div>
 
-        {/* Warning Banner when recruitment batch has no stages yet */}
-        {!hasStages && (
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-border bg-amber-500/10 px-5 py-3 text-xs text-amber-700 dark:text-amber-400">
+        {/* Explain the requirements for adding candidates. */}
+        {addRestriction && (
+          <div className="flex flex-col gap-3 border-b border-border bg-amber-500/10 px-5 py-3 text-xs text-amber-700 sm:flex-row sm:items-center sm:justify-between dark:text-amber-400">
             <div className="flex items-center gap-2.5">
               <AlertCircle className="size-4 shrink-0 text-amber-600 dark:text-amber-400" />
-              <p>
-                <strong className="font-semibold">Selection stages required:</strong> Candidates can only be added once this recruitment batch has configured selection stages.
-              </p>
+              <p>{addRestriction}</p>
             </div>
           </div>
         )}
@@ -183,7 +173,7 @@ export function CandidatesTab({
         {/* Removable Active Filter Chips */}
         <div className="border-b border-border bg-muted/20 px-6 py-2.5">
           <FilterChips chips={activeChips} onReset={handleResetFilters} />
-        </div>  
+        </div>
 
         {/* Candidate Application Table */}
         <div className="overflow-x-auto">
@@ -209,7 +199,11 @@ export function CandidatesTab({
                 />
 
                 <TableSortHeader
-                  label={parsedStageIndex !== null ? "Selected Stage" : "Current Stage"}
+                  label={
+                    parsedStageIndex !== null
+                      ? "Selected Stage"
+                      : "Current Stage"
+                  }
                   sortKey="stage"
                   currentSortKey={sortKey}
                   currentDirection={sortDirection}
@@ -253,9 +247,22 @@ export function CandidatesTab({
                 <TableRow>
                   <TableCell colSpan={8} className="p-8">
                     <ErrorState
-                      title="Failed to load candidates"
-                      description="Unable to fetch candidates from server. Please check your connection."
-                      onRetry={() => refetchApplications()}
+                      title={
+                        getApiError(apiError).kind === "forbidden"
+                          ? "Access denied"
+                          : "Failed to load candidates"
+                      }
+                      description={
+                        getApiError(
+                          apiError,
+                          "Unable to load candidates. Please try again."
+                        ).message
+                      }
+                      onRetry={
+                        getApiError(apiError).kind === "forbidden"
+                          ? undefined
+                          : () => refetchApplications()
+                      }
                     />
                   </TableCell>
                 </TableRow>
@@ -276,7 +283,7 @@ export function CandidatesTab({
                                 params: { id: recruitment.id },
                               })
                             }
-                            className="rounded-full border-0 bg-primary text-primary-foreground hover:bg-primary/90 cursor-pointer"
+                            className="cursor-pointer rounded-full border-0 bg-primary text-primary-foreground hover:bg-primary/90"
                           >
                             Configure Stages
                           </Button>
@@ -296,7 +303,7 @@ export function CandidatesTab({
                               variant="ghost"
                               size="sm"
                               onClick={handleResetFilters}
-                              className="rounded-full border-0 bg-muted/60 text-foreground hover:bg-muted cursor-pointer"
+                              className="cursor-pointer rounded-full border-0 bg-muted/60 text-foreground hover:bg-muted"
                             >
                               Reset filters
                             </Button>
@@ -304,8 +311,12 @@ export function CandidatesTab({
                             <Button
                               variant="ghost"
                               size="sm"
-                              onClick={() => setIsAddOpen(true)}
-                              className="rounded-full border-0 bg-muted/60 text-foreground hover:bg-muted cursor-pointer"
+                              onClick={() => handleAddDialogOpenChange(true)}
+                              disabled={!canAddCandidates}
+                              title={
+                                addRestriction ?? "Add your first candidate"
+                              }
+                              className="cursor-pointer rounded-full border-0 bg-muted/60 text-foreground hover:bg-muted"
                             >
                               Add your first candidate
                             </Button>
@@ -322,7 +333,8 @@ export function CandidatesTab({
                   // Determine stage name, score, and status based on whether a specific stage is filtered
                   const displayStageName =
                     parsedStageIndex !== null
-                      ? app.applicationStages[parsedStageIndex]?.stageName || app.currentStageName
+                      ? app.applicationStages[parsedStageIndex]?.stageName ||
+                        app.currentStageName
                       : app.currentStageName
 
                   const displayScore =
@@ -332,20 +344,22 @@ export function CandidatesTab({
 
                   const displayStatus =
                     parsedStageIndex !== null
-                      ? app.applicationStages[parsedStageIndex]?.status || app.currentStageStatus
-                      : app.currentStageStatus
+                      ? app.applicationStages[parsedStageIndex]?.status ||
+                        app.currentStageStatus
+                      : app.status
 
                   const statusTone = statusToneMap[displayStatus] || "neutral"
-                  const statusLabel = statusLabelMap[displayStatus] || displayStatus
+                  const statusLabel =
+                    statusLabelMap[displayStatus] || displayStatus
 
                   return (
                     <TableRow
                       key={app.id}
-                      className="border-b border-border transition-colors hover:bg-muted/40 cursor-pointer"
+                      className="cursor-pointer border-b border-border transition-colors hover:bg-muted/40"
                       onClick={() => handleOpenDetail(app)}
                     >
                       {/* Row number */}
-                      <TableCell className="pl-5 py-3.5 text-center font-semibold text-muted-foreground tabular-nums text-xs">
+                      <TableCell className="py-3.5 pl-5 text-center text-xs font-semibold text-muted-foreground tabular-nums">
                         {rowNum}
                       </TableCell>
 
@@ -353,10 +367,19 @@ export function CandidatesTab({
                       <TableCell className="py-3.5">
                         <div className="flex items-center gap-3">
                           <div className="min-w-0">
-                            <p className="font-semibold text-foreground text-sm truncate">
+                            <Link
+                              to="/recruitments/$id/applications/$applicationId"
+                              params={{
+                                id: recruitment.id,
+                                applicationId: app.id,
+                              }}
+                              search={detailSearch}
+                              onClick={(event) => event.stopPropagation()}
+                              className="block truncate text-sm font-semibold text-foreground hover:underline focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none"
+                            >
                               {app.candidateName}
-                            </p>
-                            <p className="text-xs text-muted-foreground truncate">
+                            </Link>
+                            <p className="truncate text-xs text-muted-foreground">
                               {app.candidateEducation || app.candidateEmail}
                             </p>
                           </div>
@@ -365,13 +388,13 @@ export function CandidatesTab({
 
                       {/* Application Code (BatchApplications.CodeApplication) */}
                       <TableCell className="py-3.5 whitespace-nowrap">
-                        <span className="font-mono text-xs font-medium text-muted-foreground rounded bg-muted/50 px-2 py-0.5">
+                        <span className="rounded bg-muted/50 px-2 py-0.5 font-mono text-xs font-medium text-muted-foreground">
                           {app.codeApplication}
                         </span>
                       </TableCell>
 
                       {/* Stage Name (BatchStage.StageName) */}
-                      <TableCell className="py-3.5 whitespace-nowrap text-xs font-medium text-foreground">
+                      <TableCell className="py-3.5 text-xs font-medium whitespace-nowrap text-foreground">
                         {displayStageName}
                       </TableCell>
 
@@ -382,7 +405,9 @@ export function CandidatesTab({
                             {displayScore}
                           </span>
                         ) : (
-                          <span className="text-xs text-muted-foreground font-normal">–</span>
+                          <span className="text-xs font-normal text-muted-foreground">
+                            –
+                          </span>
                         )}
                       </TableCell>
 
@@ -394,22 +419,35 @@ export function CandidatesTab({
                       </TableCell>
 
                       {/* Applied Date (BatchApplications.AppliedAt) */}
-                      <TableCell className="hidden md:table-cell py-3.5 whitespace-nowrap text-xs text-muted-foreground">
+                      <TableCell className="hidden py-3.5 text-xs whitespace-nowrap text-muted-foreground md:table-cell">
                         {safeFormatDate(app.appliedAt)}
                       </TableCell>
 
                       {/* Action */}
                       <TableCell
-                        className="pr-5 py-3.5 text-center whitespace-nowrap"
+                        className="py-3.5 pr-5 text-center whitespace-nowrap"
                         onClick={(e) => e.stopPropagation()}
                       >
                         <Button
                           type="button"
+                          nativeButton={false}
+                          render={
+                            <Link
+                              to="/recruitments/$id/applications/$applicationId"
+                              params={{
+                                id: recruitment.id,
+                                applicationId: app.id,
+                              }}
+                              search={detailSearch}
+                            />
+                          }
                           variant="ghost"
                           size="icon-xs"
-                          onClick={() => handleOpenDetail(app)}
+                          aria-label={
+                            "View application for " + app.candidateName
+                          }
                           title="View application details & stages history"
-                          className="size-8 rounded-full border-0 bg-muted hover:bg-muted/60 text-foreground cursor-pointer"
+                          className="size-8 cursor-pointer rounded-full border-0 bg-muted text-foreground hover:bg-muted/60"
                         >
                           <Eye className="size-4" />
                         </Button>
@@ -423,7 +461,8 @@ export function CandidatesTab({
         </div>
 
         {/* Pagination Footer */}
-        <DataTablePagination className="border-t border-border px-5 py-4"
+        <DataTablePagination
+          className="border-t border-border px-5 py-4"
           page={page}
           pageSize={pageSize}
           totalItems={totalCount}
@@ -431,20 +470,11 @@ export function CandidatesTab({
         />
       </Panel>
 
-      {/* Candidate Application & Stage Journey Detail Dialog */}
-      <CandidateApplicationDetailDialog
-        application={selectedApplication}
-        recruitment={recruitment}
-        open={isDetailOpen}
-        onOpenChange={setIsDetailOpen}
-        onUpdateStatus={handleUpdateCandidateStatus}
-      />
-
       {/* Add Candidate Manual Dialog (Talent Pool & Direct Register) */}
       <AddCandidateDialog
         recruitment={recruitment}
-        open={isAddOpen}
-        onOpenChange={setIsAddOpen}
+        open={isAddOpen && canAddCandidates}
+        onOpenChange={handleAddDialogOpenChange}
         onAddCandidates={handleAddCandidates}
         existingApplicationCount={totalCount}
       />

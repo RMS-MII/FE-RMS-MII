@@ -20,7 +20,7 @@ import {
 
 export type { TabKey }
 
-export interface RecruitmentDetailPageProps extends UseRecruitmentDetailProps {}
+export type RecruitmentDetailPageProps = UseRecruitmentDetailProps
 
 export function RecruitmentDetailPage(props: RecruitmentDetailPageProps) {
   const { id } = props
@@ -34,7 +34,6 @@ export function RecruitmentDetailPage(props: RecruitmentDetailPageProps) {
     tabs,
     pipelineItems,
     handleTabChange,
-    handleStageChange,
     handleStageSelect,
     handleCreateStage,
     handleEditStage,
@@ -74,7 +73,7 @@ export function RecruitmentDetailPage(props: RecruitmentDetailPageProps) {
             {Array.from({ length: 6 }).map((_, i) => (
               <div
                 key={i}
-                className="grid gap-1 px-5 py-3.5 sm:grid-cols-[180px_1fr] sm:gap-4 items-baseline"
+                className="grid items-baseline gap-1 px-5 py-3.5 sm:grid-cols-[180px_1fr] sm:gap-4"
               >
                 <Skeleton className="h-4 w-28 rounded-md" />
                 <Skeleton className="h-4 w-64 rounded-md" />
@@ -122,7 +121,7 @@ export function RecruitmentDetailPage(props: RecruitmentDetailPageProps) {
               variant="ghost"
               size="sm"
               onClick={handleBackToList}
-              className="gap-2 rounded-full border-0 bg-muted px-4 hover:bg-muted/40 cursor-pointer"
+              className="cursor-pointer gap-2 rounded-full border-0 bg-muted px-4 hover:bg-muted/40"
             >
               <ArrowLeft className="size-4" />
               <span>Back to Recruitments</span>
@@ -146,7 +145,8 @@ export function RecruitmentDetailPage(props: RecruitmentDetailPageProps) {
         />
         {recruitment.status === "draft" && (
           <p className="mt-2 text-xs text-muted-foreground">
-            This recruitment batch is currently in draft. Stages will commence once opened.
+            This recruitment batch is currently in draft. Stages will commence
+            once opened.
           </p>
         )}
       </section>
@@ -169,7 +169,7 @@ export function RecruitmentDetailPage(props: RecruitmentDetailPageProps) {
                 id={`tab-${tab.key}`}
                 onClick={() => handleTabChange(tab.key)}
                 className={cn(
-                  "inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold transition-all duration-200 cursor-pointer",
+                  "inline-flex cursor-pointer items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold transition-all duration-200",
                   isActive
                     ? "bg-primary text-primary-foreground shadow-sm"
                     : "text-muted-foreground hover:bg-muted hover:text-foreground"
@@ -209,11 +209,7 @@ export function RecruitmentDetailPage(props: RecruitmentDetailPageProps) {
           />
         )}
         {activeTab === "candidates" && (
-          <CandidatesTab
-            recruitment={recruitment}
-            selectedStageIndex={selectedStage}
-            onStageChange={handleStageChange}
-          />
+          <CandidatesTab recruitment={recruitment} />
         )}
         {activeTab === "interviews" && (
           <InterviewsTab recruitment={recruitment} />

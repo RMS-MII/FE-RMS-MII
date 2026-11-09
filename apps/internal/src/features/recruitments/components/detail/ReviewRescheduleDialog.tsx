@@ -1,4 +1,5 @@
 import { useState } from "react"
+import { getApiError } from "@/shared/api/api-error"
 import {
   Dialog,
   DialogContent,
@@ -31,8 +32,8 @@ export interface ReviewRescheduleDialogProps {
     proposedStart: string,
     proposedEnd: string,
     notes?: string
-  ) => void
-  onReject: (sessionId: string, notes: string) => void
+  ) => void | Promise<void>
+  onReject: (sessionId: string, notes: string) => void | Promise<void>
 }
 
 export function ReviewRescheduleDialog({
@@ -44,6 +45,7 @@ export function ReviewRescheduleDialog({
 }: ReviewRescheduleDialogProps) {
   const [reviewNotes, setReviewNotes] = useState("")
   const [rejectError, setRejectError] = useState("")
+  const [isSubmitting, setIsSubmitting] = useState(false)
 
   if (!session || !session.rescheduleRequest) return null
 
@@ -55,53 +57,80 @@ export function ReviewRescheduleDialog({
   const proposedStart = parseISO(req.proposedStart)
   const proposedEnd = parseISO(req.proposedEnd)
 
-  const handleApprove = () => {
-    onApprove(session.id, req.proposedStart, req.proposedEnd, reviewNotes.trim())
-    setReviewNotes("")
-    setRejectError("")
-    onOpenChange(false)
-  }
-
-  const handleReject = () => {
-    if (!reviewNotes.trim()) {
-      setRejectError("Please provide a reason or note when rejecting a reschedule request.")
+  const handleReview = async (decision: "approve" | "reject") => {
+    if (isSubmitting) return
+    if (decision === "reject" && !reviewNotes.trim()) {
+      setRejectError(
+        "Please provide a reason or note when rejecting a reschedule request."
+      )
       return
     }
-    onReject(session.id, reviewNotes.trim())
-    setReviewNotes("")
+    if (reviewNotes.trim().length > 100) {
+      setRejectError("Reviewer notes must be 100 characters or fewer.")
+      return
+    }
+    setIsSubmitting(true)
     setRejectError("")
-    onOpenChange(false)
+    try {
+      if (decision === "approve") {
+        await onApprove(
+          session.id,
+          req.proposedStart,
+          req.proposedEnd,
+          reviewNotes.trim()
+        )
+      } else {
+        await onReject(session.id, reviewNotes.trim())
+      }
+      setReviewNotes("")
+      onOpenChange(false)
+    } catch (error) {
+      setRejectError(
+        getApiError(error, "Failed to review this request. Please try again.")
+          .message
+      )
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-lg rounded-2xl max-h-[92vh] overflow-y-auto">
+    <Dialog
+      open={open}
+      onOpenChange={(nextOpen) => {
+        if (!isSubmitting) onOpenChange(nextOpen)
+      }}
+    >
+      <DialogContent className="max-h-[92vh] overflow-y-auto rounded-2xl sm:max-w-lg">
         <DialogHeader>
           <div className="flex items-center gap-2">
             <DialogTitle>Review Reschedule Request</DialogTitle>
-            <span className="font-mono text-xs font-semibold rounded-md bg-amber-500/15 text-amber-800 dark:text-amber-300 px-2 py-0.5">
+            <span className="rounded-md bg-amber-500/15 px-2 py-0.5 font-mono text-xs font-semibold text-amber-800 dark:text-amber-300">
               Pending Review
             </span>
           </div>
           <DialogDescription>
-            Candidate requested to adjust their interview time. Review the comparison below and make a decision.
+            Candidate requested to adjust their interview time. Review the
+            comparison below and make a decision.
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4 py-2">
           {/* Candidate Profile Summary */}
-          <div className="flex items-center justify-between rounded-2xl bg-muted/50 p-3.5 border border-border/60">
+          <div className="flex items-center justify-between rounded-2xl border border-border/60 bg-muted/50 p-3.5">
             <div>
-              <p className="font-semibold text-sm text-foreground">
+              <p className="text-sm font-semibold text-foreground">
                 {session.candidateName}
               </p>
-              <p className="text-xs text-muted-foreground">{session.candidateEmail}</p>
+              <p className="text-xs text-muted-foreground">
+                {session.candidateEmail}
+              </p>
             </div>
             <div className="text-right">
               <span className="inline-flex rounded-full bg-primary/10 px-2.5 py-0.5 text-xs font-semibold text-primary">
                 {session.stageName}
               </span>
-              <p className="text-[11px] font-mono text-muted-foreground mt-0.5">
+              <p className="mt-0.5 font-mono text-[11px] text-muted-foreground">
                 {session.codeApplication}
               </p>
             </div>
@@ -109,39 +138,43 @@ export function ReviewRescheduleDialog({
 
           {/* Schedule Comparison Grid */}
           <div className="space-y-2">
-            <Label className="text-sm font-medium px-1">Schedule Comparison</Label>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <Label className="px-1 text-sm font-medium">
+              Schedule Comparison
+            </Label>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               {/* Current Schedule */}
-              <div className="rounded-2xl border border-border/80 bg-card p-3.5 space-y-1.5">
-                <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
+              <div className="space-y-1.5 rounded-2xl border border-border/80 bg-card p-3.5">
+                <span className="text-[11px] font-semibold tracking-wider text-muted-foreground uppercase">
                   Current Schedule
                 </span>
-                <div className="flex items-center gap-2 text-xs font-semibold text-foreground pt-0.5">
-                  <Calendar className="size-3.5 text-muted-foreground shrink-0" />
+                <div className="flex items-center gap-2 pt-0.5 text-xs font-semibold text-foreground">
+                  <Calendar className="size-3.5 shrink-0 text-muted-foreground" />
                   <span>{format(currentStart, "EEE, dd MMM yyyy")}</span>
                 </div>
                 <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                  <Clock className="size-3.5 text-muted-foreground shrink-0" />
+                  <Clock className="size-3.5 shrink-0 text-muted-foreground" />
                   <span>
-                    {format(currentStart, "HH:mm")} – {format(currentEnd, "HH:mm")}
+                    {format(currentStart, "HH:mm")} –{" "}
+                    {format(currentEnd, "HH:mm")}
                   </span>
                 </div>
               </div>
 
               {/* Proposed Schedule */}
-              <div className="rounded-2xl border border-amber-300/80 bg-amber-50/60 dark:bg-amber-950/30 dark:border-amber-800 p-3.5 space-y-1.5">
-                <span className="text-[11px] font-semibold text-amber-800 dark:text-amber-300 uppercase tracking-wider flex items-center gap-1">
+              <div className="space-y-1.5 rounded-2xl border border-amber-300/80 bg-amber-50/60 p-3.5 dark:border-amber-800 dark:bg-amber-950/30">
+                <span className="flex items-center gap-1 text-[11px] font-semibold tracking-wider text-amber-800 uppercase dark:text-amber-300">
                   <span>Proposed Schedule</span>
                   <ArrowRight className="size-3" />
                 </span>
-                <div className="flex items-center gap-2 text-xs font-semibold text-amber-950 dark:text-amber-100 pt-0.5">
-                  <Calendar className="size-3.5 text-amber-600 dark:text-amber-400 shrink-0" />
+                <div className="flex items-center gap-2 pt-0.5 text-xs font-semibold text-amber-950 dark:text-amber-100">
+                  <Calendar className="size-3.5 shrink-0 text-amber-600 dark:text-amber-400" />
                   <span>{format(proposedStart, "EEE, dd MMM yyyy")}</span>
                 </div>
                 <div className="flex items-center gap-2 text-xs text-amber-800 dark:text-amber-300">
-                  <Clock className="size-3.5 text-amber-600 dark:text-amber-400 shrink-0" />
+                  <Clock className="size-3.5 shrink-0 text-amber-600 dark:text-amber-400" />
                   <span>
-                    {format(proposedStart, "HH:mm")} – {format(proposedEnd, "HH:mm")}
+                    {format(proposedStart, "HH:mm")} –{" "}
+                    {format(proposedEnd, "HH:mm")}
                   </span>
                 </div>
               </div>
@@ -150,52 +183,67 @@ export function ReviewRescheduleDialog({
 
           {/* Candidate Reason Quote Box */}
           <div className="space-y-1.5">
-            <Label className="text-sm font-medium px-1 flex items-center gap-1.5">
+            <Label className="flex items-center gap-1.5 px-1 text-sm font-medium">
               <AlertTriangle className="size-3.5 text-amber-600" />
               <span>Candidate's Reason</span>
             </Label>
-            <div className="rounded-2xl border border-amber-200/80 bg-amber-50/40 dark:bg-amber-950/20 p-3.5 text-xs text-amber-950 dark:text-amber-200 italic leading-relaxed">
+            <div className="rounded-2xl border border-amber-200/80 bg-amber-50/40 p-3.5 text-xs leading-relaxed text-amber-950 italic dark:bg-amber-950/20 dark:text-amber-200">
               "{req.reason}"
             </div>
           </div>
 
           {/* Reviewer Note */}
           <div className="space-y-1.5">
-            <Label htmlFor="review-note" className="text-sm font-medium px-1">
+            <Label htmlFor="review-note" className="px-1 text-sm font-medium">
               Reviewer Notes
             </Label>
             <Textarea
               id="review-note"
               placeholder="Add review notes (e.g. Schedule confirmed with interviewers)..."
               rows={2}
+              maxLength={100}
+              disabled={isSubmitting}
+              aria-invalid={Boolean(rejectError)}
+              aria-describedby={rejectError ? "review-note-error" : undefined}
               value={reviewNotes}
               onChange={(e) => {
                 setReviewNotes(e.target.value)
                 if (rejectError) setRejectError("")
               }}
-              className="min-h-18 rounded-2xl border-0 bg-muted px-4 py-2.5 text-xs text-foreground placeholder:text-muted-foreground outline-none focus-visible:bg-card focus-visible:ring-2 focus-visible:ring-primary shadow-none resize-y"
+              className="min-h-18 resize-y rounded-2xl border-0 bg-muted px-4 py-2.5 text-xs text-foreground shadow-none outline-none placeholder:text-muted-foreground focus-visible:bg-card focus-visible:ring-2 focus-visible:ring-primary"
             />
             {rejectError && (
-              <p className="text-xs text-destructive px-1">{rejectError}</p>
+              <p
+                id="review-note-error"
+                role="alert"
+                className="px-1 text-xs text-destructive"
+              >
+                {rejectError}
+              </p>
             )}
           </div>
         </div>
 
         <DialogFooter className="mt-4 gap-2 sm:gap-2">
-          <CancelButton onClick={() => onOpenChange(false)} />
+          <CancelButton
+            disabled={isSubmitting}
+            onClick={() => onOpenChange(false)}
+          />
           <Button
             type="button"
             variant="outline"
-            onClick={handleReject}
-            className="h-10 gap-1.5 rounded-full border-rose-300 text-rose-700 hover:bg-rose-50 hover:text-rose-800 dark:border-rose-800 dark:text-rose-300 dark:hover:bg-rose-950/50 cursor-pointer text-xs font-semibold px-4"
+            disabled={isSubmitting}
+            onClick={() => void handleReview("reject")}
+            className="h-10 cursor-pointer gap-1.5 rounded-full border-rose-300 px-4 text-xs font-semibold text-rose-700 hover:bg-rose-50 hover:text-rose-800 dark:border-rose-800 dark:text-rose-300 dark:hover:bg-rose-950/50"
           >
             <XCircle className="size-4" />
             <span>Decline</span>
           </Button>
           <Button
             type="button"
-            onClick={handleApprove}
-            className="h-10 gap-1.5 rounded-full border-0 bg-primary px-5 text-xs font-semibold text-primary-foreground hover:bg-primary/90 cursor-pointer shadow-xs"
+            disabled={isSubmitting}
+            onClick={() => void handleReview("approve")}
+            className="h-10 cursor-pointer gap-1.5 rounded-full border-0 bg-primary px-5 text-xs font-semibold text-primary-foreground shadow-xs hover:bg-primary/90"
           >
             <CheckCircle2 className="size-4" />
             <span>Approve Request</span>
@@ -205,4 +253,3 @@ export function ReviewRescheduleDialog({
     </Dialog>
   )
 }
-

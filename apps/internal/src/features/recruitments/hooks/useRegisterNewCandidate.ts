@@ -1,6 +1,13 @@
 import { useState, useMemo } from "react"
 import type { Recruitment, CandidateApplicationItem } from "../types"
 import { useRegisterCandidatesMutation } from "../api/applications-api"
+import { getRecruitmentAddRestriction } from "../utils/recruitmentUtils"
+import { stageCategoryToLegacyType } from "../utils/stageUtils"
+import { getApiError } from "@/shared/api/api-error"
+import {
+  mapApplicationStatus,
+  mapFinalResultStatus,
+} from "../utils/statusAdapters"
 
 export interface UseRegisterNewCandidateProps {
   recruitment: Recruitment
@@ -16,7 +23,6 @@ export const genderOptions = [
 
 export function useRegisterNewCandidate({
   recruitment,
-  existingApplicationCount,
   onSuccess,
 }: UseRegisterNewCandidateProps) {
   const [fullName, setFullName] = useState("")
@@ -35,21 +41,21 @@ export function useRegisterNewCandidate({
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [submitError, setSubmitError] = useState<string | null>(null)
 
-  const [registerCandidatesApi, { isLoading: isApiSubmitting }] = useRegisterCandidatesMutation()
+  const [registerCandidatesApi, { isLoading: isApiSubmitting }] =
+    useRegisterCandidatesMutation()
 
   const stages = useMemo(() => {
-    return recruitment.batchStages && recruitment.batchStages.length > 0
-      ? recruitment.batchStages
-      : recruitment.stages || []
+    return recruitment.batchStages ?? recruitment.stages ?? []
   }, [recruitment.batchStages, recruitment.stages])
 
-  const hasStages = stages.length > 0
+  const addRestriction = getRecruitmentAddRestriction(recruitment, "candidate")
+  const canAddCandidates = !addRestriction
 
   const handleSubmit = async () => {
     setSubmitError(null)
 
-    if (!hasStages) {
-      setSubmitError("Cannot register candidate because no selection stages have been configured for this recruitment batch. Please configure stages first.")
+    if (addRestriction) {
+      setSubmitError(addRestriction)
       return
     }
 
@@ -72,21 +78,21 @@ export function useRegisterNewCandidate({
       return
     }
 
-    const codeYear = recruitment.openDate ? recruitment.openDate.slice(0, 4) : "2026"
-    const codeNumber = String(existingApplicationCount + 1).padStart(3, "0")
-    const codeApplication = `APP-${codeYear}-${codeNumber}`
-    const appliedAt = new Date().toISOString()
     const firstStage = stages[0]
 
-    const applicationStages = stages.map((stg: any, sIdx) => ({
+    const applicationStages = stages.map((stg, sIdx) => ({
       stageIndex: sIdx,
       stageId: stg.id,
-      stageName: stg.stageName || stg.name,
-      stageType: stg.stageCategory?.toLowerCase() || stg.type,
-      passingScore: stg.passingScore ?? 70,
-      status: sIdx === 0 ? "in_progress" : "upcoming",
+      batchStageId: stg.id,
+      applicationStageId: null,
+      stageName: "stageName" in stg ? stg.stageName : stg.name,
+      stageType: stageCategoryToLegacyType(
+        stg.stageCategory ?? ("type" in stg ? stg.type : undefined)
+      ),
+      passingScore: stg.passingScore ?? null,
+      status: "upcoming",
       totalScore: null,
-      startedAt: sIdx === 0 ? appliedAt : null,
+      startedAt: null,
       completedAt: null,
       notes: null,
     }))
@@ -113,7 +119,9 @@ export function useRegisterNewCandidate({
             education: education.trim() || undefined,
             institution: institution.trim() || undefined,
             gpa: gpa.trim() ? Number(gpa.trim()) : undefined,
-            expectedSalary: expectedSalary.trim() ? Number(expectedSalary.trim()) : undefined,
+            expectedSalary: expectedSalary.trim()
+              ? Number(expectedSalary.trim())
+              : undefined,
             cv: resolvedCv,
             portfolio: portfolio.trim() || undefined,
           },
@@ -121,15 +129,20 @@ export function useRegisterNewCandidate({
       }).unwrap()
 
       const createdItem = Array.isArray(result) && result[0] ? result[0] : null
+      if (!createdItem?.id || !createdItem.candidateId) {
+        throw new Error(
+          "The registration response is incomplete. Refresh the candidate list before trying again."
+        )
+      }
 
       const newApplication: CandidateApplicationItem = {
-        id: createdItem?.id || `app-${Date.now()}`,
-        candidateId: createdItem?.candidateId || `cand-${Date.now()}`,
+        id: createdItem.id,
+        candidateId: createdItem.candidateId,
         recruitmentBatchId: recruitment.id,
-        codeApplication: createdItem?.codeApplication || codeApplication,
-        appliedAt: createdItem?.appliedAt || appliedAt,
-        status: "in_progress",
-        finalStatus: "pending",
+        codeApplication: createdItem.codeApplication,
+        appliedAt: createdItem.appliedAt ?? createdItem.createdAt ?? "",
+        status: mapApplicationStatus(createdItem.status),
+        finalStatus: mapFinalResultStatus(createdItem.finalResultStatus),
         note: null,
         fileOfferingLetter: null,
         offeringLetterStatus: null,
@@ -142,20 +155,30 @@ export function useRegisterNewCandidate({
         candidateCv: resolvedCv || null,
         candidatePortfolio: portfolio.trim() || null,
         currentStageIndex: 0,
-        currentStageName: firstStage ? (firstStage as any).stageName || (firstStage as any).name : "Stage 1",
+        currentStageName: firstStage
+          ? "stageName" in firstStage
+            ? firstStage.stageName
+            : firstStage.name
+          : "No stages configured",
         currentStageScore: null,
-        currentStageStatus: "in_progress",
+        currentStageStatus: "upcoming",
         applicationStages,
       }
 
       onSuccess(newApplication)
-    } catch (err: any) {
-      console.error("Failed to register candidate via API:", err)
-      const errMsg =
-        err?.data?.message ||
-        err?.data?.title ||
-        "Failed to register candidate on server. Please try again."
-      setSubmitError(errMsg)
+    } catch (err) {
+      const problem = getApiError(
+        err,
+        "Failed to register the candidate. Please try again."
+      )
+      setSubmitError(problem.message)
+      const fields: Record<string, string> = {}
+      for (const [path, messages] of Object.entries(problem.fieldErrors)) {
+        const field = path.split(".").pop() ?? path
+        fields[field.charAt(0).toLowerCase() + field.slice(1)] =
+          messages.join(" ")
+      }
+      setErrors(fields)
     }
   }
 
@@ -193,7 +216,7 @@ export function useRegisterNewCandidate({
     errors,
     setErrors,
     submitError,
-    hasStages,
+    canAddCandidates,
     isSubmitting: isApiSubmitting,
     clearFieldError,
     handleSubmit,

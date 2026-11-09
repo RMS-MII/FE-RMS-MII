@@ -9,7 +9,6 @@ import {
   Copy,
   Check,
   AlertTriangle,
-  CheckCircle2,
   Calendar as CalendarIcon,
 } from "lucide-react"
 import type { InterviewSessionItem } from "../../types"
@@ -21,23 +20,48 @@ import {
   TableHeader,
   TableRow,
 } from "@workspace/ui/components/table"
-import { DataTablePagination } from "@/shared/components"
+import {
+  DataTablePagination,
+  StatusBadge,
+  type Tone,
+} from "@/shared/components"
 import { cn } from "@/shared/lib/utils"
 
 const interviewerStatusColors: Record<string, string> = {
-  pending: "bg-amber-500/15 text-amber-800 dark:text-amber-300",
-  assigned: "bg-amber-500/15 text-amber-800 dark:text-amber-300",
-  accepted: "bg-emerald-500/15 text-emerald-800 dark:text-emerald-300",
-  declined: "bg-rose-500/15 text-rose-800 dark:text-rose-300",
-  completed: "bg-blue-500/15 text-blue-800 dark:text-blue-300",
+  pending: "bg-warning-soft text-warning",
+  assigned: "bg-warning-soft text-warning",
+  accepted: "bg-success-soft text-success",
+  declined: "bg-danger-soft text-danger",
+  in_progress: "bg-info-soft text-info",
+  completed: "bg-success-soft text-success",
+  cancelled: "bg-neutral-soft text-neutral",
+  unknown: "bg-neutral-soft text-neutral",
 }
 
 const interviewerStatusLabels: Record<string, string> = {
-  pending: "Pending (Menunggu Persetujuan)",
-  assigned: "Pending (Menunggu Persetujuan)",
-  accepted: "Accepted (Menyetujui)",
-  declined: "Declined (Menolak)",
-  completed: "Completed (Selesai)",
+  pending: "Pending",
+  assigned: "Assigned",
+  accepted: "Accepted",
+  declined: "Declined",
+  in_progress: "In Progress",
+  completed: "Completed",
+  cancelled: "Cancelled",
+  unknown: "Unknown",
+}
+
+const sessionStatusLabels: Record<string, { label: string; tone: Tone }> = {
+  scheduled: { label: "Scheduled", tone: "info" },
+  pending_confirmation: { label: "Pending Confirmation", tone: "warning" },
+  rescheduled: { label: "Rescheduled", tone: "warning" },
+  accepted_by_interviewer: {
+    label: "Accepted by Interviewer",
+    tone: "success",
+  },
+  accepted_by_candidate: { label: "Accepted by Candidate", tone: "success" },
+  in_progress: { label: "In Progress", tone: "info" },
+  completed: { label: "Completed", tone: "success" },
+  cancelled: { label: "Cancelled", tone: "neutral" },
+  unknown: { label: "Unknown", tone: "neutral" },
 }
 
 export interface InterviewSessionTableProps {
@@ -61,25 +85,19 @@ export function InterviewSessionTable({
   className = "",
 }: InterviewSessionTableProps) {
   const [copiedId, setCopiedId] = React.useState<string | null>(null)
-  const [page, setPage] = React.useState(1)
+  const [pagination, setPagination] = React.useState({ key: "", page: 1 })
   const pageSize = 6
-
-  // Reset page when filters change
-  React.useEffect(() => {
-    setPage(1)
-  }, [selectedDate, isFilterPendingReschedule, sessions.length])
+  const filterKey = `${selectedDate ?? "all"}:${isFilterPendingReschedule}:${sessions.length}`
 
   // Filter sessions based on selected date or pending reschedule flag
   const filteredSessions = React.useMemo(() => {
     let result = [...sessions]
 
     if (isFilterPendingReschedule) {
-      result = result.filter(
-        (s) => s.rescheduleRequest?.status === "pending"
-      )
+      result = result.filter((s) => s.rescheduleRequest?.status === "pending")
     } else if (selectedDate) {
       result = result.filter(
-        (s) => s.scheduledStart.slice(0, 10) === selectedDate
+        (s) => format(parseISO(s.scheduledStart), "yyyy-MM-dd") === selectedDate
       )
     }
 
@@ -90,6 +108,16 @@ export function InterviewSessionTable({
         new Date(b.scheduledStart).getTime()
     )
   }, [sessions, selectedDate, isFilterPendingReschedule])
+
+  const page =
+    pagination.key === filterKey
+      ? Math.min(
+          pagination.page,
+          Math.max(1, Math.ceil(filteredSessions.length / pageSize))
+        )
+      : 1
+  const setPage = (nextPage: number) =>
+    setPagination({ key: filterKey, page: nextPage })
 
   // Pagination slice
   const paginatedSessions = React.useMemo(() => {
@@ -148,7 +176,7 @@ export function InterviewSessionTable({
               {headerInfo.title}
             </h3>
           </div>
-          <p className="text-xs text-muted-foreground mt-0.5">
+          <p className="mt-0.5 text-xs text-muted-foreground">
             {headerInfo.subtitle}
           </p>
         </div>
@@ -157,7 +185,7 @@ export function InterviewSessionTable({
           <button
             type="button"
             onClick={onClearDateFilter}
-            className="text-xs font-medium text-primary hover:underline cursor-pointer"
+            className="cursor-pointer text-xs font-medium text-primary hover:underline"
           >
             Show All Dates
           </button>
@@ -165,7 +193,7 @@ export function InterviewSessionTable({
       </div>
 
       {/* Table Container */}
-      <div className="rounded-2xl border border-border/80 bg-card overflow-hidden">
+      <div className="overflow-hidden rounded-2xl border border-border/80 bg-card">
         <div className="overflow-x-auto">
           <Table>
             <TableHeader className="bg-muted/40">
@@ -185,28 +213,29 @@ export function InterviewSessionTable({
                 <TableRow>
                   <TableCell colSpan={8} className="h-64 text-center">
                     <div className="flex flex-col items-center justify-center p-6 text-center">
-                      <CalendarX className="size-10 text-muted-foreground/60 mb-2" />
+                      <CalendarX className="mb-2 size-10 text-muted-foreground/60" />
                       <h4 className="text-sm font-semibold text-foreground">
                         {isFilterPendingReschedule
                           ? "No Pending Reschedule Requests"
                           : "No Interview Sessions Scheduled"}
                       </h4>
-                      <p className="text-xs text-muted-foreground mt-1 max-w-sm">
+                      <p className="mt-1 max-w-sm text-xs text-muted-foreground">
                         {isFilterPendingReschedule
                           ? "All candidate reschedule requests have been reviewed."
                           : selectedDate
                             ? "There are no interview sessions scheduled for this specific date."
                             : "No interview sessions found matching your criteria."}
                       </p>
-                      {(selectedDate || isFilterPendingReschedule) && onClearDateFilter && (
-                        <button
-                          type="button"
-                          onClick={onClearDateFilter}
-                          className="mt-3.5 rounded-full bg-primary/10 px-3.5 py-1.5 text-xs font-semibold text-primary hover:bg-primary/20 transition-colors cursor-pointer"
-                        >
-                          View All Dates
-                        </button>
-                      )}
+                      {(selectedDate || isFilterPendingReschedule) &&
+                        onClearDateFilter && (
+                          <button
+                            type="button"
+                            onClick={onClearDateFilter}
+                            className="mt-3.5 cursor-pointer rounded-full bg-primary/10 px-3.5 py-1.5 text-xs font-semibold text-primary transition-colors hover:bg-primary/20"
+                          >
+                            View All Dates
+                          </button>
+                        )}
                     </div>
                   </TableCell>
                 </TableRow>
@@ -217,8 +246,8 @@ export function InterviewSessionTable({
                     session.rescheduleRequest?.status === "pending"
 
                   // Safe time format
-                  let dateFormatted = ""
-                  let timeFormatted = ""
+                  let dateFormatted: string
+                  let timeFormatted: string
                   try {
                     const start = parseISO(session.scheduledStart)
                     const end = parseISO(session.scheduledEnd)
@@ -235,7 +264,7 @@ export function InterviewSessionTable({
                       className="border-b border-border/60 transition-colors hover:bg-muted/30"
                     >
                       {/* Row Index */}
-                      <TableCell className="pl-4 text-center text-xs text-muted-foreground font-mono">
+                      <TableCell className="pl-4 text-center font-mono text-xs text-muted-foreground">
                         {itemIndex}
                       </TableCell>
 
@@ -243,10 +272,10 @@ export function InterviewSessionTable({
                       <TableCell className="py-3">
                         <div className="flex items-center gap-2.5">
                           <div className="min-w-0">
-                            <p className="font-semibold text-xs text-foreground truncate">
+                            <p className="truncate text-xs font-semibold text-foreground">
                               {session.candidateName}
                             </p>
-                            <p className="text-[11px] text-muted-foreground truncate">
+                            <p className="truncate text-[11px] text-muted-foreground">
                               {session.candidateEmail}
                             </p>
                           </div>
@@ -265,8 +294,8 @@ export function InterviewSessionTable({
                         <p className="font-semibold text-foreground">
                           {dateFormatted}
                         </p>
-                        <div className="flex items-center gap-1 text-[11px] text-muted-foreground mt-0.5">
-                          <Clock className="size-3 text-muted-foreground shrink-0" />
+                        <div className="mt-0.5 flex items-center gap-1 text-[11px] text-muted-foreground">
+                          <Clock className="size-3 shrink-0 text-muted-foreground" />
                           <span>{timeFormatted}</span>
                         </div>
                       </TableCell>
@@ -280,7 +309,8 @@ export function InterviewSessionTable({
                                 interviewerStatusColors[inv.status] ||
                                 "bg-muted text-muted-foreground border border-border"
                               const statusDesc =
-                                interviewerStatusLabels[inv.status] || inv.status
+                                interviewerStatusLabels[inv.status] ||
+                                inv.status
 
                               return (
                                 <span
@@ -297,7 +327,7 @@ export function InterviewSessionTable({
                             })}
                           </div>
                         ) : (
-                          <span className="text-muted-foreground italic text-xs">
+                          <span className="text-xs text-muted-foreground italic">
                             Unassigned
                           </span>
                         )}
@@ -307,7 +337,7 @@ export function InterviewSessionTable({
                       <TableCell className="py-3 text-xs">
                         <div className="space-y-1.5">
                           {session.isOnline ? (
-                            <div className="flex flex-col gap-1 items-start">
+                            <div className="flex flex-col items-start gap-1">
                               <span className="inline-flex items-center gap-1 rounded-full bg-cyan-50 px-2 py-0.5 text-[11px] font-medium text-cyan-700 dark:bg-cyan-950/40 dark:text-cyan-300">
                                 <Video className="size-3 text-cyan-600" />
                                 Online
@@ -326,10 +356,13 @@ export function InterviewSessionTable({
                                   <button
                                     type="button"
                                     onClick={() =>
-                                      handleCopyLink(session.meetingUrl!, session.id)
+                                      handleCopyLink(
+                                        session.meetingUrl!,
+                                        session.id
+                                      )
                                     }
                                     title="Copy meeting link"
-                                    className="text-muted-foreground hover:text-foreground cursor-pointer p-0.5"
+                                    className="cursor-pointer p-0.5 text-muted-foreground hover:text-foreground"
                                   >
                                     {copiedId === session.id ? (
                                       <Check className="size-3 text-emerald-600" />
@@ -347,8 +380,10 @@ export function InterviewSessionTable({
                                 Onsite
                               </span>
                               <p
-                                className="text-[11px] text-muted-foreground truncate max-w-44 mt-0.5"
-                                title={session.location || "Office Meeting Room"}
+                                className="mt-0.5 max-w-44 truncate text-[11px] text-muted-foreground"
+                                title={
+                                  session.location || "Office Meeting Room"
+                                }
                               >
                                 {session.location || "Office Meeting Room"}
                               </p>
@@ -360,31 +395,22 @@ export function InterviewSessionTable({
                       {/* Status */}
                       <TableCell className="py-3 text-center whitespace-nowrap">
                         <div className="flex flex-col items-center gap-1">
-                          {session.status === "completed" ? (
-                            <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-0.5 text-[11px] font-medium text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300">
-                              <CheckCircle2 className="size-3 text-emerald-600" />
-                              Completed
-                            </span>
-                          ) : session.status === "cancelled" ? (
-                            <span className="inline-flex items-center rounded-full bg-rose-50 px-2.5 py-0.5 text-[11px] font-medium text-rose-700 dark:bg-rose-950/40 dark:text-rose-300">
-                              Cancelled
-                            </span>
-                          ) : session.status === "rescheduled" ? (
-                            <span className="inline-flex items-center rounded-full bg-amber-50 px-2.5 py-0.5 text-[11px] font-medium text-amber-700 dark:bg-amber-950/40 dark:text-amber-300">
-                              Rescheduled
-                            </span>
-                          ) : (
-                            <span className="inline-flex items-center rounded-full bg-blue-50 px-2.5 py-0.5 text-[11px] font-medium text-blue-700 dark:bg-blue-950/40 dark:text-blue-300">
-                              Scheduled
-                            </span>
-                          )}
+                          <StatusBadge
+                            tone={
+                              sessionStatusLabels[session.status]?.tone ??
+                              "neutral"
+                            }
+                          >
+                            {sessionStatusLabels[session.status]?.label ??
+                              "Unknown"}
+                          </StatusBadge>
 
                           {/* Reschedule Request Notice Badge */}
                           {isPendingReschedule && (
                             <button
                               type="button"
                               onClick={() => onReviewReschedule?.(session)}
-                              className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold text-amber-800 hover:bg-amber-200 transition-colors cursor-pointer dark:bg-amber-950 dark:text-amber-300"
+                              className="inline-flex cursor-pointer items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold text-amber-800 transition-colors hover:bg-amber-200 dark:bg-amber-950 dark:text-amber-300"
                             >
                               <AlertTriangle className="size-2.5 text-amber-600" />
                               Reschedule Req.
@@ -394,26 +420,31 @@ export function InterviewSessionTable({
                       </TableCell>
 
                       {/* Action Column */}
-                      <TableCell className="pr-4 py-3 text-center whitespace-nowrap">
+                      <TableCell className="py-3 pr-4 text-center whitespace-nowrap">
                         <div className="flex items-center justify-center gap-1">
                           {isPendingReschedule && onReviewReschedule ? (
                             <button
                               type="button"
                               onClick={() => onReviewReschedule(session)}
-                              className="rounded-full bg-amber-600 px-3 py-1 text-xs font-semibold text-white hover:bg-amber-700 transition-colors cursor-pointer shadow-xs"
+                              className="cursor-pointer rounded-full bg-amber-600 px-3 py-1 text-xs font-semibold text-white shadow-xs transition-colors hover:bg-amber-700"
                             >
                               Review Reschedule
                             </button>
-                          ) : (session.status === "rescheduled" || session.rescheduleRequest?.status === "approved") && onAdjustSchedule ? (
+                          ) : (session.status === "rescheduled" ||
+                              session.rescheduleRequest?.status ===
+                                "approved") &&
+                            onAdjustSchedule ? (
                             <button
                               type="button"
                               onClick={() => onAdjustSchedule(session)}
-                              className="rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold text-primary hover:bg-primary/20 transition-colors cursor-pointer"
+                              className="cursor-pointer rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold text-primary transition-colors hover:bg-primary/20"
                             >
                               Adjust Schedule
                             </button>
                           ) : (
-                            <span className="text-xs text-muted-foreground/60">—</span>
+                            <span className="text-xs text-muted-foreground/60">
+                              —
+                            </span>
                           )}
                         </div>
                       </TableCell>
@@ -438,4 +469,3 @@ export function InterviewSessionTable({
     </div>
   )
 }
-

@@ -46,6 +46,7 @@ import {
 export interface Crumb {
   label: string
   to?: string
+  search?: Record<string, unknown>
 }
 
 type BadgeKey = "interviews" | "stageInvitations" | "offerings"
@@ -601,6 +602,7 @@ export function AppShell({
                               render={
                                 <Link
                                   to={c.to}
+                                  search={c.search}
                                   className="truncate text-muted-foreground transition-colors hover:text-foreground"
                                 />
                               }

@@ -1,7 +1,14 @@
-import { Eye, Plus } from "lucide-react"
+import { useState } from "react"
+import { CheckCircle2, CirclePlay, CircleStop, Eye, MoreHorizontal, Plus, X } from "lucide-react"
 
 // Primitives from @workspace/ui
 import { Button } from "@workspace/ui/components/button"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@workspace/ui/components/dropdown-menu"
 import {
   Table,
   TableBody,
@@ -38,10 +45,15 @@ import type { Recruitment } from "../types"
 import { getRecruitmentStatusMeta } from "../types"
 import { activeCandidateCount } from "../data/mock"
 import { CreateRecruitmentDialog } from "../components/CreateRecruitmentDialog"
+import { OpenRecruitmentDialog } from "../components/OpenRecruitmentDialog"
+import { CloseRecruitmentDialog } from "../components/CloseRecruitmentDialog"
 import { formatCurrentStageText } from "../utils"
 import { useRecruitmentsList } from "../hooks/useRecruitmentsList"
 
 export function RecruitmentsListPage() {
+  const [recruitmentToOpen, setRecruitmentToOpen] = useState<Recruitment | null>(null)
+  const [recruitmentToClose, setRecruitmentToClose] = useState<Recruitment | null>(null)
+  const [successMessage, setSuccessMessage] = useState<string | null>(null)
   const {
     search,
     searchTerm,
@@ -67,6 +79,19 @@ export function RecruitmentsListPage() {
     handleViewDetail,
   } = useRecruitmentsList()
 
+  const handleRecruitmentStatusUpdated = (batch: Recruitment) => {
+    const status = getRecruitmentStatusMeta(batch.status)
+    setSuccessMessage(`${batch.name} is now ${status.label}.`)
+    if (
+      statusFilter !== "all" &&
+      getRecruitmentStatusMeta(statusFilter).label !== status.label &&
+      recruitments.length === 1 &&
+      page > 1
+    ) {
+      handlePageChange(page - 1)
+    }
+  }
+
   const renderCurrentStage = (r: Recruitment) => {
     const text = formatCurrentStageText(r)
     const isMuted =
@@ -87,6 +112,22 @@ export function RecruitmentsListPage() {
         title="Recruitments"
         description="Each recruitment represents one job vacancy and its selection stages."
       />
+
+      {successMessage && (
+        <div role="status" className="flex items-center gap-3 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
+          <CheckCircle2 className="size-4 shrink-0" aria-hidden />
+          <p className="flex-1">{successMessage}</p>
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            onClick={() => setSuccessMessage(null)}
+            aria-label="Dismiss notification"
+            className="shrink-0 rounded-full text-emerald-800 hover:bg-emerald-100"
+          >
+            <X className="size-4" aria-hidden />
+          </Button>
+        </div>
+      )}
 
       <Panel>
         {/* Controls: Search, Filter, New Recruitment Button */}
@@ -321,16 +362,45 @@ export function RecruitmentsListPage() {
                       </TableCell>
 
                       <TableCell className="pr-5 text-right whitespace-nowrap">
-                        <Button
-                          variant="ghost"
-                          size="icon-sm"
-                          onClick={() => handleViewDetail(recruitment.id)}
-                          className="size-8 rounded-full text-muted-foreground transition-colors hover:text-foreground hover:bg-muted cursor-pointer"
-                          aria-label={`View details for ${recruitment.name}`}
-                          title="View Detail"
-                        >
-                          <Eye className="size-4" aria-hidden />
-                        </Button>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger
+                            render={
+                              <Button
+                                variant="ghost"
+                                size="icon-sm"
+                                className="size-8 rounded-full text-muted-foreground transition-colors hover:text-foreground hover:bg-muted cursor-pointer"
+                                aria-label={`Actions for ${recruitment.name}`}
+                                title="Recruitment actions"
+                              />
+                            }
+                          >
+                            <MoreHorizontal className="size-4" aria-hidden />
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end" className="w-48 rounded-xl bg-card p-1">
+                            <DropdownMenuItem onClick={() => handleViewDetail(recruitment.id)}>
+                              <Eye className="size-4" aria-hidden />
+                              View Detail
+                            </DropdownMenuItem>
+                            {statusMeta.label === "Draft" && (
+                              <DropdownMenuItem onClick={() => {
+                                setSuccessMessage(null)
+                                setRecruitmentToOpen(recruitment)
+                              }}>
+                                <CirclePlay className="size-4" aria-hidden />
+                                Open Recruitment
+                              </DropdownMenuItem>
+                            )}
+                            {statusMeta.label === "Open" && (
+                              <DropdownMenuItem variant="destructive" onClick={() => {
+                                setSuccessMessage(null)
+                                setRecruitmentToClose(recruitment)
+                              }}>
+                                <CircleStop className="size-4" aria-hidden />
+                                Close Recruitment
+                              </DropdownMenuItem>
+                            )}
+                          </DropdownMenuContent>
+                        </DropdownMenu>
                       </TableCell>
                     </TableRow>
                   )
@@ -352,6 +422,28 @@ export function RecruitmentsListPage() {
           </div>
         )}
       </Panel>
+
+      {recruitmentToOpen && (
+        <OpenRecruitmentDialog
+          recruitment={recruitmentToOpen}
+          open
+          onOpenChange={(open) => {
+            if (!open) setRecruitmentToOpen(null)
+          }}
+          onSuccess={handleRecruitmentStatusUpdated}
+        />
+      )}
+
+      {recruitmentToClose && (
+        <CloseRecruitmentDialog
+          recruitment={recruitmentToClose}
+          open
+          onOpenChange={(open) => {
+            if (!open) setRecruitmentToClose(null)
+          }}
+          onSuccess={handleRecruitmentStatusUpdated}
+        />
+      )}
 
       <CreateRecruitmentDialog
         open={isCreateOpen}
