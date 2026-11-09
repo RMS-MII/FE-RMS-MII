@@ -4,6 +4,7 @@ import type { AuthState, AuthUser, DataMode, UserRole } from "../types"
 
 const STORAGE_KEY_TOKEN = "rms_access_token"
 const STORAGE_KEY_USER = "rms_user"
+const STORAGE_KEY_EXPIRES_AT = "rms_access_token_expires_at"
 
 const getInitialToken = (): string | null => {
   if (typeof window === "undefined") return null
@@ -20,6 +21,11 @@ const getInitialUser = (): AuthUser | null => {
   }
 }
 
+const getInitialExpiresAt = (): string | null => {
+  if (typeof window === "undefined") return null
+  return localStorage.getItem(STORAGE_KEY_EXPIRES_AT)
+}
+
 const initialToken = getInitialToken()
 const initialUser = getInitialUser()
 
@@ -27,7 +33,7 @@ const initialState: AuthState = {
   user: initialUser,
   accessToken: initialToken,
   tokenType: "Bearer",
-  expiresAt: null,
+  expiresAt: getInitialExpiresAt(),
   isAuthenticated: Boolean(initialToken),
   isInitializing: false,
   dataMode: "normal",
@@ -56,6 +62,11 @@ export const authSlice = createSlice({
       if (typeof window !== "undefined") {
         localStorage.setItem(STORAGE_KEY_TOKEN, action.payload.accessToken)
         localStorage.setItem(STORAGE_KEY_USER, JSON.stringify(action.payload.user))
+        if (action.payload.expiresAt) {
+          localStorage.setItem(STORAGE_KEY_EXPIRES_AT, action.payload.expiresAt)
+        } else {
+          localStorage.removeItem(STORAGE_KEY_EXPIRES_AT)
+        }
       }
     },
     setUser: (state, action: PayloadAction<AuthUser>) => {
@@ -78,8 +89,10 @@ export const authSlice = createSlice({
     setAccessToken: (state, action: PayloadAction<string>) => {
       state.accessToken = action.payload
       state.isAuthenticated = true
+      state.expiresAt = null
       if (typeof window !== "undefined") {
         localStorage.setItem(STORAGE_KEY_TOKEN, action.payload)
+        localStorage.removeItem(STORAGE_KEY_EXPIRES_AT)
       }
     },
     logout: (state) => {
@@ -93,6 +106,7 @@ export const authSlice = createSlice({
       if (typeof window !== "undefined") {
         localStorage.removeItem(STORAGE_KEY_TOKEN)
         localStorage.removeItem(STORAGE_KEY_USER)
+        localStorage.removeItem(STORAGE_KEY_EXPIRES_AT)
       }
     },
   },

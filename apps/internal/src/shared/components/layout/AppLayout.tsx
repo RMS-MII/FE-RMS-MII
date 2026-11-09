@@ -100,6 +100,7 @@ function AuthenticatedLayout() {
       : getCrumbsForPath(path)
 
   const isAuthenticated = useAppSelector((state) => state.auth.isAuthenticated)
+  const expiresAt = useAppSelector((state) => state.auth.expiresAt)
 
   // Rehidrasi data profil user via GET /api/auth/me jika authenticated
   const { data: currentUserData } = useGetMeQuery(undefined, {
@@ -111,6 +112,27 @@ function AuthenticatedLayout() {
       dispatch(setUser(mapCurrentUserToAuthUser(currentUserData)))
     }
   }, [currentUserData, dispatch])
+
+  useEffect(() => {
+    if (!isAuthenticated || !expiresAt) return
+    const expiryTime = Date.parse(expiresAt)
+    if (!Number.isFinite(expiryTime)) return
+
+    const maxTimeout = 2_147_000_000
+    let timer = 0
+    const checkExpiry = () => {
+      const remaining = expiryTime - Date.now()
+      if (remaining <= 0) {
+        dispatch(logout())
+        void navigate({ to: "/login", replace: true })
+        return
+      }
+      timer = window.setTimeout(checkExpiry, Math.min(remaining, maxTimeout))
+    }
+
+    checkExpiry()
+    return () => window.clearTimeout(timer)
+  }, [dispatch, expiresAt, isAuthenticated, navigate])
 
   const handleLogout = () => {
     dispatch(logout())

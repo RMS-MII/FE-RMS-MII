@@ -33,10 +33,17 @@ const baseQueryWithReauth: BaseQueryFn<
   unknown,
   FetchBaseQueryError
 > = async (args, api, extraOptions) => {
-  const requestToken = (api.getState() as AuthSliceState).auth?.accessToken
+  const getActiveToken = () => {
+    const stateToken = (api.getState() as AuthSliceState).auth?.accessToken
+    if (stateToken) return stateToken
+    return typeof window !== "undefined"
+      ? localStorage.getItem("rms_access_token")
+      : null
+  }
+  const requestToken = getActiveToken()
   const result = await rawBaseQuery(args, api, extraOptions)
   // A late response from an earlier login must not affect the current session.
-  if (requestToken !== (api.getState() as AuthSliceState).auth?.accessToken) {
+  if (requestToken !== getActiveToken()) {
     return {
       error: {
         status: "CUSTOM_ERROR",
@@ -54,9 +61,13 @@ const baseQueryWithReauth: BaseQueryFn<
     // Jangan lakukan global reset jika request login itu sendiri yang gagal kredensial
     if (!isLoginEndpoint) {
       if (typeof window !== "undefined") {
-        localStorage.removeItem("rms_access_token")
+        api.dispatch({ type: "auth/logout" })
+        if (window.location.pathname !== "/login") {
+          window.location.replace("/login")
+        }
+      } else {
+        api.dispatch({ type: "auth/logout" })
       }
-      api.dispatch({ type: "auth/logout" })
     }
   }
 
