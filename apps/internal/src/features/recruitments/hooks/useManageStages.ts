@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect } from "react"
+import { format } from "date-fns"
 import { useNavigate } from "@tanstack/react-router"
 import {
   useGetBatchByIdQuery,
@@ -15,6 +16,19 @@ import {
   reorderArray,
   stageCategoryToLegacyType,
 } from "../utils"
+
+function toLocalDateTimeInput(value: string | null | undefined, isEnd = false) {
+  if (!value) return ""
+
+  const datePart = value.slice(0, 10)
+  const timePart = value.slice(11, 16)
+  if (!value.includes("T") || timePart === "00:00") {
+    return `${datePart}T${isEnd ? "23:59" : "00:00"}`
+  }
+
+  const date = new Date(value)
+  return Number.isNaN(date.getTime()) ? "" : format(date, "yyyy-MM-dd'T'HH:mm")
+}
 
 export function getInitialEditableStages(recruitment: Recruitment | null): EditableStage[] {
   if (!recruitment) return []
@@ -51,8 +65,8 @@ export function getInitialEditableStages(recruitment: Recruitment | null): Edita
         interviewerIds,
         assignedInterviewers: assignedList,
         passingScore: bs.passingScore ?? null,
-        startDate: bs.startDate ? bs.startDate.slice(0, 10) : "",
-        endDate: bs.endDate ? bs.endDate.slice(0, 10) : "",
+        startDate: toLocalDateTimeInput(bs.startDate),
+        endDate: toLocalDateTimeInput(bs.endDate, true),
         isActive: bs.isActive ?? true,
       }
     })
@@ -72,8 +86,8 @@ export function getInitialEditableStages(recruitment: Recruitment | null): Edita
       interviewerIds: s.interviewerIds ?? (s.ownerId ? [s.ownerId] : []),
       assignedInterviewers: s.assignedInterviewers ?? [],
       passingScore: s.passingScore ?? null,
-      startDate: s.startDate ? s.startDate.slice(0, 10) : "",
-      endDate: s.endDate ? s.endDate.slice(0, 10) : "",
+      startDate: toLocalDateTimeInput(s.startDate),
+      endDate: toLocalDateTimeInput(s.endDate, true),
       isActive: s.isActive ?? true,
     }))
   }

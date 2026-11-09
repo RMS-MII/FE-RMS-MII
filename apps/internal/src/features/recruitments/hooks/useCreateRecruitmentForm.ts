@@ -65,7 +65,7 @@ export function useCreateRecruitmentForm({
     setSubmitError(null)
 
     const startIso = new Date(openDate).toISOString()
-    const endIso = new Date(closeDate + "T23:59:59").toISOString()
+    const endIso = new Date(closeDate).toISOString()
 
     try {
       const createdBatch = await createBatchApi({

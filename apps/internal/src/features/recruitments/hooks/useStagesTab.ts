@@ -6,7 +6,9 @@ import type {
   StageInterviewerAssignment,
 } from "../types"
 import {
+  useActivateBatchStageMutation,
   useAssignStageInterviewersMutation,
+  useCompleteBatchStageMutation,
   useGetBatchStagesQuery,
 } from "../api/recruitments-api"
 import { stageCategoryToLegacyType } from "../utils/stageUtils"
@@ -54,6 +56,7 @@ export function mapBatchStagesToStages(
       startDate: bs.startDate ?? null,
       endDate: bs.endDate ?? null,
       isActive: bs.isActive,
+      lifecycleStatus: bs.lifecycleStatus,
       nextStageId: bs.nextStageId,
       assignedInterviewers: assignedList,
       interviewerIds: assignedList.map((a) => a.employeeId),
@@ -85,6 +88,10 @@ export function useStagesTab({ recruitment }: UseStagesTabProps) {
   const [isDialogOpen, setIsDialogOpen] = useState(false)
 
   const [assignInterviewersApi] = useAssignStageInterviewersMutation()
+  const [activateStageApi, { isLoading: isActivatingStage }] =
+    useActivateBatchStageMutation()
+  const [completeStageApi, { isLoading: isCompletingStage }] =
+    useCompleteBatchStageMutation()
 
   // Compute total duration across all stages
   const totalDays = stages.reduce(
@@ -117,6 +124,12 @@ export function useStagesTab({ recruitment }: UseStagesTabProps) {
     }).unwrap()
   }
 
+  const handleActivateStage = async (stageId: string) =>
+    activateStageApi({ batchId: recruitment.id, stageId }).unwrap()
+
+  const handleCompleteStage = async (stageId: string) =>
+    completeStageApi({ batchId: recruitment.id, stageId }).unwrap()
+
   return {
     stages,
     isLoading: isFetching && !batchStages,
@@ -130,5 +143,8 @@ export function useStagesTab({ recruitment }: UseStagesTabProps) {
     handleOpenAssignDialog,
     handleCloseAssignDialog,
     handleSaveInterviewers,
+    handleActivateStage,
+    handleCompleteStage,
+    isTransitioning: isActivatingStage || isCompletingStage,
   }
 }

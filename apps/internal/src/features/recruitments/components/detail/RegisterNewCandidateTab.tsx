@@ -187,7 +187,7 @@ export function RegisterNewCandidateTab({
             {/* Education Degree & Major */}
             <div className="space-y-1.5">
               <Label htmlFor="cand-edu" className="text-sm font-medium px-1">
-                Education Degree & Major
+                Education Degree & Major <span className="text-destructive">*</span>
               </Label>
               <Input
                 id="cand-edu"
@@ -201,7 +201,7 @@ export function RegisterNewCandidateTab({
             {/* University / Institution */}
             <div className="space-y-1.5">
               <Label htmlFor="cand-institution" className="text-sm font-medium px-1">
-                University / Campus
+                University / Campus <span className="text-destructive">*</span>
               </Label>
               <Input
                 id="cand-institution"
@@ -216,7 +216,7 @@ export function RegisterNewCandidateTab({
             <div className="grid grid-cols-2 gap-2.5">
               <div className="space-y-1.5">
                 <Label htmlFor="cand-gpa" className="text-sm font-medium px-1">
-                  GPA
+                  GPA <span className="text-destructive">*</span>
                 </Label>
                 <Input
                   id="cand-gpa"

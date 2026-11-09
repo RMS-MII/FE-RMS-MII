@@ -43,7 +43,7 @@ export function validateRecruitmentFormData(formData: {
   if (!formData.openDate) errs.openDate = "Start date is required"
   if (!formData.closeDate) errs.closeDate = "End date is required"
   if (formData.openDate && formData.closeDate && formData.closeDate < formData.openDate) {
-    errs.closeDate = "End date cannot be earlier than start date"
+    errs.closeDate = "End date/time cannot be earlier than start date/time"
   }
   return errs
 }
