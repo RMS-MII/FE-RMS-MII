@@ -4,20 +4,35 @@
 // =====================================================================
 
 export type MyInterviewStatus =
-  "pending" | "accepted" | "declined" | "completed" | "reschedule_requested"
+  | "pending"
+  | "accepted"
+  | "declined"
+  | "completed"
+  | "reschedule_requested"
+  | "rescheduled"
+  | "cancelled"
 
 export type InterviewMode = "online" | "onsite"
 
 export type AssessmentRecommendation =
-  "Strong Hire" | "Recommend" | "Neutral" | "Do Not Recommend"
+  | "Strongly Recommend"
+  | "Recommend"
+  | "Consider"
+  | "Not Recommend"
+
+export type ApiAssessmentRecommendation =
+  | "StronglyRecommend"
+  | "Recommend"
+  | "Consider"
+  | "NotRecommend"
 
 export interface InterviewAssessmentItem {
-  id: string // InterviewAssessment.Id
+  id?: string // Not provided by the interviewer sessions GET response.
   sessionInterviewId: string
   score: number // 0 - 100
   recommendation: AssessmentRecommendation
-  notes: string
-  assessedAt: string
+  notes?: string
+  assessedAt?: string
 }
 
 export interface CoInterviewerItem {
@@ -41,18 +56,18 @@ export interface RescheduleRequestItem {
 export interface MyInterviewItem {
   id: string // SessionInterview.Id
   sessionId: string // InterviewSession.Id
-  applicationStageId: string
+  applicationStageId?: string
   candidateId: string
   candidateName: string
   candidateEmail: string
   candidateAvatar?: string
-  codeApplication: string
+  codeApplication?: string
 
   // Recruitment batch & stage info
-  recruitmentId: string
+  recruitmentId?: string
   recruitmentName: string
-  recruitmentBatchCode: string
-  stageId: string
+  recruitmentBatchCode?: string
+  stageId?: string
   stageName: string
 
   // Timing & Logistics
@@ -65,7 +80,7 @@ export interface MyInterviewItem {
 
   // Interviewer assignment status
   status: MyInterviewStatus
-  interviewerEmployeeId: string
+  interviewerEmployeeId?: string
   interviewerName: string
   interviewerEmail: string
   declineReason?: string | null
@@ -96,8 +111,89 @@ export interface MyInterviewItem {
 
 export interface SubmitAssessmentPayload {
   score: number
-  recommendation: AssessmentRecommendation
+  recommendation: ApiAssessmentRecommendation
   notes: string
+}
+
+export type InterviewerSessionStatusValue =
+  | "Scheduled"
+  | "PendingConfirmation"
+  | "Rescheduled"
+  | "AcceptedByInterviewer"
+  | "AcceptedByCandidate"
+  | 1
+  | 2
+  | 3
+  | 4
+  | 5
+
+export type SessionInterviewStatusValue =
+  | "InProgress"
+  | "Completed"
+  | "Cancelled"
+  | 1
+  | 2
+  | 3
+
+export interface InterviewerSessionDto {
+  sessionInterviewId: string
+  interviewSessionId: string
+  sessionName: string
+  scheduledStart: string
+  scheduledEnd: string
+  isOnline: boolean
+  meetingUrl: string | null
+  location: string | null
+  sessionStatus: InterviewerSessionStatusValue
+  sessionStatusName?: string
+  interviewerStatus: SessionInterviewStatusValue
+  interviewerStatusName?: string
+  candidateId: string
+  candidateName: string
+  candidateEmail: string
+  batchName: string
+  stageName: string
+  hasTakeHome: boolean
+  endedSubmissionAt: string | null
+  fileSubmission: string | null
+  isAssessmentSubmitted: boolean
+  assessmentScore: number | null
+  assessmentRecommendation: ApiAssessmentRecommendation | number | null
+  assessmentRecommendationName?: string | null
+}
+
+export interface ConfirmInterviewResponseDto {
+  sessionInterviewId: string
+  interviewSessionId: string
+  sessionName: string
+  scheduledStart: string
+  scheduledEnd: string
+  isOnline: boolean
+  meetingUrl: string | null
+  location: string | null
+  sessionStatus: InterviewerSessionStatusValue
+  sessionStatusName?: string
+  candidateName: string
+  candidateEmail: string
+  candidateInvitationEmailSent: boolean
+  message: string
+}
+
+export interface SubmitInterviewAssessmentDto {
+  assessmentId: string
+  sessionInterviewId: string
+  interviewSessionId: string
+  sessionName: string
+  candidateId: string
+  candidateName: string
+  score: number
+  recommendation: ApiAssessmentRecommendation | number
+  recommendationName?: string
+  notes: string | null
+  interviewerStatus: SessionInterviewStatusValue
+  interviewerStatusName?: string
+  createdAt: string
+  updatedAt: string | null
 }
 
 export type MyInterviewFilterParams = {

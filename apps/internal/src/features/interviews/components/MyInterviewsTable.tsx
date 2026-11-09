@@ -1,5 +1,5 @@
 import * as React from "react"
-import { format, parseISO } from "date-fns"
+import { format, isValid, parseISO } from "date-fns"
 import {
   Clock,
   MapPin,
@@ -13,9 +13,7 @@ import {
   Users,
   CalendarClock,
   MoreHorizontal,
-  FileClock,
   FileText,
-  Eye,
 } from "lucide-react"
 import type { MyInterviewItem } from "../types"
 import {
@@ -37,7 +35,6 @@ import {
   DropdownMenuTrigger,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuSeparator,
 } from "@workspace/ui/components/dropdown-menu"
 import { cn } from "@/shared/lib/utils"
 
@@ -54,11 +51,8 @@ export interface MyInterviewsTableProps {
   sortDirection: "asc" | "desc"
   onSort: (key: string) => void
   onAcceptInvitation?: (item: MyInterviewItem) => void
-  onRequestReschedule?: (item: MyInterviewItem) => void
-  onSetSubmissionDeadline?: (item: MyInterviewItem) => void
   onSubmitAssessment?: (item: MyInterviewItem) => void
   onViewAssessment?: (item: MyInterviewItem) => void
-  onViewCandidate?: (item: MyInterviewItem) => void
   onResetFilters?: () => void
   hasActiveFilters?: boolean
 }
@@ -69,11 +63,8 @@ export function MyInterviewsTable({
   sortDirection,
   onSort,
   onAcceptInvitation,
-  onRequestReschedule,
-  onSetSubmissionDeadline,
   onSubmitAssessment,
   onViewAssessment,
-  onViewCandidate,
   onResetFilters,
   hasActiveFilters = false,
 }: MyInterviewsTableProps) {
@@ -179,21 +170,15 @@ export function MyInterviewsTable({
             interviews.map((item) => {
               const isCopied = copiedId === item.id
 
-              let startDate: Date
-              let endDate: Date
-              try {
-                startDate = parseISO(item.scheduledStart)
-                endDate = parseISO(item.scheduledEnd)
-              } catch {
-                startDate = new Date()
-                endDate = new Date()
-              }
+              const startDate = parseISO(item.scheduledStart)
+              const endDate = parseISO(item.scheduledEnd)
 
               const isPending = item.status === "pending"
-              const isRescheduleRequested = item.status === "reschedule_requested"
+              const isRescheduleRequested = item.status === "rescheduled"
               const isAccepted = item.status === "accepted"
               const isDeclined = item.status === "declined"
               const isCompleted = item.status === "completed"
+              const isCancelled = item.status === "cancelled"
 
               return (
                 <TableRow
@@ -204,14 +189,9 @@ export function MyInterviewsTable({
                   <TableCell className="pl-5 py-3.5">
                     <div className="flex items-center gap-3">
                       <div className="min-w-0">
-                        <button
-                          type="button"
-                          onClick={() => onViewCandidate?.(item)}
-                          className="font-semibold text-sm text-foreground hover:text-primary transition-colors text-left truncate block cursor-pointer hover:underline"
-                          title="View candidate details"
-                        >
+                        <span className="font-semibold text-sm text-foreground truncate block">
                           {item.candidateName}
-                        </button>
+                        </span>
                         <div className="flex items-center gap-1.5 text-xs text-muted-foreground mt-0.5">
                           <span className="truncate max-w-40">
                             {item.candidateEmail}
@@ -242,11 +222,15 @@ export function MyInterviewsTable({
                   <TableCell className="py-3.5 text-xs whitespace-nowrap">
                     <div className="flex flex-col gap-0.5">
                       <span className="font-medium text-foreground text-sm">
-                        {format(startDate, "EEE, dd MMM yyyy")}
+                        {isValid(startDate)
+                          ? format(startDate, "EEE, dd MMM yyyy")
+                          : "Date unavailable"}
                       </span>
                       <span className="inline-flex items-center gap-1 text-[11px] text-muted-foreground font-mono">
                         <Clock className="size-3 text-muted-foreground" />
-                        {format(startDate, "HH:mm")} – {format(endDate, "HH:mm")} WIB
+                        {isValid(startDate) && isValid(endDate)
+                          ? `${format(startDate, "HH:mm")} – ${format(endDate, "HH:mm")}`
+                          : "Time unavailable"}
                       </span>
                     </div>
                   </TableCell>
@@ -299,9 +283,9 @@ export function MyInterviewsTable({
                           </span>
                           <p
                             className="text-[11px] text-muted-foreground truncate max-w-44 mt-0.5"
-                            title={item.location || "Office Meeting Room"}
+                            title={item.location || "Location not provided"}
                           >
-                            {item.location || "Office Meeting Room"}
+                            {item.location || "Location not provided"}
                           </p>
                         </div>
                       )}
@@ -419,7 +403,7 @@ export function MyInterviewsTable({
                       </Popover>
                     ) : (
                       <span className="text-[11px] text-muted-foreground font-medium">
-                        Solo Interviewer
+                        Assigned to you
                       </span>
                     )}
                   </TableCell>
@@ -441,10 +425,10 @@ export function MyInterviewsTable({
                               <button
                                 type="button"
                                 className="inline-flex items-center gap-1 rounded-full bg-amber-500/15 px-2.5 py-0.5 text-[11px] font-semibold text-amber-800 dark:text-amber-300 hover:bg-amber-500/25 transition-colors cursor-pointer"
-                                title="Click to view reschedule request"
+                                title="This session has been rescheduled"
                               >
                                 <CalendarClock className="size-3 text-amber-600" />
-                                Reschedule Requested
+                                Rescheduled
                               </button>
                             }
                           />
@@ -477,11 +461,11 @@ export function MyInterviewsTable({
                                 </div>
                               ) : (
                                 <p className="text-[11px] text-muted-foreground italic">
-                                  Waiting for HR review.
+                                  This session is no longer active.
                                 </p>
                               )}
                               <span className="inline-block text-[10px] text-amber-600/90 font-medium pt-1">
-                                Status: Pending HR Confirmation
+                                Status: Rescheduled
                               </span>
                             </div>
                           </PopoverContent>
@@ -492,6 +476,13 @@ export function MyInterviewsTable({
                         <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/15 px-2.5 py-0.5 text-[11px] font-semibold text-emerald-800 dark:text-emerald-300">
                           <CheckCircle2 className="size-3 text-emerald-600" />
                           Confirmed
+                        </span>
+                      )}
+
+                      {isCancelled && (
+                        <span className="inline-flex items-center gap-1 rounded-full bg-rose-500/15 px-2.5 py-0.5 text-[11px] font-semibold text-rose-800 dark:text-rose-300">
+                          <XCircle className="size-3 text-rose-600" />
+                          Cancelled
                         </span>
                       )}
 
@@ -545,13 +536,13 @@ export function MyInterviewsTable({
                         <span
                           className={cn(
                             "rounded-full px-2 py-0.5 text-[10px] font-semibold",
-                            item.assessment.recommendation === "Strong Hire" &&
+                            item.assessment.recommendation === "Strongly Recommend" &&
                               "bg-emerald-100 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300",
                             item.assessment.recommendation === "Recommend" &&
                               "bg-teal-100 text-teal-800 dark:bg-teal-950/40 dark:text-teal-300",
-                            item.assessment.recommendation === "Neutral" &&
+                            item.assessment.recommendation === "Consider" &&
                               "bg-amber-100 text-amber-800 dark:bg-amber-950/40 dark:text-amber-300",
-                            item.assessment.recommendation === "Do Not Recommend" &&
+                            item.assessment.recommendation === "Not Recommend" &&
                               "bg-rose-100 text-rose-800 dark:bg-rose-950/40 dark:text-rose-300"
                           )}
                         >
@@ -569,7 +560,7 @@ export function MyInterviewsTable({
 
                   {/* Action Buttons: Centered */}
                   <TableCell className="pr-5 py-3.5 text-center whitespace-nowrap">
-                    {/* 1. Pending: Direct Accept & Reschedule buttons */}
+                    {/* Attendance confirmation */}
                     {isPending && (
                       <div className="flex items-center justify-center gap-1.5">
                         <Button
@@ -581,22 +572,13 @@ export function MyInterviewsTable({
                           <Check className="size-3.5" />
                           Accept
                         </Button>
-                        <Button
-                          type="button"
-                          size="sm"
-                          onClick={() => onRequestReschedule?.(item)}
-                          className="h-8 rounded-full bg-amber-200 text-amber-700 hover:bg-amber-300 px-3 text-xs font-semibold transition-colors cursor-pointer inline-flex items-center gap-1.5"
-                        >
-                          <CalendarClock className="size-3.5" />
-                          Reschedule
-                        </Button>
                       </div>
                     )}
 
-                    {/* 2. Reschedule Requested: awaiting HR review */}
+                    {/* Rescheduled sessions cannot be confirmed or assessed */}
                     {isRescheduleRequested && (
                       <span className="text-xs text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/30 px-3 py-1 rounded-full font-medium inline-block">
-                        Pending HR Review
+                        Rescheduled
                       </span>
                     )}
 
@@ -627,31 +609,6 @@ export function MyInterviewsTable({
                               </DropdownMenuItem>
                             )}
 
-                            <DropdownMenuItem
-                              onClick={() => onRequestReschedule?.(item)}
-                              className="cursor-pointer gap-2 text-xs"
-                            >
-                              <CalendarClock className="size-3.5" aria-hidden />
-                              <span>Request Reschedule</span>
-                            </DropdownMenuItem>
-
-                            <DropdownMenuItem
-                              onClick={() => onSetSubmissionDeadline?.(item)}
-                              className="cursor-pointer gap-2 text-xs"
-                            >
-                              <FileClock className="size-3.5" aria-hidden />
-                              <span>Set Submission Deadline</span>
-                            </DropdownMenuItem>
-
-                            <DropdownMenuSeparator className="my-1 bg-border/60" />
-
-                            <DropdownMenuItem
-                              onClick={() => onViewCandidate?.(item)}
-                              className="cursor-pointer gap-2 text-xs"
-                            >
-                              <Eye className="size-3.5 text-muted-foreground" aria-hidden />
-                              <span>View Candidate Profile</span>
-                            </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
                       </div>
@@ -684,22 +641,13 @@ export function MyInterviewsTable({
                               </DropdownMenuItem>
                             )}
 
-                            <DropdownMenuSeparator className="my-1 bg-border/60" />
-
-                            <DropdownMenuItem
-                              onClick={() => onViewCandidate?.(item)}
-                              className="cursor-pointer gap-2 text-xs"
-                            >
-                              <Eye className="size-3.5 text-muted-foreground" aria-hidden />
-                              <span>View Candidate Profile</span>
-                            </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
                       </div>
                     )}
 
                     {/* 5. Declined / Other fallback */}
-                    {isDeclined && (
+                    {(isDeclined || isCancelled) && (
                       <span className="text-xs text-muted-foreground/60">—</span>
                     )}
                   </TableCell>

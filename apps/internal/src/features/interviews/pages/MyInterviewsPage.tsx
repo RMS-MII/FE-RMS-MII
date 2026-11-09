@@ -5,6 +5,7 @@ import {
   SearchInput,
   FilterChips,
   DataTablePagination,
+  ErrorState,
   type Chip,
 } from "@/shared/components"
 import {
@@ -15,24 +16,32 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@workspace/ui/components/select"
-import { getMyInterviews } from "../data/myInterviewsMock"
-import type { MyInterviewItem } from "../types"
+import type { MyInterviewItem, SubmitAssessmentPayload } from "../types"
+import { getApiError } from "@/shared/api/api-error"
+import {
+  useConfirmInterviewerSessionMutation,
+  useGetInterviewerSessionsQuery,
+  useSubmitInterviewerAssessmentMutation,
+} from "../api/interviewer-api"
+import {
+  mapAssessmentRecommendation,
+  mapInterviewerSession,
+} from "../utils/interviewerSessionAdapter"
 import {
   MyInterviewsTable,
   type InterviewSortKey,
   ConfirmAcceptInterviewDialog,
-  RequestRescheduleDialog,
-  SetSubmissionDeadlineDialog,
+  InterviewAssessmentDialog,
 } from "../components"
 
 const statusItems = [
   { label: "All Status", value: "all" },
   { label: "Pending Confirmation", value: "pending" },
-  { label: "Reschedule Requested", value: "reschedule_requested" },
   { label: "Confirmed (Upcoming)", value: "accepted" },
   { label: "Needs Assessment", value: "needs_assessment" },
   { label: "Completed", value: "completed" },
-  { label: "Declined", value: "declined" },
+  { label: "Rescheduled", value: "rescheduled" },
+  { label: "Cancelled", value: "cancelled" },
 ]
 
 const modeItems = [
@@ -42,9 +51,22 @@ const modeItems = [
 ]
 
 export function MyInterviewsPage() {
-  const [interviews, setInterviews] = React.useState<MyInterviewItem[]>(() =>
-    getMyInterviews()
+  const {
+    currentData: sessionDtos,
+    isLoading,
+    isFetching,
+    isError,
+    error,
+    refetch,
+  } = useGetInterviewerSessionsQuery()
+  const interviews = React.useMemo(
+    () => (sessionDtos ?? []).map(mapInterviewerSession),
+    [sessionDtos]
   )
+  const [confirmSession, { isLoading: isConfirming }] =
+    useConfirmInterviewerSessionMutation()
+  const [submitAssessment, { isLoading: isSubmittingAssessment }] =
+    useSubmitInterviewerAssessmentMutation()
 
   // Filters state
   const [search, setSearch] = React.useState("")
@@ -61,38 +83,22 @@ export function MyInterviewsPage() {
   // Action dialog states
   const [sessionToAccept, setSessionToAccept] =
     React.useState<MyInterviewItem | null>(null)
-  const [sessionToReschedule, setSessionToReschedule] =
-    React.useState<MyInterviewItem | null>(null)
-  const [sessionToSetDeadline, setSessionToSetDeadline] =
-    React.useState<MyInterviewItem | null>(null)
   const [sessionToAssess, setSessionToAssess] =
     React.useState<MyInterviewItem | null>(null)
   const [sessionToViewAssessment, setSessionToViewAssessment] =
     React.useState<MyInterviewItem | null>(null)
-  const [candidateToView, setCandidateToView] =
-    React.useState<MyInterviewItem | null>(null)
+  const [actionError, setActionError] = React.useState<string | null>(null)
 
   // Dynamic batch filter items from data
   const batchItems = React.useMemo(() => {
     const batches = Array.from(
-      new Set(interviews.map((i) => i.recruitmentBatchCode))
+      new Set(interviews.map((i) => i.recruitmentName))
     )
     return [
       { label: "All Batches", value: "all" },
-      ...batches.map((code) => {
-        const item = interviews.find((i) => i.recruitmentBatchCode === code)
-        return {
-          label: `${code} - ${item?.recruitmentName || "Recruitment"}`,
-          value: code,
-        }
-      }),
+      ...batches.filter(Boolean).map((name) => ({ label: name, value: name })),
     ]
   }, [interviews])
-
-  // Reset page when filters change
-  React.useEffect(() => {
-    setPage(1)
-  }, [search, statusFilter, modeFilter, batchFilter])
 
   // Filtered interviews list
   const filteredInterviews = React.useMemo(() => {
@@ -105,7 +111,7 @@ export function MyInterviewsPage() {
         (i) =>
           i.candidateName.toLowerCase().includes(q) ||
           i.candidateEmail.toLowerCase().includes(q) ||
-          i.codeApplication.toLowerCase().includes(q) ||
+          (i.codeApplication ?? "").toLowerCase().includes(q) ||
           i.recruitmentName.toLowerCase().includes(q) ||
           i.sessionName.toLowerCase().includes(q)
       )
@@ -114,16 +120,16 @@ export function MyInterviewsPage() {
     // Status filter
     if (statusFilter === "pending") {
       result = result.filter((i) => i.status === "pending")
-    } else if (statusFilter === "reschedule_requested") {
-      result = result.filter((i) => i.status === "reschedule_requested")
     } else if (statusFilter === "accepted") {
       result = result.filter((i) => i.status === "accepted")
     } else if (statusFilter === "needs_assessment") {
       result = result.filter((i) => i.status === "accepted" && !i.assessment)
     } else if (statusFilter === "completed") {
       result = result.filter((i) => i.status === "completed")
-    } else if (statusFilter === "declined") {
-      result = result.filter((i) => i.status === "declined")
+    } else if (statusFilter === "rescheduled") {
+      result = result.filter((i) => i.status === "rescheduled")
+    } else if (statusFilter === "cancelled") {
+      result = result.filter((i) => i.status === "cancelled")
     }
 
     // Mode filter
@@ -135,7 +141,7 @@ export function MyInterviewsPage() {
 
     // Batch filter
     if (batchFilter !== "all") {
-      result = result.filter((i) => i.recruitmentBatchCode === batchFilter)
+      result = result.filter((i) => i.recruitmentName === batchFilter)
     }
 
     // Sorting
@@ -224,86 +230,44 @@ export function MyInterviewsPage() {
     setPage(1)
   }
 
-  const handleConfirmAccept = () => {
+  const handleConfirmAccept = async () => {
     if (!sessionToAccept) return
-    const id = sessionToAccept.id
-    setInterviews((prev) =>
-      prev.map((item) => {
-        if (item.id !== id) return item
-        return {
-          ...item,
-          status: "accepted",
-          declineReason: null,
-        }
-      })
-    )
-    setSessionToAccept(null)
+    setActionError(null)
+    try {
+      await confirmSession(sessionToAccept.id).unwrap()
+      setSessionToAccept(null)
+    } catch (requestError) {
+      setActionError(getApiError(requestError).message)
+    }
   }
 
-  const handleConfirmReschedule = (
-    sessionId: string,
-    proposedStart: string,
-    proposedEnd: string,
-    reason: string
-  ) => {
-    setInterviews((prev) =>
-      prev.map((item) => {
-        if (item.id !== sessionId) return item
-        return {
-          ...item,
-          status: "reschedule_requested",
-          rescheduleRequest: {
-            id: `rr-${Date.now()}`,
-            proposedStart,
-            proposedEnd,
-            reason,
-            status: "pending",
-            requestedAt: new Date().toISOString(),
-          },
-        }
-      })
-    )
-    setSessionToReschedule(null)
-  }
-
-  const handleSaveSubmissionDeadline = (
-    sessionId: string,
-    endedSubmissionAt: string
-  ) => {
-    setInterviews((prev) =>
-      prev.map((item) => {
-        if (item.id !== sessionId) return item
-        return {
-          ...item,
-          endedSubmissionAt,
-        }
-      })
-    )
-    setSessionToSetDeadline(null)
-  }
-
-  const handleSaveAssessment = (
-    id: string,
-    payload: { score: number; recommendation: any; notes: string }
-  ) => {
-    setInterviews((prev) =>
-      prev.map((item) => {
-        if (item.id !== id) return item
-        return {
-          ...item,
+  const handleSaveAssessment = async (payload: SubmitAssessmentPayload) => {
+    if (!sessionToAssess) return
+    setActionError(null)
+    try {
+      const result = await submitAssessment({
+        sessionInterviewId: sessionToAssess.id,
+        body: payload,
+      }).unwrap()
+      setSessionToAssess(null)
+      const recommendation = mapAssessmentRecommendation(result.recommendation)
+      if (recommendation) {
+        setSessionToViewAssessment({
+          ...sessionToAssess,
           status: "completed",
           assessment: {
-            id: `ia-${Date.now()}`,
-            sessionInterviewId: item.id,
-            score: payload.score,
-            recommendation: payload.recommendation,
-            notes: payload.notes,
-            assessedAt: new Date().toISOString(),
+            id: result.assessmentId,
+            sessionInterviewId: result.sessionInterviewId,
+            score: result.score,
+            recommendation,
+            notes: result.notes ?? "",
+            assessedAt: result.createdAt,
           },
-        }
-      })
-    )
-    setSessionToAssess(null)
+        })
+      }
+    } catch (requestError) {
+      setActionError(getApiError(requestError).message)
+    }
   }
 
   return (
@@ -322,7 +286,7 @@ export function MyInterviewsPage() {
             <SearchInput
               value={search}
               onChange={setSearch}
-              placeholder="Search candidate, email, or application code..."
+              placeholder="Search candidate, email, batch, or session..."
               containerClassName="sm:w-80"
             />
 
@@ -392,6 +356,28 @@ export function MyInterviewsPage() {
         <FilterChips chips={activeChips} onReset={handleResetFilters} />
 
         {/* 3. Table directly placed inside Panel */}
+        {isLoading && !sessionDtos ? (
+          <div role="status" className="p-8 text-center text-sm text-muted-foreground">
+            Loading your interview sessions...
+          </div>
+        ) : isError && !sessionDtos ? (
+          <ErrorState
+            title={getApiError(error).kind === "forbidden" ? "Access denied" : "Unable to load interviews"}
+            description={getApiError(error, "Unable to load your interview sessions.").message}
+            onRetry={getApiError(error).kind === "forbidden" ? undefined : () => void refetch()}
+          />
+        ) : (
+        <>
+        {isError && sessionDtos && (
+          <div role="alert" className="px-5 pt-3 text-sm text-danger">
+            Refresh failed: {getApiError(error).message}
+          </div>
+        )}
+        {isFetching && sessionDtos && (
+          <div role="status" className="px-5 pt-2 text-xs text-muted-foreground">
+            Refreshing interview sessions...
+          </div>
+        )}
         <MyInterviewsTable
           interviews={paginatedInterviews}
           sortKey={sortKey}
@@ -399,17 +385,16 @@ export function MyInterviewsPage() {
           onSort={handleSort}
           hasActiveFilters={activeChips.length > 0}
           onResetFilters={handleResetFilters}
-          onAcceptInvitation={(item) => setSessionToAccept(item)}
-          onRequestReschedule={(item) => setSessionToReschedule(item)}
-          onSetSubmissionDeadline={(item) => setSessionToSetDeadline(item)}
+          onAcceptInvitation={(item) => {
+            setActionError(null)
+            setSessionToAccept(item)
+          }}
           onSubmitAssessment={(item) => {
+            setActionError(null)
             setSessionToAssess(item)
           }}
           onViewAssessment={(item) => {
             setSessionToViewAssessment(item)
-          }}
-          onViewCandidate={(item) => {
-            setCandidateToView(item)
           }}
         />
 
@@ -422,6 +407,8 @@ export function MyInterviewsPage() {
             onPageChange={setPage}
           />
         )}
+        </>
+        )}
       </Panel>
 
       {/* Accept Interview Attendance Dialog */}
@@ -432,43 +419,33 @@ export function MyInterviewsPage() {
         }}
         session={sessionToAccept}
         onConfirm={handleConfirmAccept}
+        isLoading={isConfirming}
+        error={actionError}
       />
-
-      {/* Request Reschedule Dialog */}
-      <RequestRescheduleDialog
-        open={Boolean(sessionToReschedule)}
-        onOpenChange={(open) => {
-          if (!open) setSessionToReschedule(null)
-        }}
-        session={sessionToReschedule}
-        onSubmitRequest={handleConfirmReschedule}
-      />
-
-      {/* Set Submission Deadline Dialog */}
-      <SetSubmissionDeadlineDialog
-        open={Boolean(sessionToSetDeadline)}
-        onOpenChange={(open) => {
-          if (!open) setSessionToSetDeadline(null)
-        }}
-        session={sessionToSetDeadline}
-        onSaveDeadline={handleSaveSubmissionDeadline}
-      />
-
-      {/* State placeholders connecting to assessment dialogs */}
       {sessionToAssess && (
-        <span
-          className="hidden"
-          onClick={() =>
-            handleSaveAssessment(sessionToAssess.id, {
-              score: 80,
-              recommendation: "Recommend",
-              notes: "",
-            })
-          }
+        <InterviewAssessmentDialog
+          key={sessionToAssess.id}
+          open
+          onOpenChange={(open) => {
+            if (!open && !isSubmittingAssessment) setSessionToAssess(null)
+          }}
+          session={sessionToAssess}
+          isSubmitting={isSubmittingAssessment}
+          error={actionError}
+          onSubmit={handleSaveAssessment}
         />
       )}
-      {sessionToViewAssessment && <span className="hidden" />}
-      {candidateToView && <span className="hidden" />}
+      {sessionToViewAssessment && (
+        <InterviewAssessmentDialog
+          key={`view-${sessionToViewAssessment.id}`}
+          open
+          onOpenChange={(open) => {
+            if (!open) setSessionToViewAssessment(null)
+          }}
+          session={sessionToViewAssessment}
+          readOnly
+        />
+      )}
     </div>
   )
 }

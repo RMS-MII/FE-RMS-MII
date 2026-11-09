@@ -21,7 +21,9 @@ export interface ConfirmAcceptInterviewDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   session: MyInterviewItem | null
-  onConfirm: () => void
+  onConfirm: () => void | Promise<void>
+  isLoading?: boolean
+  error?: string | null
 }
 
 export function ConfirmAcceptInterviewDialog({
@@ -29,6 +31,8 @@ export function ConfirmAcceptInterviewDialog({
   onOpenChange,
   session,
   onConfirm,
+  isLoading = false,
+  error,
 }: ConfirmAcceptInterviewDialogProps) {
   if (!session) return null
 
@@ -135,17 +139,23 @@ export function ConfirmAcceptInterviewDialog({
           <p className="text-[11px] text-muted-foreground px-1 leading-relaxed">
             By accepting, you confirm your availability to conduct this session and submit the candidate evaluation score once finished.
           </p>
+          {error && (
+            <p role="alert" className="rounded-xl bg-danger-soft px-4 py-3 text-sm text-danger">
+              {error}
+            </p>
+          )}
         </div>
 
         <DialogFooter className="px-9 pb-9 border-t border-border bg-card gap-2">
-          <CancelButton onClick={() => onOpenChange(false)} />
+          <CancelButton onClick={() => onOpenChange(false)} disabled={isLoading} />
           <Button
             type="button"
             onClick={onConfirm}
+            disabled={isLoading}
             className="h-10 border-none rounded-full bg-emerald-600 hover:bg-emerald-700 text-white px-5 cursor-pointer inline-flex items-center gap-1.5"
           >
             <Check className="size-4" />
-            Confirm Accept
+            {isLoading ? "Confirming..." : "Confirm Accept"}
           </Button>
         </DialogFooter>
       </DialogContent>
