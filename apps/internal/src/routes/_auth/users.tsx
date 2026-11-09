@@ -1,14 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router"
+import { UsersPage } from "@/features/users/pages/UsersPage"
 
 export const Route = createFileRoute("/_auth/users")({
   component: UsersPage,
 })
-
-function UsersPage() {
-  return (
-    <div className="min-h-100">
-      {/* Content placeholder */}
-    </div>
-  )
-}
 

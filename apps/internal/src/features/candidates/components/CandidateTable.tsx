@@ -8,6 +8,7 @@ import {
   TableRow,
 } from "@workspace/ui/components/table"
 import { Button } from "@workspace/ui/components/button"
+import { cn } from "@/shared/lib/utils"
 import {
   EmptyState,
   TableSortHeader,
@@ -32,6 +33,7 @@ export interface CandidateTableProps {
   hasActiveFilters?: boolean
   onResetFilters?: () => void
   isLoading?: boolean
+  isFetching?: boolean
   isError?: boolean
   onRetry?: () => void
 }
@@ -49,6 +51,7 @@ export function CandidateTable({
   hasActiveFilters,
   onResetFilters,
   isLoading,
+  isFetching,
   isError,
   onRetry,
 }: CandidateTableProps) {
@@ -60,7 +63,7 @@ export function CandidateTable({
 
   return (
     <>
-      <div className="overflow-x-auto">
+      <div className={cn("overflow-x-auto", isFetching && !isLoading && "opacity-60")}>
         <Table>
           <TableHeader className="bg-card">
             <TableRow className="hover:bg-transparent">

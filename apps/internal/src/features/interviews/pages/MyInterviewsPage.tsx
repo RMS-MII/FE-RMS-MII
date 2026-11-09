@@ -5,7 +5,6 @@ import {
   SearchInput,
   FilterChips,
   DataTablePagination,
-  ErrorState,
   type Chip,
 } from "@/shared/components"
 import {
@@ -384,26 +383,10 @@ export function MyInterviewsPage() {
         <FilterChips chips={activeChips} onReset={handleResetFilters} />
 
         {/* 3. Table directly placed inside Panel */}
-        {isLoading && !sessionDtos ? (
-          <div role="status" className="p-8 text-center text-sm text-muted-foreground">
-            Loading your interview sessions...
-          </div>
-        ) : isError && !sessionDtos ? (
-          <ErrorState
-            title={getApiError(error).kind === "forbidden" ? "Access denied" : "Unable to load interviews"}
-            description={getApiError(error, "Unable to load your interview sessions.").message}
-            onRetry={getApiError(error).kind === "forbidden" ? undefined : () => void refetch()}
-          />
-        ) : (
         <>
         {isError && sessionDtos && (
           <div role="alert" className="px-5 pt-3 text-sm text-danger">
             Refresh failed: {getApiError(error).message}
-          </div>
-        )}
-        {isFetching && sessionDtos && (
-          <div role="status" className="px-5 pt-2 text-xs text-muted-foreground">
-            Refreshing interview sessions...
           </div>
         )}
         {rescheduleNotice && (
@@ -413,6 +396,11 @@ export function MyInterviewsPage() {
         )}
         <MyInterviewsTable
           interviews={paginatedInterviews}
+          isLoading={isLoading && !sessionDtos}
+          isFetching={isFetching && Boolean(sessionDtos)}
+          isError={isError && !sessionDtos}
+          error={error}
+          onRetry={() => void refetch()}
           sortKey={sortKey}
           sortDirection={sortDirection}
           onSort={handleSort}
@@ -436,8 +424,8 @@ export function MyInterviewsPage() {
         />
 
         {/* 4. Pagination directly at bottom of Panel */}
-        {totalItems > 0 && (
-          <DataTablePagination className="p-5 border-t border-border"
+        {!isLoading && !isError && totalItems > 0 && (
+          <DataTablePagination className="border-t border-border px-5 py-4"
             page={safePage}
             pageSize={pageSize}
             totalItems={totalItems}
@@ -445,7 +433,6 @@ export function MyInterviewsPage() {
           />
         )}
         </>
-        )}
       </Panel>
 
       {/* Accept Interview Attendance Dialog */}
