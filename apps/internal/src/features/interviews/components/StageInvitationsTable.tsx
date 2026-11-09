@@ -21,6 +21,7 @@ import {
 } from "@/shared/components"
 import { getApiError } from "@/shared/api/api-error"
 import { safeFormatDate } from "@/shared/lib/format"
+import { cn } from "@/shared/lib/utils"
 import { Check, X } from "lucide-react"
 import type { StageInvitationItem, StageInvitationStatus } from "../types"
 
@@ -43,6 +44,7 @@ export interface StageInvitationsTableProps {
   onAccept?: (item: StageInvitationItem) => void
   onDecline?: (item: StageInvitationItem) => void
   isLoading?: boolean
+  isFetching?: boolean
   isError?: boolean
   error?: unknown
   onRetry?: () => void
@@ -58,6 +60,7 @@ export function StageInvitationsTable({
   onAccept,
   onDecline,
   isLoading,
+  isFetching,
   isError,
   error,
   onRetry,
@@ -67,7 +70,7 @@ export function StageInvitationsTable({
     "Unable to load your stage invitations. Please try again."
   )
   return (
-    <div className="overflow-x-auto">
+    <div className={cn("overflow-x-auto", isFetching && !isLoading && "opacity-60")}>
       <Table>
         <TableHeader className="bg-card">
           <TableRow className="hover:bg-transparent">

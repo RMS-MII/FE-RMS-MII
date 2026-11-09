@@ -16,7 +16,7 @@ export function PageHeader({ title, description, actions, badge }: PageHeaderPro
           {badge}
         </div>
         {description && (
-          <div className="mt-1 max-w-prose text-sm text-muted-foreground">{description}</div>
+          <div className="mt-1 max-w-3xl text-sm text-muted-foreground">{description}</div>
         )}
       </div>
       {actions && <div className="flex shrink-0 flex-wrap items-center gap-2">{actions}</div>}

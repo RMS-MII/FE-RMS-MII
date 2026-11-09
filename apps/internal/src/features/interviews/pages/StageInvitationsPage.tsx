@@ -213,7 +213,7 @@ export function StageInvitationsPage() {
                 }
               }}
             >
-              <SelectTrigger className="h-10 w-48 rounded-full border-0 bg-muted px-4 text-sm text-foreground shadow-none focus-visible:ring-2 focus-visible:ring-primary">
+              <SelectTrigger className="h-10 w-48 rounded-full border-0 bg-muted px-4 text-sm text-foreground transition-all duration-150 shadow-none hover:bg-muted/40 focus-visible:ring-2 focus-visible:ring-primary">
                 <SelectValue placeholder="All Status" />
               </SelectTrigger>
               <SelectContent className="rounded-xl">
@@ -233,7 +233,7 @@ export function StageInvitationsPage() {
             size="sm"
             disabled={isFetching || isResponding}
             onClick={() => void refetch()}
-            className="h-9 gap-2 rounded-full bg-card px-4"
+            className="h-10 gap-2 rounded-full bg-card px-4"
           >
             <RefreshCw className="size-4" aria-hidden />
             Refresh
@@ -252,7 +252,8 @@ export function StageInvitationsPage() {
           onSort={handleSort}
           hasActiveFilters={activeChips.length > 0}
           onResetFilters={handleResetFilters}
-          isLoading={isLoading || isFetching}
+          isLoading={isLoading || (isFetching && !currentData)}
+          isFetching={isFetching && Boolean(currentData)}
           isError={isError}
           error={error}
           onRetry={() => void refetch()}
@@ -260,7 +261,7 @@ export function StageInvitationsPage() {
           onDecline={(item) => openResponse(item, "Declined")}
         />
         {!isFetching && !isError && totalItems > 0 && (
-          <DataTablePagination className="p-5 border-t border-border"
+          <DataTablePagination className="border-t border-border px-5 py-4"
             page={safePage}
             pageSize={pageSize}
             totalItems={totalItems}
