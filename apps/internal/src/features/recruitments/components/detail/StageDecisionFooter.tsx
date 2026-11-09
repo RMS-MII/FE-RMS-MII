@@ -1,5 +1,4 @@
-import { useId, useState } from "react"
-import type { FormEvent } from "react"
+import { useId, useState, type FormEvent } from "react"
 import { ArrowRight, CheckCircle2, Lock, XCircle } from "lucide-react"
 import { Button } from "@workspace/ui/components/button"
 import {
@@ -21,161 +20,221 @@ import {
 } from "@workspace/ui/components/select"
 import { Textarea } from "@workspace/ui/components/textarea"
 import { CancelButton, SaveButton } from "@/shared/components"
+import { getApiError } from "@/shared/api/api-error"
 import { safeFormatDate } from "@/shared/lib/format"
 import type {
-  CandidateApplicationItem,
+  CandidateApplicationDetailItem,
   CandidateApplicationStageItem,
+  EvaluateStageCommand,
+  SetFinalResultCommand,
 } from "../../types"
 
+type Confirmation =
+  | "stage-pass"
+  | "stage-reject"
+  | "final-accepted"
+  | "final-rejected"
+type PassingStageStatus = Extract<
+  EvaluateStageCommand["status"],
+  "Prioritized" | "Considered"
+>
+
 export interface StageDecisionFooterProps {
-  application: CandidateApplicationItem
+  application: CandidateApplicationDetailItem
   stage: CandidateApplicationStageItem | undefined
   isViewingActiveStage: boolean
-  isFinalStage: boolean
-  onAdvanceStage?: (notes?: string) => void
-  onRejectStage?: (reason: string, notes?: string) => void
+  onEvaluateStage: (
+    status: EvaluateStageCommand["status"],
+    notes: string
+  ) => void | Promise<void>
+  onSetFinalResult: (
+    status: SetFinalResultCommand["finalResultStatus"],
+    notes: string
+  ) => void | Promise<void>
   onGoToActiveStage?: () => void
   onStartStage?: () => void
   startRestriction?: string | null
   isStarting?: boolean
+  isEvaluating?: boolean
+  isFinalizing?: boolean
+  startRetry?: {
+    message: string
+    onRetry: () => void | Promise<void>
+  } | null
   onBack: () => void
 }
 
-const REJECTION_REASONS = [
-  "Did not meet minimum passing score",
-  "Technical qualifications do not match requirements",
-  "Interview panel cultural / soft skill mismatch",
-  "Candidate withdrew / declined progression",
-  "Position quota already fulfilled",
-  "Failed document / background verification",
-  "Other reason",
+const passingStatusItems: { label: string; value: PassingStageStatus }[] = [
+  { label: "Prioritized", value: "Prioritized" },
+  { label: "Considered", value: "Considered" },
 ]
-const rejectionItems = REJECTION_REASONS.map((reason) => ({
-  label: reason,
-  value: reason,
-}))
 
 export function StageDecisionFooter({
   application,
   stage,
   isViewingActiveStage,
-  isFinalStage,
-  onAdvanceStage,
-  onRejectStage,
+  onEvaluateStage,
+  onSetFinalResult,
   onGoToActiveStage,
   onStartStage,
   startRestriction,
   isStarting = false,
+  isEvaluating = false,
+  isFinalizing = false,
+  startRetry,
   onBack,
 }: StageDecisionFooterProps) {
   const formId = useId()
-  const [confirmation, setConfirmation] = useState<"advance" | "reject" | null>(
-    null
-  )
-  const [rejectionReason, setRejectionReason] = useState(REJECTION_REASONS[0])
+  const [confirmation, setConfirmation] = useState<Confirmation | null>(null)
+  const [passingStatus, setPassingStatus] = useState<PassingStageStatus | "">("")
   const [notes, setNotes] = useState("")
-  const stageName = stage?.stageName || application.currentStageName
-  const isApplicationRejected =
-    application.status === "rejected" || application.status === "failed"
-  const isApplicationAccepted = application.status === "accepted"
-  const isApplicationDropped =
-    application.status === "dropped" || application.status === "withdrawn"
-  const canMakeDecision =
-    Boolean(onAdvanceStage && onRejectStage && stage?.applicationStageId) &&
-    !isApplicationRejected &&
-    !isApplicationAccepted &&
-    !isApplicationDropped &&
-    isViewingActiveStage &&
-    stage?.status === "in_progress"
+  const [actionError, setActionError] = useState<string | null>(null)
+
+  const isRejected = application.status === "rejected" || application.status === "failed"
+  const isAccepted = application.status === "accepted"
+  const isDropped = application.status === "dropped" || application.status === "withdrawn"
+  const canEvaluateStage = Boolean(
+    stage?.applicationStageId &&
+      isViewingActiveStage &&
+      application.status === "in_progress" &&
+      (stage.stageType === "test"
+        ? stage.status === "submitted"
+        : stage.stageType === "interview" &&
+          stage.status === "in_progress" &&
+          stage.evaluationReady)
+  )
+  const canFinalize = Boolean(
+    application.summary.canFinalize &&
+      application.status === "in_progress" &&
+      application.finalStatus == null
+  )
   const hasActiveStage = Boolean(
     application.applicationStages[application.currentStageIndex]
   )
-  const isRejecting = confirmation === "reject"
+  const isSaving = isStarting || isEvaluating || isFinalizing
+  const isFinalRejection = confirmation === "final-rejected"
+  const isStageRejection = confirmation === "stage-reject"
+  const isRejecting = isFinalRejection || isStageRejection
 
   let readOnlyMessage = "This stage is not currently available for evaluation."
-  if (!stage)
-    readOnlyMessage = "No selection stage is available for evaluation."
-  else if (
-    stage.isPassed ||
-    stage.status === "passed" ||
-    stage.status === "accepted"
-  ) {
+  if (!stage) readOnlyMessage = "No selection stage is available for evaluation."
+  else if (stage.isPassed || stage.status === "passed" || stage.status === "accepted") {
     readOnlyMessage =
-      stageName +
+      stage.stageName +
       " has passed" +
       (stage.completedAt ? " on " + safeFormatDate(stage.completedAt) : "") +
       "."
   } else if (stage.status === "failed" || stage.status === "rejected") {
-    readOnlyMessage = stageName + " did not pass."
-  } else if (stage.isStarted === false || stage.status === "upcoming")
-    readOnlyMessage = stageName + " has not started."
-  else if (stage.status === "pending" || stage.status === "submitted")
-    readOnlyMessage = stageName + " is awaiting evaluation."
-  else if (stage.status === "in_progress")
-    readOnlyMessage = stageName + " is in progress."
-  else if (stage.status === "expired")
-    readOnlyMessage = stageName + " has expired."
-  else if (stage.status === "dropped")
-    readOnlyMessage = stageName + " was dropped."
-  if (isApplicationDropped)
-    readOnlyMessage = "This application has been dropped."
-  else if (startRestriction && (isViewingActiveStage || !hasActiveStage)) {
+    readOnlyMessage = stage.stageName + " did not pass."
+  } else if (stage.isStarted === false || stage.status === "upcoming") {
+    readOnlyMessage = stage.stageName + " has not started."
+  } else if (stage.stageType === "test" && stage.status !== "submitted") {
+    readOnlyMessage = "The candidate must submit this test before HR can evaluate it."
+  } else if (stage.stageType === "interview" && !stage.evaluationReady) {
+    readOnlyMessage = "Wait until every active interviewer submits an assessment."
+  }
+  if (isDropped) readOnlyMessage = "This application has been dropped."
+  else if (startRestriction && !stage) {
     readOnlyMessage = startRestriction
   }
 
-  const handleOpenConfirmation = (action: "advance" | "reject") => {
-    if (!canMakeDecision) return
+  const openConfirmation = (next: Confirmation) => {
     setNotes("")
-    setRejectionReason(REJECTION_REASONS[0])
-    setConfirmation(action)
+    setPassingStatus("")
+    setActionError(null)
+    setConfirmation(next)
   }
 
-  const handleConfirm = (event: FormEvent<HTMLFormElement>) => {
+  const handleConfirm = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
-    if (!canMakeDecision || !confirmation) return
-    if (isRejecting) {
-      if (!rejectionReason) return
-      onRejectStage?.(rejectionReason, notes.trim())
-    } else {
-      onAdvanceStage?.(notes.trim())
+    if (!confirmation || isSaving) return
+    const trimmedNotes = notes.trim()
+    if (!trimmedNotes) {
+      setActionError("Notes are required.")
+      return
     }
-    setConfirmation(null)
-    setNotes("")
+    if (trimmedNotes.length > 500) {
+      setActionError("Notes must be 500 characters or fewer.")
+      return
+    }
+    if (confirmation === "stage-pass" && !passingStatus) {
+      setActionError("Choose Prioritized or Considered to record the stage decision.")
+      return
+    }
+
+    setActionError(null)
+    try {
+      if (confirmation === "stage-pass" || confirmation === "stage-reject") {
+        const status = isRejecting ? "Rejected" : passingStatus
+        if (status) await onEvaluateStage(status, trimmedNotes)
+      } else {
+        const status = confirmation === "final-accepted" ? "Accepted" : "Rejected"
+        await onSetFinalResult(status, trimmedNotes)
+      }
+      setConfirmation(null)
+      setNotes("")
+      setPassingStatus("")
+    } catch (error) {
+      setActionError(getApiError(error).message)
+    }
   }
+
+  const open = confirmation !== null
+  const dialogTitle =
+    confirmation === "stage-pass" || confirmation === "stage-reject"
+      ? isRejecting
+        ? "Reject Candidate at This Stage"
+        : "Evaluate Stage"
+      : confirmation === "final-accepted"
+        ? "Confirm Final Acceptance"
+        : "Confirm Final Rejection"
 
   return (
     <>
       <div className="shrink-0 border-t border-border bg-card px-6 py-4">
+        {startRetry && (
+          <div className="mb-4 flex flex-col gap-3 rounded-xl border border-amber-500/30 bg-amber-500/10 p-4 sm:flex-row sm:items-center sm:justify-between">
+            <p role="alert" className="text-sm text-amber-800 dark:text-amber-300">
+              Stage evaluation was saved, but the next stage could not be started. {startRetry.message}
+            </p>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => void startRetry.onRetry()}
+              disabled={isStarting}
+              className="shrink-0 rounded-full"
+            >
+              {isStarting ? "Starting..." : "Retry Start Stage"}
+            </Button>
+          </div>
+        )}
         <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
           <div className="min-w-0 space-y-1">
-            {isApplicationRejected ? (
+            {isRejected ? (
               <>
                 <p className="flex items-center gap-2 text-sm font-medium text-danger">
                   <XCircle className="size-4 shrink-0" aria-hidden />
                   Candidate disqualified
                 </p>
-                <p className="text-xs text-muted-foreground">
-                  {application.rejectReason || "Decision locked"}
-                </p>
+                <p className="text-xs text-muted-foreground">{application.note || "Decision locked"}</p>
               </>
-            ) : isApplicationAccepted ? (
+            ) : isAccepted ? (
               <>
                 <p className="flex items-center gap-2 text-sm font-medium text-success">
                   <CheckCircle2 className="size-4 shrink-0" aria-hidden />
                   Candidate accepted
                 </p>
-                <p className="text-xs text-muted-foreground">
-                  All selection stages completed. Decision locked.
-                </p>
+                <p className="text-xs text-muted-foreground">All selection stages completed. Decision locked.</p>
               </>
-            ) : canMakeDecision ? (
+            ) : canFinalize ? (
               <>
-                <p className="text-xs text-muted-foreground">
-                  Reviewing active stage
-                </p>
-                <p className="text-sm font-medium text-foreground">
-                  {stageName}
-                </p>
+                <p className="text-sm font-medium text-foreground">All active stages are complete</p>
+                <p className="text-xs text-muted-foreground">Record the final recruitment result.</p>
+              </>
+            ) : canEvaluateStage ? (
+              <>
+                <p className="text-xs text-muted-foreground">Evaluating active stage</p>
+                <p className="text-sm font-medium text-foreground">{stage?.stageName}</p>
               </>
             ) : (
               <p className="flex items-start gap-2 text-sm leading-relaxed text-muted-foreground">
@@ -186,13 +245,14 @@ export function StageDecisionFooter({
           </div>
 
           <div className="flex flex-wrap items-center justify-end gap-2">
-            <CancelButton disabled={isStarting} onClick={onBack}>
+            <CancelButton disabled={isStarting || isSaving} onClick={onBack}>
               Back to Candidates
             </CancelButton>
-            {!canMakeDecision &&
-              !isApplicationRejected &&
-              !isApplicationAccepted &&
-              !isApplicationDropped &&
+            {!canEvaluateStage &&
+              !canFinalize &&
+              !isRejected &&
+              !isAccepted &&
+              !isDropped &&
               hasActiveStage &&
               !isViewingActiveStage &&
               onGoToActiveStage && (
@@ -200,7 +260,7 @@ export function StageDecisionFooter({
                   type="button"
                   variant="outline"
                   onClick={onGoToActiveStage}
-                  disabled={isStarting}
+                  disabled={isStarting || isSaving}
                   className="h-10 rounded-full bg-card px-4 text-sm"
                 >
                   Go to Active Stage
@@ -208,37 +268,47 @@ export function StageDecisionFooter({
               )}
             {onStartStage && !startRestriction && isViewingActiveStage && (
               <SaveButton
-                disabled={isStarting}
+                disabled={isStarting || isSaving}
                 isLoading={isStarting}
                 onClick={onStartStage}
               >
                 Start Stage
               </SaveButton>
             )}
-            {canMakeDecision && (
+            {canEvaluateStage && (
               <>
                 <Button
                   type="button"
                   variant="outline"
-                  onClick={() => handleOpenConfirmation("reject")}
+                  onClick={() => openConfirmation("stage-reject")}
                   className="h-10 gap-1.5 rounded-full border-destructive/30 bg-card px-4 text-sm text-destructive hover:bg-destructive/10 hover:text-destructive"
                 >
                   <XCircle className="size-4" aria-hidden />
-                  Fail / Reject Candidate
+                  Reject at Stage
                 </Button>
                 <SaveButton
-                  onClick={() => handleOpenConfirmation("advance")}
-                  icon={
-                    isFinalStage ? (
-                      <CheckCircle2 className="size-4" aria-hidden />
-                    ) : (
-                      <ArrowRight className="size-4" aria-hidden />
-                    )
-                  }
+                  onClick={() => openConfirmation("stage-pass")}
+                  icon={<ArrowRight className="size-4" aria-hidden />}
                 >
-                  {isFinalStage
-                    ? "Accept & Hire Candidate"
-                    : "Pass & Advance Stage"}
+                  Evaluate Stage
+                </SaveButton>
+              </>
+            )}
+            {canFinalize && (
+              <>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => openConfirmation("final-rejected")}
+                  className="h-10 rounded-full border-destructive/30 bg-card px-4 text-sm text-destructive hover:bg-destructive/10 hover:text-destructive"
+                >
+                  Reject Application
+                </Button>
+                <SaveButton
+                  onClick={() => openConfirmation("final-accepted")}
+                  icon={<CheckCircle2 className="size-4" aria-hidden />}
+                >
+                  Accept Application
                 </SaveButton>
               </>
             )}
@@ -247,71 +317,47 @@ export function StageDecisionFooter({
       </div>
 
       <Dialog
-        open={confirmation !== null && canMakeDecision}
+        open={open}
         onOpenChange={(nextOpen) => {
-          if (!nextOpen) {
+          if (!nextOpen && !isSaving) {
             setConfirmation(null)
-            setNotes("")
+            setActionError(null)
           }
         }}
       >
         <DialogContent className="max-h-[90dvh] gap-0 overflow-y-auto rounded-2xl bg-card p-0 sm:max-w-md">
           <DialogHeader className="border-b border-border p-6 pr-12 pb-4">
-            <DialogTitle className="text-base font-semibold">
-              {isRejecting
-                ? "Confirm Disqualification"
-                : isFinalStage
-                  ? "Confirm Final Acceptance"
-                  : "Confirm Stage Pass"}
-            </DialogTitle>
+            <DialogTitle className="text-base font-semibold">{dialogTitle}</DialogTitle>
             <DialogDescription className="text-sm leading-relaxed">
-              {isRejecting
-                ? "Reject this candidate at " +
-                  stageName +
-                  " and end their participation in this recruitment."
-                : isFinalStage
-                  ? "Mark this candidate as Accepted after completing all selection stages."
-                  : "Mark " +
-                    stageName +
-                    " as Passed and advance the candidate to the next stage."}
+              {confirmation === "stage-pass" || confirmation === "stage-reject"
+                ? `Record the HR decision for ${stage?.stageName ?? "this stage"}. Passing decisions allow the candidate to progress.`
+                : confirmation === "final-accepted"
+                  ? "Accept this candidate after all active stages have passed."
+                  : "Reject this application after all active stages are complete."}
             </DialogDescription>
           </DialogHeader>
 
-          <form id={formId} onSubmit={handleConfirm} className="space-y-4 p-6">
-            {isRejecting && (
+          <form id={formId} onSubmit={(event) => void handleConfirm(event)} className="space-y-4 p-6">
+            {confirmation === "stage-pass" && (
               <div className="space-y-1.5">
-                <Label
-                  htmlFor={formId + "-reason"}
-                  className="text-sm font-medium"
-                >
-                  Rejection Reason <span className="text-destructive">*</span>
+                <Label htmlFor={`${formId}-status`}>
+                  Passing Decision <span className="text-destructive">*</span>
                 </Label>
                 <Select
-                  items={rejectionItems}
-                  value={rejectionReason}
+                  items={passingStatusItems}
+                  value={passingStatus}
                   onValueChange={(value) => {
-                    if (value) setRejectionReason(value)
+                    if (value) setPassingStatus(value as PassingStageStatus)
                   }}
+                  disabled={isSaving}
                 >
-                  <SelectTrigger
-                    id={formId + "-reason"}
-                    aria-required="true"
-                    className="w-full rounded-full border-0 bg-muted px-4 text-sm shadow-none focus-visible:ring-2 focus-visible:ring-primary data-[size=default]:h-10"
-                  >
-                    <SelectValue placeholder="Select a rejection reason" />
+                  <SelectTrigger id={`${formId}-status`} className="w-full rounded-full bg-muted">
+                    <SelectValue placeholder="Select Prioritized or Considered" />
                   </SelectTrigger>
-                  <SelectContent className="max-w-[calc(100vw-2rem)] rounded-xl">
+                  <SelectContent className="rounded-xl">
                     <SelectGroup>
-                      {rejectionItems.map((item) => (
-                        <SelectItem
-                          key={item.value}
-                          value={item.value}
-                          className="py-2 [&>span:first-child]:min-w-0 [&>span:first-child]:shrink"
-                        >
-                          <span className="whitespace-normal">
-                            {item.label}
-                          </span>
-                        </SelectItem>
+                      {passingStatusItems.map((item) => (
+                        <SelectItem key={item.value} value={item.value}>{item.label}</SelectItem>
                       ))}
                     </SelectGroup>
                   </SelectContent>
@@ -319,54 +365,47 @@ export function StageDecisionFooter({
               </div>
             )}
             <div className="space-y-1.5">
-              <Label
-                htmlFor={formId + "-notes"}
-                className="text-sm font-medium"
-              >
-                {isRejecting ? "Evaluation Notes" : "Stage Clearance Notes"}{" "}
-                <span className="font-normal text-muted-foreground">
-                  (Optional)
-                </span>
-              </Label>
+              <div className="flex items-center justify-between">
+                <Label htmlFor={`${formId}-notes`}>
+                  {confirmation === "stage-pass" || confirmation === "stage-reject"
+                    ? "Evaluation Notes"
+                    : "Final Decision Notes"}{" "}
+                  <span className="text-destructive">*</span>
+                </Label>
+                <span className="text-xs text-muted-foreground">{notes.length}/500</span>
+              </div>
               <Textarea
-                id={formId + "-notes"}
-                rows={3}
+                id={`${formId}-notes`}
+                rows={4}
                 value={notes}
                 onChange={(event) => setNotes(event.target.value)}
-                placeholder={
-                  isRejecting
-                    ? "Add context for this decision..."
-                    : "Add notes about the candidate's stage evaluation..."
-                }
+                maxLength={500}
+                required
+                disabled={isSaving}
+                placeholder="Add notes for this decision..."
                 className="min-h-24 resize-y rounded-xl border-0 bg-muted px-4 py-3 text-sm text-foreground shadow-none placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-primary"
               />
             </div>
+            {actionError && (
+              <p role="alert" className="rounded-xl bg-danger-soft px-4 py-3 text-sm text-danger">
+                {actionError}
+              </p>
+            )}
           </form>
 
           <DialogFooter className="m-0 gap-2 border-t border-border bg-card px-6 py-4">
-            <CancelButton onClick={() => setConfirmation(null)} />
+            <CancelButton disabled={isSaving} onClick={() => setConfirmation(null)} />
             <SaveButton
               type="submit"
               form={formId}
-              disabled={!canMakeDecision || (isRejecting && !rejectionReason)}
-              icon={
-                isRejecting ? (
-                  <XCircle className="size-4" aria-hidden />
-                ) : (
-                  <CheckCircle2 className="size-4" aria-hidden />
-                )
-              }
-              className={
-                isRejecting
-                  ? "bg-destructive hover:bg-destructive/90"
-                  : undefined
-              }
+              disabled={isSaving || (confirmation === "stage-pass" && !passingStatus)}
+              isLoading={isSaving}
             >
-              {isRejecting
-                ? "Confirm Disqualification"
-                : isFinalStage
-                  ? "Confirm Acceptance"
-                  : "Confirm Stage Pass"}
+              {confirmation === "stage-pass" || confirmation === "stage-reject"
+                ? isRejecting
+                  ? "Confirm Rejection"
+                  : "Save Stage Evaluation"
+                : "Save Final Result"}
             </SaveButton>
           </DialogFooter>
         </DialogContent>

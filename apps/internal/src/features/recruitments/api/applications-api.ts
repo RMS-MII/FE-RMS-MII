@@ -108,6 +108,23 @@ export const applicationsApi = baseApi.injectEndpoints({
       invalidatesTags: (result, _err, { applicationId }) =>
         result ? applicationTags(applicationId, result.recruitmentBatchId) : [],
     }),
+    uploadOfferingLetter: builder.mutation<
+      BatchApplicationListItemDto,
+      { applicationId: string; fileOfferingLetter: string }
+    >({
+      query: ({ applicationId, fileOfferingLetter }) => ({
+        url: `/applications/${applicationId}/offering-letter`,
+        method: "POST",
+        body: { fileOfferingLetter },
+      }),
+      invalidatesTags: (result, _err, { applicationId }) =>
+        result
+          ? [
+              ...applicationTags(applicationId, result.recruitmentBatchId),
+              { type: "OfferingLetter", id: "LIST" },
+            ]
+          : [],
+    }),
   }),
 })
 
@@ -119,4 +136,5 @@ export const {
   useRegisterCandidatesMutation,
   useEvaluateStageMutation,
   useSetFinalResultMutation,
+  useUploadOfferingLetterMutation,
 } = applicationsApi
