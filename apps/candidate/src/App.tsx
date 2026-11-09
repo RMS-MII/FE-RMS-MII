@@ -1,10 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from "react"
-import { ArrowLeft, FileText, ChevronRight, RefreshCw } from "lucide-react"
+import { ArrowLeft, FileText, RefreshCw } from "lucide-react"
 import { Button } from "@workspace/ui/components/button"
 import { request } from "./api"
 import type { Tasks } from "./api"
-import { route, candidateId, prefix } from "./route"
+import { route, candidateId, prefix, portalPage, pageTitle } from "./route"
+import { PortalShell } from "./components/PortalShell"
 import { ApplicationView } from "./components/ApplicationView"
+import { SessionList } from "./components/SessionList"
 import { SessionDetail } from "./components/SessionDetail"
 
 export function App() {
@@ -77,32 +79,28 @@ export function App() {
     .find((s) => s.id === route?.[2])
 
   return (
-    <div className="portal">
-      <header className="portal-header">
-        <a href={prefix} className="brand">
-          <span className="brand-mark">M</span>
-          <span>
-            METRODATA<small>Recruitment · MII</small>
-          </span>
-        </a>
-        <span className="portal-label">PORTAL KANDIDAT</span>
-      </header>
-
+    <PortalShell data={data} selected={app?.id} onSelect={setSelected}>
       <main className="portal-main">
         <div className="page-heading">
           <div>
-            <p className="eyebrow">REKRUTMEN / KANDIDAT</p>
+            <p className="eyebrow">LAMARAN SAYA</p>
             <h1>
               {route?.[2]
                 ? "Detail interview"
-                : data
-                  ? `Halo, ${data.candidateName.split(" ")[0]}.`
-                  : "Perjalanan karier Anda"}
+                : portalPage !== "overview"
+                  ? pageTitle
+                  : data
+                    ? `Halo, ${data.candidateName.split(" ")[0]}.`
+                    : "Perjalanan karier Anda"}
             </h1>
             <p className="muted">
               {route?.[2]
                 ? "Tinjau jadwal dan persiapkan langkah berikutnya."
-                : "Pantau proses seleksi dan kelola jadwal Anda di sini."}
+                : portalPage === "interviews"
+                  ? "Lihat jadwal dan kelola kehadiran interview Anda."
+                  : portalPage === "assignments"
+                    ? "Pantau batas pengumpulan dan kirim tautan hasil tugas Anda."
+                    : "Pantau proses seleksi dan kelola jadwal Anda di sini."}
             </p>
           </div>
           {candidateId && (
@@ -133,7 +131,7 @@ export function App() {
 
             {loading && !data && (
               <div className="panel empty" role="status">
-                Memuat informasi rekrutmen…
+                Memuat informasi rekrutmenâ€¦
               </div>
             )}
 
@@ -157,43 +155,17 @@ export function App() {
                   </div>
                 )
               ) : (
-                <div className="portal-grid">
-                  <aside>
-                    <div className="panel profile">
-                      <div className="avatar">
-                        {data.candidateName.slice(0, 1)}
-                      </div>
-                      <h2>{data.candidateName}</h2>
-                      <p className="muted email">{data.candidateEmail}</p>
-                      <div className="divider" />
-                      <p className="eyebrow">
-                        LAMARAN ANDA <span>{data.applications.length}</span>
-                      </p>
-                      <nav aria-label="Pilih lamaran">
-                        {data.applications.map((a) => (
-                          <button
-                            className={`application-choice ${a.id === app?.id ? "selected" : ""}`}
-                            key={a.id}
-                            onClick={() => setSelected(a.id)}
-                          >
-                            <span>
-                              <strong>{a.batchName}</strong>
-                              <small>{a.codeApplication}</small>
-                            </span>
-                            <ChevronRight size={16} />
-                          </button>
-                        ))}
-                      </nav>
-                    </div>
-                    <p className="side-note">
-                      Butuh bantuan?
-                      <br />
-                      Hubungi tim HR melalui email undangan yang Anda terima.
-                    </p>
-                  </aside>
+                <div id="overview">
                   <section>
                     {app ? (
-                      <ApplicationView application={app} />
+                      portalPage === "overview" ? (
+                        <ApplicationView application={app} />
+                      ) : (
+                        <SessionList
+                          application={app}
+                          assignments={portalPage === "assignments"}
+                        />
+                      )
                     ) : (
                       <div className="panel empty">
                         <h2>Belum ada lamaran</h2>
@@ -209,10 +181,6 @@ export function App() {
           </>
         )}
       </main>
-      <footer className="portal-footer">
-        © {new Date().getFullYear()} PT Mitra Integrasi Informatika{" "}
-        <span>Recruitment Management System</span>
-      </footer>
-    </div>
+    </PortalShell>
   )
 }
