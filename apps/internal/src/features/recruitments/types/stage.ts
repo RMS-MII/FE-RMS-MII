@@ -61,6 +61,7 @@ export interface AssignedInterviewer {
   departmentName: string
   status: StageEmployeeStatusValue
   statusName?: string
+  note?: string | null
 }
 
 export interface BatchStageWithInterviewers extends BatchStage {

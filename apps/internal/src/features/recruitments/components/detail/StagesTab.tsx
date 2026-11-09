@@ -178,6 +178,7 @@ export function StagesTab({
                         assignment.employeeName ||
                         `Employee (${assignment.employeeId.slice(0, 6)}...)`,
                       jobTitle: assignment.jobTitle || "Interviewer",
+                      note: assignment.note,
                     }
                     return {
                       employee: emp,
@@ -279,6 +280,14 @@ export function StagesTab({
                                     >
                                       {statusLabels[empStatus]}
                                     </p>
+                                    {empStatus === "declined" && (
+                                      <div className="mt-1 border-t border-slate-200 pt-1">
+                                        <p className="font-medium text-slate-700">Reason</p>
+                                        <p className="whitespace-pre-wrap wrap-break-word text-slate-600">
+                                          {employee.note?.trim() || "No reason provided."}
+                                        </p>
+                                      </div>
+                                    )}
                                   </TooltipContent>
                                 </Tooltip>
                               )

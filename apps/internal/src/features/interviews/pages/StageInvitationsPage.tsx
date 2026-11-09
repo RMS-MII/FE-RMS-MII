@@ -260,7 +260,7 @@ export function StageInvitationsPage() {
           onDecline={(item) => openResponse(item, "Declined")}
         />
         {!isFetching && !isError && totalItems > 0 && (
-          <DataTablePagination
+          <DataTablePagination className="p-5 border-t border-border"
             page={safePage}
             pageSize={pageSize}
             totalItems={totalItems}
