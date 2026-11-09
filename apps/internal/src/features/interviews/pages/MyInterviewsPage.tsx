@@ -22,6 +22,7 @@ import {
   useConfirmInterviewerSessionMutation,
   useGetInterviewerSessionsQuery,
   useSubmitInterviewerAssessmentMutation,
+  useRequestInterviewerRescheduleMutation,
 } from "../api/interviewer-api"
 import {
   mapAssessmentRecommendation,
@@ -32,6 +33,7 @@ import {
   type InterviewSortKey,
   ConfirmAcceptInterviewDialog,
   InterviewAssessmentDialog,
+  RequestRescheduleDialog,
 } from "../components"
 
 const statusItems = [
@@ -67,6 +69,8 @@ export function MyInterviewsPage() {
     useConfirmInterviewerSessionMutation()
   const [submitAssessment, { isLoading: isSubmittingAssessment }] =
     useSubmitInterviewerAssessmentMutation()
+  const [requestReschedule, { isLoading: isRequestingReschedule }] =
+    useRequestInterviewerRescheduleMutation()
 
   // Filters state
   const [search, setSearch] = React.useState("")
@@ -87,7 +91,10 @@ export function MyInterviewsPage() {
     React.useState<MyInterviewItem | null>(null)
   const [sessionToViewAssessment, setSessionToViewAssessment] =
     React.useState<MyInterviewItem | null>(null)
+  const [sessionToReschedule, setSessionToReschedule] =
+    React.useState<MyInterviewItem | null>(null)
   const [actionError, setActionError] = React.useState<string | null>(null)
+  const [rescheduleNotice, setRescheduleNotice] = React.useState<string | null>(null)
 
   // Dynamic batch filter items from data
   const batchItems = React.useMemo(() => {
@@ -270,6 +277,27 @@ export function MyInterviewsPage() {
     }
   }
 
+  const handleRequestReschedule = async (
+    interviewSessionId: string,
+    proposedStart: string,
+    proposedEnd: string,
+    reason: string
+  ) => {
+    try {
+      const result = await requestReschedule({
+        interviewSessionId,
+        proposedStart,
+        proposedEnd,
+        reason,
+      }).unwrap()
+      setSessionToReschedule(null)
+      setActionError(null)
+      setRescheduleNotice(result.statusName || "Reschedule request submitted.")
+    } catch (requestError) {
+      throw new Error(getApiError(requestError).message, { cause: requestError })
+    }
+  }
+
   return (
     <div className="space-y-6">
       {/* 1. Page Header */}
@@ -378,6 +406,11 @@ export function MyInterviewsPage() {
             Refreshing interview sessions...
           </div>
         )}
+        {rescheduleNotice && (
+          <div role="status" className="mx-5 my-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+            {rescheduleNotice} Your request is waiting for HR review.
+          </div>
+        )}
         <MyInterviewsTable
           interviews={paginatedInterviews}
           sortKey={sortKey}
@@ -395,6 +428,10 @@ export function MyInterviewsPage() {
           }}
           onViewAssessment={(item) => {
             setSessionToViewAssessment(item)
+          }}
+          onRequestReschedule={(item) => {
+            setActionError(null)
+            setSessionToReschedule(item)
           }}
         />
 
@@ -446,6 +483,13 @@ export function MyInterviewsPage() {
           readOnly
         />
       )}
+      <RequestRescheduleDialog
+        open={Boolean(sessionToReschedule)}
+        onOpenChange={(open) => { if (!open && !isRequestingReschedule) setSessionToReschedule(null) }}
+        session={sessionToReschedule}
+        onSubmitRequest={handleRequestReschedule}
+        isSubmitting={isRequestingReschedule}
+      />
     </div>
   )
 }

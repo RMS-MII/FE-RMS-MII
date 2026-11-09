@@ -27,6 +27,7 @@ import {
   type SearchComboboxOption,
 } from "@/shared/components"
 import { addMinutesToTime, isTimeBefore } from "@/shared/lib/timeUtils"
+import { format } from "date-fns"
 import type {
   Recruitment,
   InterviewSessionItem,
@@ -49,7 +50,7 @@ export interface ScheduleInterviewDialogProps {
   onOpenChange: (open: boolean) => void
   recruitment: Recruitment
   onSchedule: (input: {
-    applicationId: string
+    applicationId?: string
     applicationStageId: string
     body: ScheduleInterviewSessionRequest
   }) => void | Promise<void>
@@ -69,9 +70,7 @@ export function ScheduleInterviewDialog({
 }: ScheduleInterviewDialogProps) {
   const formId = useId()
   const isRescheduleMode = Boolean(sessionToReschedule)
-  const scheduleRestriction = isRescheduleMode
-    ? null
-    : getRecruitmentAddRestriction(recruitment, "interview")
+  const scheduleRestriction = getRecruitmentAddRestriction(recruitment, "interview")
 
   // Interview stage options
   const [candidateId, setCandidateId] = useState("")
@@ -104,14 +103,24 @@ export function ScheduleInterviewDialog({
       ),
     [applicationDetail]
   )
-  const selectedStage = eligibleStages.find(
-    (stage) => stage.applicationStageId === applicationStageId
-  )
   const eligibleStageOptions = useMemo(
-    () => eligibleStages.flatMap((stage) => stage.applicationStageId
-      ? [{ label: stage.stageName, value: stage.applicationStageId }]
-      : []),
-    [eligibleStages]
+    () => {
+      const options = eligibleStages.flatMap((stage) => stage.applicationStageId
+        ? [{ label: stage.stageName, value: stage.applicationStageId }]
+        : [])
+      if (isRescheduleMode && sessionToReschedule?.applicationStageId &&
+        !options.some((option) => option.value === sessionToReschedule.applicationStageId)) {
+        options.push({ label: sessionToReschedule.stageName, value: sessionToReschedule.applicationStageId })
+      }
+      return options
+    },
+    [eligibleStages, isRescheduleMode, sessionToReschedule]
+  )
+  const selectedStage = useMemo(
+    () => isRescheduleMode && sessionToReschedule
+      ? { applicationStageId: sessionToReschedule.applicationStageId, stageName: sessionToReschedule.stageName }
+      : eligibleStages.find((stage) => stage.applicationStageId === applicationStageId),
+    [isRescheduleMode, sessionToReschedule, eligibleStages, applicationStageId]
   )
   const {
     currentData: availableInterviewers,
@@ -120,7 +129,7 @@ export function ScheduleInterviewDialog({
     error: interviewersError,
     refetch: refetchInterviewers,
   } = useGetAvailableInterviewersQuery(applicationStageId, {
-    skip: !open || !applicationStageId || isRescheduleMode,
+    skip: !open || !applicationStageId,
   })
   const unscheduledCandidates = useMemo(
     () => applications.filter((item) => mapApplicationStatus(item.status) === "in_progress"),
@@ -189,8 +198,35 @@ export function ScheduleInterviewDialog({
     setErrors({})
   }, [open])
 
+  useEffect(() => {
+    if (!open || !sessionToReschedule) return
+    const proposedStart = sessionToReschedule.rescheduleRequest?.proposedStart
+    const proposedEnd = sessionToReschedule.rescheduleRequest?.proposedEnd
+    const start = proposedStart ? new Date(proposedStart) : new Date(sessionToReschedule.scheduledStart)
+    const end = proposedEnd ? new Date(proposedEnd) : new Date(sessionToReschedule.scheduledEnd)
+    setCandidateId(sessionToReschedule.candidateId)
+    setApplicationStageId(sessionToReschedule.applicationStageId ?? "")
+    setSessionName(sessionToReschedule.sessionName)
+    setScheduledDate(format(start, "yyyy-MM-dd"))
+    setStartTime(format(start, "HH:mm"))
+    setEndTime(format(end, "HH:mm"))
+    setMode(sessionToReschedule.isOnline ? "online" : "onsite")
+    setMeetingUrl(sessionToReschedule.meetingUrl ?? "")
+    setLocation(sessionToReschedule.location ?? "")
+    setSelectedInterviewerIds(sessionToReschedule.interviewers
+      .filter((interviewer) => interviewer.status !== "declined" && interviewer.status !== "cancelled")
+      .map((interviewer) => interviewer.employeeId))
+  }, [open, sessionToReschedule])
+
   const selectedCandidate = useMemo(
-    () => selectedApplication?.candidate
+    () => isRescheduleMode && sessionToReschedule
+      ? {
+          id: sessionToReschedule.candidateId,
+          name: sessionToReschedule.candidateName,
+          email: sessionToReschedule.candidateEmail,
+          codeApplication: sessionToReschedule.codeApplication,
+        }
+      : selectedApplication?.candidate
       ? {
           id: selectedApplication.id,
           name: selectedApplication.candidate.fullName,
@@ -198,13 +234,14 @@ export function ScheduleInterviewDialog({
           codeApplication: selectedApplication.codeApplication,
         }
       : undefined,
-    [selectedApplication]
+    [selectedApplication, isRescheduleMode, sessionToReschedule]
   )
 
   useEffect(() => {
+    if (isRescheduleMode) return
     setApplicationStageId("")
     setSelectedInterviewerIds([])
-  }, [candidateId])
+  }, [candidateId, isRescheduleMode])
   useEffect(() => {
     setSelectedInterviewerIds([])
   }, [applicationStageId])
@@ -239,7 +276,7 @@ export function ScheduleInterviewDialog({
     if (!selectedStage) {
       errs.stageId = "Select a started interview stage for this candidate."
     }
-    if (selectedStage && existingSessions.some((session) =>
+    if (!isRescheduleMode && selectedStage && existingSessions.some((session) =>
       session.applicationStageId === selectedStage.applicationStageId &&
       session.status !== "cancelled"
     )) errs.stageId = "An interview is already scheduled for this stage."
@@ -254,6 +291,8 @@ export function ScheduleInterviewDialog({
     ) {
       errs.endTime = "End time must be after start time."
     }
+    if (scheduledDate && startTime && new Date(`${scheduledDate}T${startTime}:00`) <= new Date())
+      errs.scheduledDate = "Schedule must be in the future."
     if (sessionName.trim().length > 200)
       errs.sessionName = "Session title must be 200 characters or fewer."
     if (mode === "online") {
@@ -297,7 +336,7 @@ export function ScheduleInterviewDialog({
 
     try {
       await onSchedule({
-        applicationId: candidateInfo.id,
+        ...(isRescheduleMode ? {} : { applicationId: candidateInfo.id }),
         applicationStageId: selectedStage.applicationStageId,
         body: request,
       })

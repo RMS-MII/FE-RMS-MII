@@ -8,10 +8,26 @@ import type {
   InterviewerInvitationDto,
   RespondInvitationRequest,
   RespondInvitationResponse,
+  CreateRescheduleRequest,
+  InterviewerRescheduleRequestDto,
 } from "../types"
 
 export const interviewerApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
+    requestInterviewerReschedule: builder.mutation<
+      InterviewerRescheduleRequestDto,
+      CreateRescheduleRequest
+    >({
+      query: (body) => ({ url: "/reschedule-requests", method: "POST", body }),
+      invalidatesTags: (result) => result
+        ? [
+            { type: "Interview", id: "INTERVIEWER_SESSIONS" },
+            { type: "Interview", id: "INTERVIEWER_DASHBOARD" },
+            { type: "Interview", id: "RESCHEDULE_LIST" },
+            { type: "Candidate", id: "APPLICATION_DETAILS" },
+          ]
+        : [],
+    }),
     getInterviewerSessions: builder.query<
       InterviewerSessionDto[],
       {
@@ -115,6 +131,7 @@ export const interviewerApi = baseApi.injectEndpoints({
 
 export const {
   useGetInterviewerSessionsQuery,
+  useRequestInterviewerRescheduleMutation,
   useConfirmInterviewerSessionMutation,
   useSubmitInterviewerAssessmentMutation,
   useGetInterviewerInvitationsQuery,

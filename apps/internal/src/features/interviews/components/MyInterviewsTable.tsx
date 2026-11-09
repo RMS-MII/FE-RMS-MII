@@ -53,6 +53,7 @@ export interface MyInterviewsTableProps {
   onAcceptInvitation?: (item: MyInterviewItem) => void
   onSubmitAssessment?: (item: MyInterviewItem) => void
   onViewAssessment?: (item: MyInterviewItem) => void
+  onRequestReschedule?: (item: MyInterviewItem) => void
   onResetFilters?: () => void
   hasActiveFilters?: boolean
 }
@@ -65,6 +66,7 @@ export function MyInterviewsTable({
   onAcceptInvitation,
   onSubmitAssessment,
   onViewAssessment,
+  onRequestReschedule,
   onResetFilters,
   hasActiveFilters = false,
 }: MyInterviewsTableProps) {
@@ -563,6 +565,11 @@ export function MyInterviewsTable({
                     {/* Attendance confirmation */}
                     {isPending && (
                       <div className="flex items-center justify-center gap-1.5">
+                        {onRequestReschedule && (
+                          <Button type="button" variant="outline" size="sm" onClick={() => onRequestReschedule(item)} className="h-8 rounded-full px-3 text-xs">
+                            Reschedule
+                          </Button>
+                        )}
                         <Button
                           type="button"
                           size="sm"
@@ -606,6 +613,15 @@ export function MyInterviewsTable({
                               >
                                 <FileText className="size-3.5" aria-hidden />
                                 <span>Submit Evaluation</span>
+                              </DropdownMenuItem>
+                            )}
+                            {onRequestReschedule && (
+                              <DropdownMenuItem
+                                onClick={() => onRequestReschedule(item)}
+                                className="cursor-pointer gap-2 text-xs font-medium"
+                              >
+                                <Clock className="size-3.5" aria-hidden />
+                                <span>Request Reschedule</span>
                               </DropdownMenuItem>
                             )}
 

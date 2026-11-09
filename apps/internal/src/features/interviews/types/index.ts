@@ -53,6 +53,33 @@ export interface RescheduleRequestItem {
   requestedAt: string
 }
 
+export interface CreateRescheduleRequest {
+  interviewSessionId: string
+  proposedStart: string
+  proposedEnd: string
+  reason: string
+}
+
+export interface InterviewerRescheduleRequestDto {
+  id: string
+  interviewSessionId: string
+  sessionName: string
+  candidateId: string
+  candidateName: string
+  originalStart: string
+  originalEnd: string
+  requesterEmail: string
+  proposedStart: string
+  proposedEnd: string
+  reason: string
+  status: "Pending" | "Approved" | "Rejected" | 1 | 2 | 3
+  statusName: string
+  reviewedBy?: string | null
+  reviewedAt?: string | null
+  reviewNotes?: string | null
+  createdAt: string
+}
+
 export interface MyInterviewItem {
   id: string // SessionInterview.Id
   sessionId: string // InterviewSession.Id
