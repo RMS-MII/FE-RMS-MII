@@ -72,6 +72,7 @@ export function useCandidateTest(candidateId: string, stageId: string) {
 export function useExamTimer(
   test: CandidateTest | null,
   receivedAt: number,
+  sessionStartedAt: number | null,
   onExpire?: () => void
 ) {
   const [now, setNow] = useState(() => Date.now())
@@ -82,7 +83,7 @@ export function useExamTimer(
     onExpireRef.current = onExpire
   }, [onExpire])
 
-  const deadline = test ? getTestDeadline(test) : null
+  const deadline = test ? getTestDeadline(test, sessionStartedAt) : null
 
   const rawOffset =
     test && receivedAt > 0 ? parseServerDate(test.serverTimeUtc) - receivedAt : 0

@@ -175,7 +175,7 @@ export function ExamIntro({ test, remainingMs, onStart }: ExamIntroProps) {
                   </span>
                   <span className="font-semibold tabular-nums">
                     {remainingMs === null
-                      ? "Tanpa batas"
+                      ? "Belum berjalan"
                       : formatCountdown(remainingMs)}
                   </span>
                 </div>

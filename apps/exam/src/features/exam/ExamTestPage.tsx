@@ -104,6 +104,21 @@ function ExamRunner({ test, initialDraft, receivedAt }: ExamRunnerProps) {
   const [phase, setPhase] = useState<ExamPhase>(() =>
     initialDraft?.started ? "exam" : "intro"
   )
+  const [sessionStartedAt, setSessionStartedAt] = useState<number | null>(() => {
+    if (!initialDraft?.started) {
+      return null
+    }
+
+    if (initialDraft.sessionStartedAt !== null) {
+      return initialDraft.sessionStartedAt
+    }
+
+    // Draft lama belum menyimpan waktu mulai sesi. Anggap sesi dimulai saat
+    // data tes diterima dari server supaya kandidat tetap mendapat durasi penuh.
+    const serverNow = parseServerDate(test.serverTimeUtc)
+
+    return Number.isNaN(serverNow) ? Date.now() : serverNow
+  })
   const [answers, setAnswers] = useState<ExamAnswers>(
     () => initialDraft?.answers ?? {}
   )
@@ -177,6 +192,7 @@ function ExamRunner({ test, initialDraft, receivedAt }: ExamRunnerProps) {
   const timer = useExamTimer(
     test,
     receivedAt,
+    sessionStartedAt,
     phase === "exam" ? handleTimeExpired : undefined
   )
 
@@ -195,11 +211,12 @@ function ExamRunner({ test, initialDraft, receivedAt }: ExamRunnerProps) {
 
     saveExamDraft(test.candidateId, test.applicationStageId, {
       started: true,
+      sessionStartedAt,
       answers,
       currentIndex,
       updatedAt: new Date().toISOString(),
     })
-  }, [answers, currentIndex, phase, test])
+  }, [answers, currentIndex, phase, sessionStartedAt, test])
 
   useEffect(() => {
     if (phase !== "exam") {
@@ -219,8 +236,12 @@ function ExamRunner({ test, initialDraft, receivedAt }: ExamRunnerProps) {
   }, [phase])
 
   const handleStart = () => {
+    const startedAtMs = timer.serverNow
+
+    setSessionStartedAt(startedAtMs)
     saveExamDraft(test.candidateId, test.applicationStageId, {
       started: true,
+      sessionStartedAt: startedAtMs,
       answers: {},
       currentIndex: 0,
       updatedAt: new Date().toISOString(),
@@ -305,14 +326,15 @@ function ExamRunner({ test, initialDraft, receivedAt }: ExamRunnerProps) {
   }
 
   if (phase === "intro") {
-    if (timer.remainingMs !== null && timer.remainingMs <= 0) {
-      return <ExamExpiredScreen deadline={formatDateTime(test.endAt)} />
-    }
-
     const startsAt = parseServerDate(test.startedAt)
+    const endsAt = parseServerDate(test.endAt)
 
     if (!Number.isNaN(startsAt) && timer.serverNow < startsAt) {
       return <ExamNotStartedScreen startedAt={formatDateTime(test.startedAt)} />
+    }
+
+    if (!Number.isNaN(endsAt) && timer.serverNow > endsAt) {
+      return <ExamExpiredScreen deadline={formatDateTime(test.endAt)} />
     }
 
     return (
