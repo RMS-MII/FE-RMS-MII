@@ -208,6 +208,7 @@ function ApplicationDetailContent({
               )}
               <div className="min-w-0 p-6">
                 <StageEvaluationEvidence
+                  key={stages[selectedStageIndex]?.batchStageId ?? "no-stage"}
                   application={application}
                   stageIndex={selectedStageIndex}
                 />

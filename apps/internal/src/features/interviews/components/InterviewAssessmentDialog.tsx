@@ -197,7 +197,7 @@ export function InterviewAssessmentDialog({
                 {formError ?? error}
               </p>
             )}
-            <DialogFooter>
+            <DialogFooter className="border-t border-border bg-card">
               <CancelButton
                 onClick={() => onOpenChange(false)}
                 disabled={isSubmitting}

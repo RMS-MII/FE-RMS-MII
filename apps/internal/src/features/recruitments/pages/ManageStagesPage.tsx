@@ -3,7 +3,6 @@ import { Skeleton } from "@workspace/ui/components/skeleton"
 import {
   StageOverviewBanner,
   StageList,
-  StageConfigForm,
 } from "../components/stages"
 import { useManageStages, type UseManageStagesProps } from "../hooks/useManageStages"
 
@@ -17,12 +16,8 @@ export function ManageStagesPage({ id }: ManageStagesPageProps) {
     refetch,
     stages,
     stageTypes,
-    isLoadingStageTypes,
     selectedTempId,
     setSelectedTempId,
-    selectedIndex,
-    selectedStage,
-    nextStage,
     savedSuccess,
     isSaving,
     errorMessage,
@@ -47,10 +42,7 @@ export function ManageStagesPage({ id }: ManageStagesPageProps) {
           </div>
         </div>
         <Skeleton className="h-28 w-full rounded-2xl" />
-        <div className="grid items-start gap-6 lg:grid-cols-[1fr_380px] xl:grid-cols-[1fr_420px]">
-          <Skeleton className="h-96 rounded-2xl" />
-          <Skeleton className="h-96 rounded-2xl" />
-        </div>
+        <Skeleton className="h-96 w-full rounded-2xl" />
       </div>
     )
   }
@@ -122,30 +114,18 @@ export function ManageStagesPage({ id }: ManageStagesPageProps) {
         </div>
       )}
 
-      <div className="grid items-start gap-6 lg:grid-cols-[1fr_380px] xl:grid-cols-[1fr_420px]">
-        <StageList
-          stages={stages}
-          stageTypes={stageTypes}
-          selectedId={selectedTempId}
-          onSelect={setSelectedTempId}
-          onAddStage={handleAddStage}
-          onMoveUp={handleMoveUp}
-          onMoveDown={handleMoveDown}
-          onReorder={handleReorder}
-          onRemoveStage={handleRemoveStage}
-        />
-
-        <StageConfigForm
-          selectedStage={selectedStage}
-          selectedIndex={selectedIndex}
-          totalStages={stages.length}
-          nextStage={nextStage}
-          stageTypes={stageTypes}
-          isLoadingStageTypes={isLoadingStageTypes}
-          onFieldChange={handleFieldChange}
-          onRemoveStage={handleRemoveStage}
-        />
-      </div>
+      <StageList
+        stages={stages}
+        stageTypes={stageTypes}
+        selectedId={selectedTempId}
+        onSelect={setSelectedTempId}
+        onFieldChange={handleFieldChange}
+        onAddStage={handleAddStage}
+        onMoveUp={handleMoveUp}
+        onMoveDown={handleMoveDown}
+        onReorder={handleReorder}
+        onRemoveStage={handleRemoveStage}
+      />
     </div>
   )
 }

@@ -1,3 +1,4 @@
+import { useState } from "react"
 import {
   CheckCircle2,
   Clock,
@@ -6,6 +7,8 @@ import {
   MessageSquare,
   XCircle,
 } from "lucide-react"
+import { Button } from "@workspace/ui/components/button"
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@workspace/ui/components/dialog"
 import { EmptyState, StatusBadge } from "@/shared/components"
 import type { Tone } from "@/shared/components"
 import { cn } from "@/shared/lib/utils"
@@ -38,6 +41,7 @@ export function StageEvaluationEvidence({
   application,
   stageIndex,
 }: StageEvaluationEvidenceProps) {
+  const [answersOpen, setAnswersOpen] = useState(false)
   const targetIndex = stageIndex ?? application.currentStageIndex
   const stage = application.applicationStages[targetIndex]
 
@@ -205,40 +209,19 @@ export function StageEvaluationEvidence({
           </div>
 
           {answers != null && (
-            <div className="space-y-3">
-              <h5 className="text-sm font-semibold text-foreground">
-                Recorded test answers
-              </h5>
-              <p className="text-xs leading-relaxed text-muted-foreground">
-                Only recorded answers are shown. The total question count is not
-                available.
-              </p>
-              {answers.length > 0 ? (
-                <ol className="divide-y divide-border">
-                  {answers.map((answer, index) => (
-                    <li
-                      key={answer.id}
-                      className="space-y-2 py-4 first:pt-0 last:pb-0"
-                    >
-                      <p className="text-sm font-medium break-words whitespace-pre-wrap text-foreground">
-                        {index + 1}.{" "}
-                        {answer.questionText || "Question text not available"}
-                      </p>
-                      <p className="text-sm leading-relaxed break-words whitespace-pre-wrap text-muted-foreground">
-                        <span className="font-medium">Answer: </span>
-                        {answer.questionOptionText ||
-                          "Answer text not available"}
-                      </p>
-                      <p className="text-xs text-muted-foreground tabular-nums">
-                        Score: {answer.score}
-                      </p>
-                    </li>
-                  ))}
-                </ol>
-              ) : (
-                <p className="text-sm text-muted-foreground">
-                  No test answers recorded.
+            <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border p-4">
+              <div className="space-y-1">
+                <h5 className="text-sm font-semibold text-foreground">Test answers</h5>
+                <p className="text-xs text-muted-foreground">
+                  {answers.length > 0
+                    ? `${answers.length} recorded answers are available.`
+                    : "No test answers recorded."}
                 </p>
+              </div>
+              {answers.length > 0 && (
+                <Button type="button" variant="outline" onClick={() => setAnswersOpen(true)}>
+                  View answers
+                </Button>
               )}
             </div>
           )}
@@ -394,6 +377,42 @@ export function StageEvaluationEvidence({
             </div>
           )}
         </div>
+      )}
+
+      {isTest && answers != null && answers.length > 0 && (
+        <Dialog open={answersOpen} onOpenChange={setAnswersOpen}>
+          <DialogContent className="flex max-h-[90dvh] flex-col gap-0 overflow-hidden rounded-2xl bg-card p-0 sm:max-w-2xl">
+            <DialogHeader className="shrink-0 border-b border-border p-6 pr-12 pb-4">
+              <DialogTitle className="text-base font-semibold">
+                Test answers · {stage.stageName}
+              </DialogTitle>
+              <DialogDescription>
+                {answers.length} recorded answers. The total question count is not available.
+              </DialogDescription>
+            </DialogHeader>
+            <ol className="min-h-0 divide-y divide-border overflow-y-auto px-6">
+              {answers.map((answer, index) => (
+                <li key={answer.id} className="space-y-2 py-4">
+                  <p className="text-sm font-medium word-break-words whitespace-pre-wrap text-foreground">
+                    {index + 1}. {answer.questionText || "Question text not available"}
+                  </p>
+                  <p className="text-sm leading-relaxed word-break-words whitespace-pre-wrap text-muted-foreground">
+                    <span className="font-medium">Answer: </span>
+                    {answer.questionOptionText || "Answer text not available"}
+                  </p>
+                  <p className="text-xs text-muted-foreground tabular-nums">
+                    Score: {answer.score}
+                  </p>
+                </li>
+              ))}
+            </ol>
+            <DialogFooter className="shrink-0 border-t border-border bg-card px-6 py-4">
+              <Button type="button" variant="outline" onClick={() => setAnswersOpen(false)}>
+                Close
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       )}
     </section>
   )
