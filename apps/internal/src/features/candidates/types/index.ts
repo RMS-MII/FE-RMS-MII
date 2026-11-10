@@ -25,6 +25,7 @@ export interface CandidateEntity {
   // Aggregated relation fields
   appliedBatchCount: number
   appliedBatches?: {
+    applicationId?: string
     batchId: string
     batchCode: string
     batchName: string

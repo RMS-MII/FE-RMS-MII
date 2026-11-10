@@ -12,10 +12,7 @@ import {
   SearchInput,
   FilterChips,
 } from "@/shared/components"
-import {
-  CandidateTable,
-  CandidateDetailDialog,
-} from "../components"
+import { CandidateTable } from "../components"
 import { useCandidatesList } from "../hooks"
 
 export function CandidatesListPage() {
@@ -34,9 +31,6 @@ export function CandidatesListPage() {
     isFetching,
     isError,
     refetch,
-    selectedCandidate,
-    isDetailOpen,
-    setIsDetailOpen,
     activeChips,
     genderItems,
     batchStatusItems,
@@ -128,12 +122,6 @@ export function CandidatesListPage() {
         />
       </Panel>
 
-      {/* Candidate Quick View Detail Dialog */}
-      <CandidateDetailDialog
-        candidate={selectedCandidate}
-        open={isDetailOpen}
-        onOpenChange={setIsDetailOpen}
-      />
     </div>
   )
 }
