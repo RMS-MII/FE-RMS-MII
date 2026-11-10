@@ -48,6 +48,9 @@ export interface BatchApplicationListItemDto {
   fileOfferingLetter?: string | null
   createdAt?: string
   updatedAt?: string | null
+  currentStageId?: string | null
+  currentStageName?: string | null
+  currentStageStatus?: ApplicationStageStatusValue | null
   candidate?: CandidateDto | null
 }
 
