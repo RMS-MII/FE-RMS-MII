@@ -9,22 +9,15 @@ import { safeFormatDate } from "@/shared/lib/format"
 import {
   useEvaluateStageMutation,
   useGetApplicationByIdQuery,
-  useSetFinalResultMutation,
-  useStartApplicationStageMutation,
 } from "../api/applications-api"
 import { mapApplicationRecap } from "../utils/applicationRecapAdapter"
-import { getStartStageRestriction } from "../utils/applicationStageUtils"
 import type { CandidateNavigationSearch } from "../schemas/recruitment-navigation"
 import { CandidateProfileCard } from "../components/detail/CandidateProfileCard"
 import { StageTimelineProgress } from "../components/detail/StageTimelineProgress"
 import { StageEvaluationEvidence } from "../components/detail/StageEvaluationEvidence"
 import { StageDecisionFooter } from "../components/detail/StageDecisionFooter"
-import { StartApplicationStageDialog } from "../components/detail/StartApplicationStageDialog"
 import { OfferingLetterSection } from "../components/detail/OfferingLetterSection"
-import type {
-  EvaluateStageCommand,
-  SetFinalResultCommand,
-} from "../types/application"
+import type { EvaluateStageCommand } from "../types/application"
 
 export interface CandidateApplicationDetailPageProps {
   batchId: string
@@ -49,25 +42,19 @@ function ApplicationDetailContent({
       currentData && belongsToBatch ? mapApplicationRecap(currentData) : null,
     [currentData, belongsToBatch]
   )
-  const [startStage, { isLoading: isStarting }] =
-    useStartApplicationStageMutation()
   const [evaluateStage, { isLoading: isEvaluating }] =
     useEvaluateStageMutation()
-  const [setFinalResult, { isLoading: isFinalizing }] =
-    useSetFinalResultMutation()
-  const [isStartOpen, setIsStartOpen] = useState(false)
-  const [startError, setStartError] = useState<string | null>(null)
-  const [stageStartRetry, setStageStartRetry] = useState<{
-    applicationId: string
-    batchId: string
-  } | null>(null)
-  const [stageStartRetryError, setStageStartRetryError] = useState<string | null>(
-    null
-  )
   const [selectedStageId, setSelectedStageId] = useState<string | null>(null)
 
   const stages = application?.applicationStages ?? []
-  const activeStageIndex = application?.currentStageIndex ?? -1
+  const activeStageIndex = stages.findIndex((stage) =>
+    Boolean(stage.applicationStageId) &&
+    (String(stage.lifecycleStatus).toLowerCase() === "active" || stage.lifecycleStatus === 1)
+  )
+  const lastStartedStageIndex = stages.reduce(
+    (index, stage, currentIndex) => stage.isStarted ? currentIndex : index,
+    -1
+  )
   const requestedStageIndex = stages.findIndex(
     (stage) => stage.batchStageId === selectedStageId
   )
@@ -76,12 +63,11 @@ function ApplicationDetailContent({
       ? requestedStageIndex
       : activeStageIndex >= 0
         ? activeStageIndex
-        : stages.length - 1
-  const startRestriction = application
-    ? getStartStageRestriction(application)
-    : "Application details are unavailable."
+        : lastStartedStageIndex >= 0
+          ? lastStartedStageIndex
+          : application?.currentStageIndex ?? stages.length - 1
   const showDetails = Boolean(
-    application && !isError && (!isFetching || isStartOpen)
+    application && !isError && !isFetching
   )
   const problem = getApiError(
     error,
@@ -125,32 +111,6 @@ function ApplicationDetailContent({
     })
   }
 
-  const handleStartStage = async () => {
-    if (!application || isStarting) return
-    if (isFetching || isError) {
-      setStartError("Refresh the application details before starting a stage.")
-      return
-    }
-    const restriction = getStartStageRestriction(application)
-    if (restriction) {
-      setStartError(restriction)
-      return
-    }
-    setStartError(null)
-    try {
-      await startStage({
-        applicationId: application.id,
-        batchId: application.recruitmentBatchId,
-      }).unwrap()
-      setIsStartOpen(false)
-    } catch (error) {
-      setStartError(
-        getApiError(error, "Failed to start the next stage. Please try again.")
-          .message
-      )
-    }
-  }
-
   const handleEvaluateStage = async (
     status: EvaluateStageCommand["status"],
     notes: string
@@ -161,52 +121,10 @@ function ApplicationDetailContent({
       throw new Error("This application stage has not been started.")
     }
 
-    setStageStartRetry(null)
-    setStageStartRetryError(null)
     await evaluateStage({
       applicationStageId: stage.applicationStageId,
       body: { status, notes },
       batchId: application.recruitmentBatchId,
-    }).unwrap()
-
-    const isLastStage = selectedStageIndex === stages.length - 1
-    if (status === "Rejected" || isLastStage) return
-
-    const retryArgs = {
-      applicationId: application.id,
-      batchId: application.recruitmentBatchId,
-    }
-    try {
-      await startStage(retryArgs).unwrap()
-    } catch (error) {
-      setStageStartRetry(retryArgs)
-      setStageStartRetryError(
-        getApiError(error, "The next stage could not be started.").message
-      )
-    }
-  }
-
-  const handleRetryStageStart = async () => {
-    if (!stageStartRetry || isStarting) return
-    setStageStartRetryError(null)
-    try {
-      await startStage(stageStartRetry).unwrap()
-      setStageStartRetry(null)
-    } catch (error) {
-      setStageStartRetryError(
-        getApiError(error, "The next stage could not be started.").message
-      )
-    }
-  }
-
-  const handleSetFinalResult = async (
-    finalResultStatus: SetFinalResultCommand["finalResultStatus"],
-    notes: string
-  ) => {
-    if (!application) return
-    await setFinalResult({
-      applicationId: application.id,
-      body: { finalResultStatus, notes },
     }).unwrap()
   }
 
@@ -215,7 +133,7 @@ function ApplicationDetailContent({
       <div className="flex items-start gap-3.5">
         <BackButton
           onClick={goBack}
-          disabled={isStarting}
+          disabled={isEvaluating}
           label="Back to Candidates"
         />
         <div className="min-w-0 flex-1 space-y-1">
@@ -301,24 +219,8 @@ function ApplicationDetailContent({
               stage={stages[selectedStageIndex]}
               isViewingActiveStage={selectedStageIndex === activeStageIndex}
               onEvaluateStage={handleEvaluateStage}
-              onSetFinalResult={handleSetFinalResult}
               onGoToActiveStage={() => setSelectedStageId(null)}
-              onStartStage={() => {
-                setStartError(null)
-                setIsStartOpen(true)
-              }}
-              startRestriction={startRestriction}
-              isStarting={isStarting}
               isEvaluating={isEvaluating}
-              isFinalizing={isFinalizing}
-              startRetry={
-                stageStartRetry
-                  ? {
-                      message: stageStartRetryError ?? "Try starting the next stage again.",
-                      onRetry: handleRetryStageStart,
-                    }
-                  : null
-              }
               onBack={goBack}
             />
           </>
@@ -360,24 +262,6 @@ function ApplicationDetailContent({
         )}
       </Panel>
 
-      {application && (
-        <StartApplicationStageDialog
-          open={isStartOpen}
-          onOpenChange={setIsStartOpen}
-          candidateName={application.candidateName}
-          stageName={application.currentStageName}
-          isTest={stages[activeStageIndex]?.stageType === "test"}
-          isSubmitting={isStarting}
-          disabled={isFetching || isError || Boolean(startRestriction)}
-          error={
-            startError ??
-            (isError
-              ? "Unable to verify the application progress. Refresh the details and try again."
-              : startRestriction)
-          }
-          onConfirm={() => void handleStartStage()}
-        />
-      )}
     </div>
   )
 }

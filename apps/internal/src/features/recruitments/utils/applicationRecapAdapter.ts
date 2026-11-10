@@ -84,7 +84,8 @@ function mapStage(
         : "other"
   const evaluationReady =
     stageType === "test"
-      ? mapApplicationStageStatus(stage.status) === "submitted"
+      ? mapApplicationStageStatus(stage.status) === "submitted" ||
+        (stage.isCompleted && stage.isAttempts)
       : stageType === "interview"
         ? (() => {
             const sessions = stage.interviewSessions.filter(
@@ -113,6 +114,7 @@ function mapStage(
     sequence: stage.sequence,
     stageId: stage.batchStageId,
     batchStageId: stage.batchStageId,
+    lifecycleStatus: stage.lifecycleStatus,
     applicationStageId: stage.applicationStageId,
     apiStatus: stage.status,
     stageName: stage.stageName,
@@ -125,6 +127,7 @@ function mapStage(
     isStarted: stage.isStarted,
     isCompleted: stage.isCompleted,
     isPassed: stage.isPassed,
+    isAttempts: stage.isAttempts,
     evaluationReady,
     totalScore: stage.totalScore,
     startDate: stage.startDate,
