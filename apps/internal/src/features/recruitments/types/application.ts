@@ -91,7 +91,7 @@ export interface RegisterCandidatesCommand {
 
 export interface EvaluateStageCommand {
   status: "Prioritized" | "Considered" | "Rejected" | "Dropped"
-  notes: string
+  notes?: string | null
 }
 
 export interface SetFinalResultCommand {

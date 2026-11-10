@@ -62,8 +62,8 @@ export function StageDecisionFooter({
     event.preventDefault()
     if (!decision || isEvaluating) return
     const trimmedNotes = notes.trim()
-    if (!trimmedNotes || trimmedNotes.length > 500) {
-      setActionError("Notes are required and must be 500 characters or fewer.")
+    if (trimmedNotes.length > 500) {
+      setActionError("Notes must be 500 characters or fewer.")
       return
     }
     try {
@@ -149,10 +149,10 @@ export function StageDecisionFooter({
           </DialogHeader>
           <form id={formId} onSubmit={(event) => void handleConfirm(event)} className="space-y-4 p-6">
             <div className="space-y-1.5">
-              <Label htmlFor={`${formId}-notes`}>Decision Notes <span className="text-destructive">*</span></Label>
+              <Label htmlFor={`${formId}-notes`}>Decision Notes <span className="font-normal text-muted-foreground">(Optional)</span></Label>
               <Textarea id={`${formId}-notes`} rows={4} value={notes}
-                onChange={(event) => setNotes(event.target.value)} maxLength={500} required
-                disabled={isEvaluating} placeholder="Add the reason for this decision..."
+                onChange={(event) => setNotes(event.target.value)} maxLength={500}
+                disabled={isEvaluating} placeholder="Add a note if needed..."
                 className="min-h-24 resize-y rounded-xl border-0 bg-muted px-4 py-3 text-sm" />
               <p className="text-right text-xs text-muted-foreground">{notes.length}/500</p>
             </div>
