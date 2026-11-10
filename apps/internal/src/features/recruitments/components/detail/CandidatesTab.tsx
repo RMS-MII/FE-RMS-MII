@@ -328,15 +328,25 @@ export function CandidatesTab({ recruitment }: CandidatesTabProps) {
                         app.currentStageName
                       : app.currentStageName
 
+                  const currentBatchStage = recruitment.batchStages?.find(
+                    (stage) => stage.id === app.applicationStages[app.currentStageIndex]?.batchStageId
+                  )
+                  const isUnpublishedDecision =
+                    (parsedStageIndex === null || parsedStageIndex === app.currentStageIndex) &&
+                    (currentBatchStage?.lifecycleStatus === "Active" ||
+                      currentBatchStage?.lifecycleStatus === 1) &&
+                    ["prioritized", "considered", "rejected", "dropped"].includes(
+                      app.currentStageStatus
+                    )
                   const displayStatus =
                     parsedStageIndex !== null
                       ? app.applicationStages[parsedStageIndex]?.status ||
                         app.currentStageStatus
-                      : app.status
-
+                      : isUnpublishedDecision
+                        ? app.currentStageStatus
+                        : app.status
                   const statusTone = statusToneMap[displayStatus] || "neutral"
-                  const statusLabel =
-                    statusLabelMap[displayStatus] || displayStatus
+                  const statusLabel = statusLabelMap[displayStatus] || displayStatus
 
                   return (
                     <TableRow
@@ -386,9 +396,9 @@ export function CandidatesTab({ recruitment }: CandidatesTabProps) {
 
                       {/* Status Badge (ApplicationStage.Status / BatchApplications.Status) */}
                       <TableCell className="py-3.5 whitespace-nowrap">
-                        <StatusBadge tone={statusTone}>
-                          {statusLabel}
-                        </StatusBadge>
+                        <div className="flex flex-col items-start gap-1.5">
+                          <StatusBadge tone={statusTone}>{statusLabel}</StatusBadge>
+                        </div>
                       </TableCell>
 
                       {/* Applied Date (BatchApplications.AppliedAt) */}

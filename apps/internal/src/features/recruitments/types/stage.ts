@@ -49,6 +49,7 @@ export interface BatchStage {
   stageName: string
   isActive: boolean
   lifecycleStatus?: BatchStageLifecycleStatus
+  candidateCount?: number | null
   passingScore?: number | null
   startDate?: string | null
   endDate?: string | null

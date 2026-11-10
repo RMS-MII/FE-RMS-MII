@@ -33,12 +33,14 @@ export function StageDecisionFooter({
     stage?.applicationStageId && isActive && application.finalStatus == null &&
     (stage.stageType === "test" || stage.stageType === "interview")
   )
-  const canPass = canDecide && Boolean(stage?.evaluationReady)
+  const canPass = canDecide && Boolean(stage?.evaluationReady) &&
+    !["prioritized", "considered"].includes(stage?.status ?? "")
   const canFail = canDecide && Boolean(
     stage?.isStarted &&
+    !["rejected", "dropped"].includes(stage.status) &&
     (stage.stageType === "test"
-      ? ["in_progress", "submitted", "expired", "prioritized", "considered", "rejected", "dropped"].includes(stage.status)
-      : ["in_progress", "prioritized", "considered", "rejected", "dropped"].includes(stage.status))
+      ? ["in_progress", "submitted", "expired", "prioritized", "considered"].includes(stage.status)
+      : ["in_progress", "prioritized", "considered"].includes(stage.status))
   )
   const isRecorded = Boolean(stage?.isCompleted && stage.status !== "expired")
   const failStatus: EvaluateStageCommand["status"] = stage?.stageType === "test"
