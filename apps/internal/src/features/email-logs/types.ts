@@ -1,4 +1,4 @@
-export type EmailDeliveryStatus = "Sent" | "Failed"
+export type EmailDeliveryStatus = "Sent" | "Failed" | "Pending" | "Sending"
 
 export type EmailType =
   | "StageInvitation"
@@ -20,6 +20,7 @@ export interface EmailLog {
   attemptedAt: string
   sentAt: string | null
   errorMessage: string | null
+  canRetry: boolean
 }
 
 export interface EmailLogsPage {

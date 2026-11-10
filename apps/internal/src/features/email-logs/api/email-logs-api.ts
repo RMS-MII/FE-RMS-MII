@@ -1,5 +1,5 @@
 import { baseApi } from "@/shared/api/base-api"
-import type { EmailLogsPage, GetEmailLogsParams } from "../types"
+import type { EmailDeliveryStatus, EmailLogsPage, GetEmailLogsParams } from "../types"
 
 export const emailLogsApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
@@ -19,7 +19,11 @@ export const emailLogsApi = baseApi.injectEndpoints({
       }),
       providesTags: [{ type: "User", id: "EMAIL_LOGS" }],
     }),
+    retryEmailLog: builder.mutation<{ id: string; status: EmailDeliveryStatus }, string>({
+      query: (id) => ({ url: `/email-logs/${id}/retry`, method: "POST" }),
+      invalidatesTags: [{ type: "User", id: "EMAIL_LOGS" }],
+    }),
   }),
 })
 
-export const { useGetEmailLogsQuery } = emailLogsApi
+export const { useGetEmailLogsQuery, useRetryEmailLogMutation } = emailLogsApi
