@@ -342,7 +342,8 @@ export function CandidatesTab({ recruitment }: CandidatesTabProps) {
                     parsedStageIndex !== null
                       ? app.applicationStages[parsedStageIndex]?.status ||
                         app.currentStageStatus
-                      : isUnpublishedDecision
+                      : app.status === "in_progress" &&
+                          (app.currentStageStatus === "submitted" || isUnpublishedDecision)
                         ? app.currentStageStatus
                         : app.status
                   const statusTone = statusToneMap[displayStatus] || "neutral"
@@ -398,6 +399,11 @@ export function CandidatesTab({ recruitment }: CandidatesTabProps) {
                       <TableCell className="py-3.5 whitespace-nowrap">
                         <div className="flex flex-col items-start gap-1.5">
                           <StatusBadge tone={statusTone}>{statusLabel}</StatusBadge>
+                          {parsedStageIndex === null && displayStatus === "submitted" && (
+                            <span className="text-xs text-muted-foreground">
+                              Application: In Progress
+                            </span>
+                          )}
                         </div>
                       </TableCell>
 
