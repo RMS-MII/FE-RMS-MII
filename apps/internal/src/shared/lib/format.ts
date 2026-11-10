@@ -1,3 +1,5 @@
+import { getWibDateKey } from "./utcDateTime"
+
 const dateFmt = new Intl.DateTimeFormat("en-US", {
   day: "numeric",
   month: "short",
@@ -27,7 +29,7 @@ const currencyFmt = new Intl.NumberFormat("id-ID", {
 /** ISO date (YYYY-MM-DD or full ISO 8601 YYYY-MM-DDTHH:mm:ssZ) parsed safely. */
 export function parseDate(iso?: string): Date {
   if (!iso) return new Date()
-  const clean = iso.includes("T") ? iso.split("T")[0] : iso.split(" ")[0]
+  const clean = iso.includes("T") ? getWibDateKey(iso) : iso.split(" ")[0]
   const parts = clean.split("-").map(Number)
   if (parts.length === 3) {
     const [y, m, d] = parts

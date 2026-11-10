@@ -1,5 +1,4 @@
 import * as React from "react"
-import { format, parseISO } from "date-fns"
 import {
   CalendarX,
   Clock,
@@ -26,6 +25,7 @@ import {
   type Tone,
 } from "@/shared/components"
 import { cn } from "@/shared/lib/utils"
+import { formatWibDate, formatWibTime, getWibDateKey, parseUtcDateTime } from "@/shared/lib/utcDateTime"
 
 const interviewerStatusColors: Record<string, string> = {
   pending: "bg-warning-soft text-warning",
@@ -70,17 +70,15 @@ export interface InterviewSessionTableProps {
   onClearDateFilter?: () => void
   onViewDetail?: (session: InterviewSessionItem) => void
   onReviewReschedule?: (session: InterviewSessionItem) => void
-  onAdjustSchedule?: (session: InterviewSessionItem) => void
   isFilterPendingReschedule?: boolean
   className?: string
 }
 
-export function InterviewSessionTable({
+export const InterviewSessionTable = React.memo(function InterviewSessionTable({
   sessions,
   selectedDate,
   onClearDateFilter,
   onReviewReschedule,
-  onAdjustSchedule,
   isFilterPendingReschedule = false,
   className = "",
 }: InterviewSessionTableProps) {
@@ -97,15 +95,15 @@ export function InterviewSessionTable({
       result = result.filter((s) => s.rescheduleRequest?.status === "pending")
     } else if (selectedDate) {
       result = result.filter(
-        (s) => format(parseISO(s.scheduledStart), "yyyy-MM-dd") === selectedDate
+        (s) => getWibDateKey(s.scheduledStart) === selectedDate
       )
     }
 
     // Sort by scheduledStart ascending
     return result.sort(
       (a, b) =>
-        new Date(a.scheduledStart).getTime() -
-        new Date(b.scheduledStart).getTime()
+        parseUtcDateTime(a.scheduledStart).getTime() -
+        parseUtcDateTime(b.scheduledStart).getTime()
     )
   }, [sessions, selectedDate, isFilterPendingReschedule])
 
@@ -142,9 +140,8 @@ export function InterviewSessionTable({
 
     if (selectedDate) {
       try {
-        const parsed = parseISO(selectedDate)
         return {
-          title: format(parsed, "EEEE, dd MMMM yyyy"),
+          title: formatWibDate(selectedDate, { weekday: "long", month: "long" }),
           subtitle: `${filteredSessions.length} interview session${filteredSessions.length !== 1 ? "s" : ""} scheduled`,
         }
       } catch {
@@ -249,10 +246,8 @@ export function InterviewSessionTable({
                   let dateFormatted: string
                   let timeFormatted: string
                   try {
-                    const start = parseISO(session.scheduledStart)
-                    const end = parseISO(session.scheduledEnd)
-                    dateFormatted = format(start, "dd MMM yyyy")
-                    timeFormatted = `${format(start, "HH:mm")} – ${format(end, "HH:mm")}`
+                    dateFormatted = formatWibDate(session.scheduledStart)
+                    timeFormatted = `${formatWibTime(session.scheduledStart)} – ${formatWibTime(session.scheduledEnd)} WIB`
                   } catch {
                     dateFormatted = session.scheduledStart
                     timeFormatted = "Time TBA"
@@ -430,17 +425,6 @@ export function InterviewSessionTable({
                             >
                               Review Reschedule
                             </button>
-                          ) : (session.status === "rescheduled" ||
-                              session.rescheduleRequest?.status ===
-                                "approved") &&
-                            onAdjustSchedule ? (
-                            <button
-                              type="button"
-                              onClick={() => onAdjustSchedule(session)}
-                              className="cursor-pointer rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold text-primary transition-colors hover:bg-primary/20"
-                            >
-                              Adjust Schedule
-                            </button>
                           ) : (
                             <span className="text-xs text-muted-foreground/60">
                               —
@@ -468,4 +452,4 @@ export function InterviewSessionTable({
       </div>
     </div>
   )
-}
+})

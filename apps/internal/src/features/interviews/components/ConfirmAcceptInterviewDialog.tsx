@@ -8,7 +8,7 @@ import {
 } from "@workspace/ui/components/dialog"
 import { Button } from "@workspace/ui/components/button"
 import { CancelButton } from "@/shared/components"
-import { format, parseISO } from "date-fns"
+import { formatWibDate, formatWibTime, parseUtcDateTime } from "@/shared/lib/utcDateTime"
 import {
   Check,
   Clock,
@@ -39,8 +39,8 @@ export function ConfirmAcceptInterviewDialog({
   let startDate: Date | null = null
   let endDate: Date | null = null
   try {
-    startDate = parseISO(session.scheduledStart)
-    endDate = parseISO(session.scheduledEnd)
+    startDate = parseUtcDateTime(session.scheduledStart)
+    endDate = parseUtcDateTime(session.scheduledEnd)
   } catch {
     // fallback
   }
@@ -79,12 +79,12 @@ export function ConfirmAcceptInterviewDialog({
               <Clock className="size-3 text-primary" />
               <span>
                 {startDate
-                  ? format(startDate, "EEE, dd MMM yyyy")
+                  ? formatWibDate(startDate, { weekday: "short" })
                   : session.scheduledStart}
               </span>
               <span>
                 {startDate && endDate
-                  ? `• ${format(startDate, "HH:mm")} – ${format(endDate, "HH:mm")} WIB`
+                  ? `• ${formatWibTime(startDate)} – ${formatWibTime(endDate)} WIB`
                   : ""}
               </span>
             </div>

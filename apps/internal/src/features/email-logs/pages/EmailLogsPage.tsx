@@ -1,5 +1,5 @@
 import { useState } from "react"
-import { format } from "date-fns"
+import { safeFormatWibDateTime, wibDayBoundToUtcISOString } from "@/shared/lib/utcDateTime"
 import { AlertTriangle, Loader2, MailCheck, MailX, RotateCw } from "lucide-react"
 import { Button } from "@workspace/ui/components/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@workspace/ui/components/select"
@@ -43,12 +43,6 @@ const emailTypeItems = [
   ...emailTypes,
 ]
 
-function formatDate(value: string | null) {
-  if (!value) return "—"
-  const date = new Date(value)
-  return Number.isNaN(date.getTime()) ? "—" : format(date, "dd MMM yyyy, HH:mm")
-}
-
 function getErrorMessage(error: unknown) {
   if (error && typeof error === "object" && "data" in error) {
     const data = error.data
@@ -67,7 +61,7 @@ export function EmailLogsPage() {
   const [from, setFrom] = useState("")
   const [to, setTo] = useState("")
   const [page, setPage] = useState(1)
-  const [retryNotice, setRetryNotice] = useState<string | null>(null)
+  const [, setRetryNotice] = useState<string | null>(null)
   const [retryEmailLog, { isLoading: isRetrying, originalArgs: retryingLogId }] = useRetryEmailLogMutation()
 
   const { data, error, isLoading, isError, refetch } = useGetEmailLogsQuery(
@@ -75,8 +69,8 @@ export function EmailLogsPage() {
       search: debouncedSearch,
       status: status === "all" ? undefined : status,
       type: type === "all" ? undefined : type,
-      from: from ? `${from}T00:00:00` : undefined,
-      to: to ? `${to}T23:59:59.999` : undefined,
+      from: from ? wibDayBoundToUtcISOString(from) : undefined,
+      to: to ? wibDayBoundToUtcISOString(to, true) : undefined,
       page,
       pageSize: PAGE_SIZE,
     },
@@ -103,11 +97,6 @@ export function EmailLogsPage() {
       />
 
       <Panel>
-        {retryNotice && (
-          <div role="status" className="border-b border-border bg-muted/40 px-5 py-3 text-sm text-foreground">
-            {retryNotice}
-          </div>
-        )}
         <div className="flex flex-col gap-3 border-b border-border px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex flex-1 flex-wrap items-center gap-2.5">
             <SearchInput
@@ -210,7 +199,7 @@ export function EmailLogsPage() {
               ) : (
                 logs.map((log) => (
                   <TableRow key={log.id} className="border-b border-border transition-colors hover:bg-muted/40">
-                    <TableCell className="whitespace-nowrap py-3.5 pl-5 text-sm">{formatDate(log.attemptedAt)}</TableCell>
+                    <TableCell className="whitespace-nowrap py-3.5 pl-5 text-sm">{safeFormatWibDateTime(log.attemptedAt)}</TableCell>
                     <TableCell className="max-w-56 truncate py-3.5 text-sm" title={log.recipientEmail}>{log.recipientEmail}</TableCell>
                     <TableCell className="max-w-72 truncate py-3.5 text-sm font-medium" title={log.subject}>{log.subject}</TableCell>
                     <TableCell className="whitespace-nowrap py-3.5 text-sm">
@@ -235,7 +224,7 @@ export function EmailLogsPage() {
                       ) : log.status === "Sending" ? (
                         <span className="text-muted-foreground">Retry is being sent</span>
                       ) : (
-                        <span className="text-muted-foreground">Sent {formatDate(log.sentAt)}</span>
+                        <span className="text-muted-foreground">Sent {safeFormatWibDateTime(log.sentAt)}</span>
                       )}
                     </TableCell>
                     <TableCell className="py-3.5 pr-5">

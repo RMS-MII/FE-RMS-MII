@@ -11,7 +11,7 @@ import { Button } from "@workspace/ui/components/button"
 import { Textarea } from "@workspace/ui/components/textarea"
 import { Label } from "@workspace/ui/components/label"
 import { CancelButton, DatePicker, TimePicker } from "@/shared/components"
-import { format, parseISO } from "date-fns"
+import { formatWibDate, formatWibTime, getWibDateKey, parseUtcDateTime, wibToUtcISOString } from "@/shared/lib/utcDateTime"
 import { CalendarClock } from "lucide-react"
 import type { MyInterviewItem } from "../types"
 
@@ -47,15 +47,14 @@ export function RequestRescheduleDialog({
     if (open && session) {
       // Default proposed date to 1 day after current schedule
       try {
-        const d = parseISO(session.scheduledStart)
+        const d = parseUtcDateTime(session.scheduledStart)
         const nextDay = new Date(d)
-        nextDay.setDate(nextDay.getDate() + 1)
+        nextDay.setUTCDate(nextDay.getUTCDate() + 1)
         // This effect intentionally initializes the dialog draft from the selected session.
         // eslint-disable-next-line react-hooks/set-state-in-effect
-        setProposedDate(format(nextDay, "yyyy-MM-dd"))
-        setProposedStartTime(format(d, "HH:mm"))
-        const endD = parseISO(session.scheduledEnd)
-        setProposedEndTime(format(endD, "HH:mm"))
+        setProposedDate(getWibDateKey(nextDay))
+        setProposedStartTime(formatWibTime(d))
+        setProposedEndTime(formatWibTime(session.scheduledEnd))
       } catch {
         setProposedDate("")
         setProposedStartTime("10:00")
@@ -71,8 +70,8 @@ export function RequestRescheduleDialog({
   let currentStart: Date | null = null
   let currentEnd: Date | null = null
   try {
-    currentStart = parseISO(session.scheduledStart)
-    currentEnd = parseISO(session.scheduledEnd)
+    currentStart = parseUtcDateTime(session.scheduledStart)
+    currentEnd = parseUtcDateTime(session.scheduledEnd)
   } catch {
     // fallback
   }
@@ -99,8 +98,8 @@ export function RequestRescheduleDialog({
       return
     }
 
-    const proposedStart = new Date(`${proposedDate}T${proposedStartTime}:00`)
-    const proposedEnd = new Date(`${proposedDate}T${proposedEndTime}:00`)
+    const proposedStart = new Date(wibToUtcISOString(proposedDate, proposedStartTime))
+    const proposedEnd = new Date(wibToUtcISOString(proposedDate, proposedEndTime))
     if (proposedStart <= new Date()) {
       setError("Proposed schedule must be in the future.")
       return
@@ -156,12 +155,12 @@ export function RequestRescheduleDialog({
             <div className="flex items-center gap-1.5 text-muted-foreground text-[11px] pt-1.5 border-t border-border/50">
               <span className="font-medium text-foreground">
                 {currentStart
-                  ? format(currentStart, "EEE, dd MMM yyyy")
+                  ? formatWibDate(currentStart, { weekday: "short" })
                   : session.scheduledStart}
               </span>
               <span className="font-mono">
                 {currentStart && currentEnd
-                  ? `• ${format(currentStart, "HH:mm")} – ${format(currentEnd, "HH:mm")} WIB`
+                  ? `• ${formatWibTime(currentStart)} – ${formatWibTime(currentEnd)} WIB`
                   : ""}
               </span>
             </div>
@@ -193,7 +192,7 @@ export function RequestRescheduleDialog({
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
                 <span className="text-xs text-muted-foreground font-medium px-1">
-                  Start Time <span className="text-destructive">*</span>
+                  Start Time (WIB) <span className="text-destructive">*</span>
                 </span>
                 <TimePicker
                   id="proposed-start-time"
@@ -208,7 +207,7 @@ export function RequestRescheduleDialog({
 
               <div className="space-y-1.5">
                 <span className="text-xs text-muted-foreground font-medium px-1">
-                  End Time <span className="text-destructive">*</span>
+                  End Time (WIB) <span className="text-destructive">*</span>
                 </span>
                 <TimePicker
                   id="proposed-end-time"

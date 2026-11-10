@@ -1,5 +1,5 @@
 import * as React from "react"
-import { format, isValid, parseISO } from "date-fns"
+import { formatWibDate, formatWibTime, parseUtcDateTime } from "@/shared/lib/utcDateTime"
 import {
   Clock,
   MapPin,
@@ -195,8 +195,8 @@ export function MyInterviewsTable({
             interviews.map((item) => {
               const isCopied = copiedId === item.id
 
-              const startDate = parseISO(item.scheduledStart)
-              const endDate = parseISO(item.scheduledEnd)
+              const startDate = parseUtcDateTime(item.scheduledStart)
+              const endDate = parseUtcDateTime(item.scheduledEnd)
 
               const isPending = item.status === "pending"
               const isRescheduleRequested = item.status === "rescheduled"
@@ -247,14 +247,14 @@ export function MyInterviewsTable({
                   <TableCell className="py-3.5 text-xs whitespace-nowrap">
                     <div className="flex flex-col gap-0.5">
                       <span className="font-medium text-foreground text-sm">
-                        {isValid(startDate)
-                          ? format(startDate, "EEE, dd MMM yyyy")
+                        {!Number.isNaN(startDate.getTime())
+                          ? formatWibDate(startDate, { weekday: "short" })
                           : "Date unavailable"}
                       </span>
                       <span className="inline-flex items-center gap-1 text-[11px] text-muted-foreground font-mono">
                         <Clock className="size-3 text-muted-foreground" />
-                        {isValid(startDate) && isValid(endDate)
-                          ? `${format(startDate, "HH:mm")} – ${format(endDate, "HH:mm")}`
+                        {!Number.isNaN(startDate.getTime()) && !Number.isNaN(endDate.getTime())
+                          ? `${formatWibTime(startDate)} – ${formatWibTime(endDate)} WIB`
                           : "Time unavailable"}
                       </span>
                     </div>
@@ -470,15 +470,9 @@ export function MyInterviewsTable({
                                 <div className="space-y-1 text-muted-foreground pt-1 border-t border-border/50 text-[11px]">
                                   <p>
                                     <strong className="text-foreground">Proposed:</strong>{" "}
-                                    {format(
-                                      parseISO(item.rescheduleRequest.proposedStart),
-                                      "EEE, dd MMM yyyy • HH:mm"
-                                    )}{" "}
+                                    {formatWibDate(item.rescheduleRequest.proposedStart, { weekday: "short" })} • {formatWibTime(item.rescheduleRequest.proposedStart)}{" "}
                                     –{" "}
-                                    {format(
-                                      parseISO(item.rescheduleRequest.proposedEnd),
-                                      "HH:mm WIB"
-                                    )}
+                                    {formatWibTime(item.rescheduleRequest.proposedEnd)} WIB
                                   </p>
                                   <p className="italic leading-relaxed">
                                     &ldquo;{item.rescheduleRequest.reason}&rdquo;

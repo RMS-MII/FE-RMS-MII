@@ -15,7 +15,7 @@ try {
    const body=req.postDataJSON(); const s=data.applications[0].stages[1].sessions[0]
    if(req.url().endsWith("/submission")){assert.equal(body.fileSubmission,"https://drive.google.com/file/d/example/view");s.fileSubmission=body.fileSubmission;s.isSubmitted=true}
    if(req.url().endsWith("/confirm")){s.canConfirm=false;s.status="AcceptedByCandidate"}
-   if(req.url().endsWith("/reschedule")){s.canRequestReschedule=false;s.reschedule={status:"Pending",proposedStart:body.proposedStart,proposedEnd:body.proposedEnd}}
+   if(req.url().endsWith("/reschedule")){assert.equal(new Date(body.proposedEnd)-new Date(body.proposedStart),3600000);assert.equal(new Date(body.proposedStart).toDateString(),new Date(body.proposedEnd).toDateString());assert.equal(body.reason,"Ada jadwal yang bertepatan.");s.canRequestReschedule=false;s.reschedule={status:"Pending",proposedStart:body.proposedStart,proposedEnd:body.proposedEnd}}
    return route.fulfill({json:{}})
   }
   return route.fulfill({json:data})
@@ -49,8 +49,26 @@ try {
  await page.getByRole("button",{name:"Kirim tugas",exact:true}).click()
  await page.getByRole("link",{name:"Lihat tugas terkirim"}).waitFor()
  await page.getByRole("button",{name:"Ajukan reschedule"}).click()
- await page.getByLabel("Mulai",{exact:true}).fill("2027-01-11T10:00")
- await page.getByLabel("Selesai",{exact:true}).fill("2027-01-11T11:00")
+ await page.getByLabel("Alasan",{exact:true}).fill("Ada jadwal yang bertepatan.")
+ await page.getByRole("button",{name:"Kirim usulan"}).click()
+ await page.getByText("Lengkapi tanggal dan jam mulai serta selesai.").waitFor()
+ await page.getByLabel("Tanggal usulan",{exact:true}).click()
+ await page.getByRole("combobox",{name:"Choose the Year"}).selectOption("2027")
+ await page.getByRole("combobox",{name:"Choose the Month"}).selectOption("0")
+ await page.locator('[data-day="1/11/2027"]').click()
+ for (const [label,hour] of [["Jam mulai","10"],["Jam selesai","11"]]) {
+   await page.getByLabel(label,{exact:true}).click()
+   await page.locator('[data-slot="popover-content"]').getByRole("button",{name:hour,exact:true}).first().click()
+   await page.keyboard.press("Escape")
+ }
+ if(process.env.SCREENSHOT_DIR) await page.screenshot({path:process.env.SCREENSHOT_DIR+"/candidate-reschedule-desktop.png",fullPage:true})
+ await page.setViewportSize({width:390,height:844})
+ await page.getByLabel("Tanggal usulan",{exact:true}).click()
+ assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false,"Calendar mobile must not overflow")
+ if(process.env.SCREENSHOT_DIR) await page.screenshot({path:process.env.SCREENSHOT_DIR+"/candidate-reschedule-calendar-mobile.png",fullPage:true})
+ await page.keyboard.press("Escape")
+ assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false,"Reschedule form must not overflow")
+ if(process.env.SCREENSHOT_DIR) await page.screenshot({path:process.env.SCREENSHOT_DIR+"/candidate-reschedule-mobile.png",fullPage:true})
  await page.getByLabel("Alasan",{exact:true}).fill("Ada jadwal yang bertepatan.")
  await page.getByRole("button",{name:"Kirim usulan"}).click()
  await page.getByText("Reschedule: Menunggu keputusan HR").waitFor()
