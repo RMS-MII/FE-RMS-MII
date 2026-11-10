@@ -25,7 +25,7 @@ const stageStatusMeta: Record<string, { label: string; tone: Tone }> = {
   considered: { label: "Considered", tone: "success" },
   submitted: { label: "Submitted", tone: "warning" },
   expired: { label: "Expired", tone: "danger" },
-  dropped: { label: "Dropped", tone: "neutral" },
+  dropped: { label: "Dropped", tone: "danger" },
   unknown: { label: "Unknown", tone: "neutral" },
   in_progress: { label: "In Progress", tone: "info" },
   passed: { label: "Passed", tone: "success" },
@@ -129,7 +129,13 @@ export function StageEvaluationEvidence({
           )}
           {stage.completedAt && (
             <div className="space-y-1">
-              <dt className="text-muted-foreground">Completed</dt>
+              <dt className="text-muted-foreground">
+                {stage.status === "submitted"
+                  ? "Submitted"
+                  : stage.status === "expired"
+                    ? "Expired"
+                    : "Decided"}
+              </dt>
               <dd className="text-foreground">
                 {safeFormatDate(stage.completedAt)}
               </dd>

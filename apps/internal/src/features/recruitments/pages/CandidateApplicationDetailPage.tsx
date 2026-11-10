@@ -47,14 +47,20 @@ function ApplicationDetailContent({
   const [selectedStageId, setSelectedStageId] = useState<string | null>(null)
 
   const stages = application?.applicationStages ?? []
-  const activeStageIndex = stages.findIndex((stage) =>
+  const usesBatchLifecycle = stages.some((stage) =>
+    !["inactive", "0"].includes(String(stage.lifecycleStatus ?? "Inactive").toLowerCase())
+  )
+  const lifecycleStageIndex = stages.findIndex((stage) =>
     Boolean(stage.applicationStageId) &&
-    (String(stage.lifecycleStatus).toLowerCase() === "active" || stage.lifecycleStatus === 1)
+    ["active", "1"].includes(String(stage.lifecycleStatus).toLowerCase())
   )
   const lastStartedStageIndex = stages.reduce(
     (index, stage, currentIndex) => stage.isStarted ? currentIndex : index,
     -1
   )
+  const activeStageIndex = usesBatchLifecycle
+    ? lifecycleStageIndex
+    : lastStartedStageIndex
   const requestedStageIndex = stages.findIndex(
     (stage) => stage.batchStageId === selectedStageId
   )
@@ -219,8 +225,11 @@ function ApplicationDetailContent({
               application={application}
               stage={stages[selectedStageIndex]}
               isViewingActiveStage={selectedStageIndex === activeStageIndex}
+              usesBatchLifecycle={usesBatchLifecycle}
               onEvaluateStage={handleEvaluateStage}
-              onGoToActiveStage={() => setSelectedStageId(null)}
+              onGoToActiveStage={activeStageIndex >= 0
+                ? () => setSelectedStageId(null)
+                : undefined}
               isEvaluating={isEvaluating}
               onBack={goBack}
             />
