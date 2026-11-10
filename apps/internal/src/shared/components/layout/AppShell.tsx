@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useMemo, useState, type ReactNode } from "react"
+import { Fragment, useEffect, useState, type ReactNode } from "react"
 import {
   Briefcase,
   ChevronDown,
@@ -49,14 +49,11 @@ export interface Crumb {
   search?: Record<string, unknown>
 }
 
-type BadgeKey = "interviews" | "stageInvitations" | "offerings"
-
 export interface NavSubItem {
   to: string
   label: string
   roles: UserRole[]
   match: (path: string) => boolean
-  badge?: BadgeKey
 }
 
 interface NavItem {
@@ -65,7 +62,6 @@ interface NavItem {
   icon: typeof LayoutDashboard
   roles: UserRole[]
   match: (path: string) => boolean
-  badge?: BadgeKey
   children?: NavSubItem[]
 }
 
@@ -94,21 +90,18 @@ const NAV: NavGroup[] = [
         icon: CalendarCheck,
         roles: ["HR", "Interviewer"],
         match: startsWith("/interviews"),
-        badge: "interviews",
         children: [
           {
             to: "/interviews/stages",
             label: "Stage Invitations",
             roles: ["HR", "Interviewer"],
             match: startsWith("/interviews/stages"),
-            badge: "stageInvitations",
           },
           {
             to: "/interviews/schedules",
             label: "Interview Schedules",
             roles: ["HR", "Interviewer"],
             match: startsWith("/interviews/schedules"),
-            badge: "interviews",
           },
         ],
       },
@@ -148,20 +141,6 @@ const NAV: NavGroup[] = [
     ],
   },
 ]
-
-function useBadges(): Record<BadgeKey, number> {
-  const role = useAppSelector((state) => state.auth.user?.role) ?? "HR"
-  return useMemo(() => {
-    const stageInvitationsCount = 1
-    const interviewsCount = 1
-    const offeringsCount = role === "HR" ? 2 : 0
-    return {
-      interviews: interviewsCount,
-      stageInvitations: stageInvitationsCount,
-      offerings: offeringsCount,
-    }
-  }, [role])
-}
 
 function Mark({ className }: { className?: string }) {
   return (
@@ -204,7 +183,6 @@ function Nav({
   onNavigate?: () => void
 }) {
   const role = useAppSelector((state) => state.auth.user?.role) ?? "HR"
-  const badges = useBadges()
 
   return (
     <nav
@@ -230,7 +208,6 @@ function Nav({
             {visible.map((n) => {
               const active = n.match(path)
               const Icon = n.icon
-              const count = n.badge ? badges[n.badge] : 0
 
               return (
                 <li key={n.to} className="group/item relative">
@@ -253,12 +230,6 @@ function Nav({
                         strokeWidth={1.75}
                         aria-hidden
                       />
-                      {count > 0 && (
-                        <span
-                          aria-hidden
-                          className="absolute -bottom-0.5 -left-0.5 size-1.75 rounded-full bg-attention ring-2 ring-card"
-                        />
-                      )}
                     </span>
                     {!collapsed && (
                       <div className="flex flex-1 items-center justify-between min-w-0">
@@ -273,9 +244,6 @@ function Nav({
                         )}
                       </div>
                     )}
-                    {count > 0 && (
-                      <span className="sr-only">, {count} pending action</span>
-                    )}
                   </Link>
 
                   {/* Nested Sub-menu Links (when expanded and active) */}
@@ -285,7 +253,6 @@ function Nav({
                         .filter((sub) => sub.roles.includes(role))
                         .map((sub) => {
                           const subActive = sub.match(path)
-                          const subCount = sub.badge ? badges[sub.badge] : 0
 
                           return (
                             <li key={sub.to + sub.label}>
@@ -300,11 +267,6 @@ function Nav({
                                 )}
                               >
                                 <span className="truncate">{sub.label}</span>
-                                {subCount > 0 && (
-                                  <span className="flex items-center justify-center min-w-4.5 h-4 px-1.5 rounded-full bg-attention text-[10px] font-bold text-white leading-none">
-                                    {subCount}
-                                  </span>
-                                )}
                               </Link>
                             </li>
                           )
@@ -318,11 +280,6 @@ function Nav({
                       className="pointer-events-none absolute top-1/2 left-full z-50 ml-4 -translate-y-1/2 rounded-md bg-foreground px-2 py-1 text-xs font-medium whitespace-nowrap text-card opacity-0 transition-opacity duration-150 group-hover/item:opacity-100 group-focus-within/item:opacity-100 shadow-md"
                     >
                       {n.label}
-                      {count > 0 && (
-                        <span className="ml-1.5 opacity-70 tabular-nums">
-                          {count}
-                        </span>
-                      )}
                     </span>
                   )}
                 </li>

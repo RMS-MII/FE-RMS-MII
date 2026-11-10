@@ -11,6 +11,7 @@ import {
 import { useGetBatchApplicationsQuery } from "../api/applications-api"
 import {
   mapApplicationStatus,
+  mapApplicationStageStatus,
   mapFinalResultStatus,
   parseStatusFilterToNumber,
 } from "../utils/statusAdapters"
@@ -182,7 +183,10 @@ export function useCandidatesTab({ recruitment }: UseCandidatesTabProps) {
     return apiData.items.map((item) => {
       const cand = item.candidate
       const statusStr = mapApplicationStatus(item.status)
-      const activeStage = "Stage progress unavailable"
+      const currentStageIndex = stages.findIndex(
+        (stage) => stage.id === item.currentStageId
+      )
+      const currentStageStatus = mapApplicationStageStatus(item.currentStageStatus)
 
       return {
         id: item.id,
@@ -208,10 +212,10 @@ export function useCandidatesTab({ recruitment }: UseCandidatesTabProps) {
         candidateGpa: cand?.gpa != null ? String(cand.gpa) : undefined,
         candidateCv: cand?.cv,
         candidatePortfolio: cand?.portfolio,
-        currentStageIndex: -1,
-        currentStageName: activeStage,
+        currentStageIndex,
+        currentStageName: item.currentStageName ?? "Not started",
         currentStageScore: null,
-        currentStageStatus: "unknown",
+        currentStageStatus,
         applicationStages: stages.map((s, idx) => ({
           stageIndex: idx,
           stageId: s.id,
@@ -221,7 +225,7 @@ export function useCandidatesTab({ recruitment }: UseCandidatesTabProps) {
           stageType: s.stageCategory?.toLowerCase() ?? "screening",
           stageTypeName: s.stageTypeName,
           passingScore: s.passingScore,
-          status: "unknown",
+          status: s.id === item.currentStageId ? currentStageStatus : "unknown",
           totalScore: null,
         })),
       }

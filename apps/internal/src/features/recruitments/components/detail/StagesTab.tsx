@@ -261,12 +261,12 @@ export function StagesTab({
           {transitionError && (
             <div
               role="alert"
-              className="mx-5 mt-4 flex items-start justify-between gap-3 rounded-xl bg-danger-soft px-4 py-3 text-sm text-danger"
+              className="flex items-start justify-between gap-3 border-b border-border bg-danger-soft px-5 py-3 text-sm text-danger"
             >
               <span>{transitionError}</span>
               <button
                 type="button"
-                className="shrink-0"
+                className="shrink-0 hover:bg-red-400 rounded-full p-0.5 hover:text-white"
                 aria-label="Dismiss error"
                 onClick={() => setTransitionError(null)}
               >
@@ -277,7 +277,7 @@ export function StagesTab({
           {transitionResult && (
             <div
               role="status"
-              className="mx-5 mt-4 flex items-start justify-between gap-3 rounded-xl border border-border bg-muted/40 px-4 py-3 text-sm"
+              className="flex items-start justify-between gap-3 border-b border-border bg-muted/40 px-5 py-3 text-sm"
             >
               <div className="space-y-1">
                 <p className="font-medium text-foreground">
@@ -580,7 +580,7 @@ export function StagesTab({
               {transitionError}
             </p>
           )}
-          <DialogFooter>
+          <DialogFooter className="bg-card border-t border-border">
             <CancelButton
               disabled={isTransitioning}
               onClick={() => setPendingTransition(null)}

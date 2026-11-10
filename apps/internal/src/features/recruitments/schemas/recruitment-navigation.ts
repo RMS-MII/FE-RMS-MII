@@ -4,7 +4,6 @@ export const candidateSortSchema = z.enum([
   "name",
   "code",
   "stage",
-  "score",
   "status",
   "appliedAt",
 ])

@@ -211,15 +211,6 @@ export function CandidatesTab({ recruitment }: CandidatesTabProps) {
                 />
 
                 <TableSortHeader
-                  label="Score"
-                  sortKey="score"
-                  currentSortKey={sortKey}
-                  currentDirection={sortDirection}
-                  onSort={handleSort}
-                  className="text-center"
-                />
-
-                <TableSortHeader
                   label="Status"
                   sortKey="status"
                   currentSortKey={sortKey}
@@ -242,10 +233,10 @@ export function CandidatesTab({ recruitment }: CandidatesTabProps) {
 
             <TableBody>
               {isApiLoading ? (
-                <TableSkeleton colCount={8} rowCount={pageSize} />
+                <TableSkeleton colCount={7} rowCount={pageSize} />
               ) : isApiError ? (
                 <TableRow>
-                  <TableCell colSpan={8} className="p-8">
+                  <TableCell colSpan={7} className="p-8">
                     <ErrorState
                       title={
                         getApiError(apiError).kind === "forbidden"
@@ -268,7 +259,7 @@ export function CandidatesTab({ recruitment }: CandidatesTabProps) {
                 </TableRow>
               ) : currentApplications.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={8} className="p-8">
+                  <TableCell colSpan={7} className="p-8">
                     {!hasStages ? (
                       <EmptyState
                         title="Selection stages required"
@@ -330,17 +321,12 @@ export function CandidatesTab({ recruitment }: CandidatesTabProps) {
                 currentApplications.map((app, idx) => {
                   const rowNum = startIndex + idx + 1
 
-                  // Determine stage name, score, and status based on whether a specific stage is filtered
+                  // Determine stage name and status based on whether a specific stage is filtered
                   const displayStageName =
                     parsedStageIndex !== null
                       ? app.applicationStages[parsedStageIndex]?.stageName ||
                         app.currentStageName
                       : app.currentStageName
-
-                  const displayScore =
-                    parsedStageIndex !== null
-                      ? app.applicationStages[parsedStageIndex]?.totalScore
-                      : app.currentStageScore
 
                   const displayStatus =
                     parsedStageIndex !== null
@@ -396,19 +382,6 @@ export function CandidatesTab({ recruitment }: CandidatesTabProps) {
                       {/* Stage Name (BatchStage.StageName) */}
                       <TableCell className="py-3.5 text-xs font-medium whitespace-nowrap text-foreground">
                         {displayStageName}
-                      </TableCell>
-
-                      {/* Stage Score (ApplicationStage.TotalScore) */}
-                      <TableCell className="py-3.5 text-center whitespace-nowrap">
-                        {displayScore !== null && displayScore !== undefined ? (
-                          <span className="inline-flex rounded-full bg-primary/10 px-2.5 py-0.5 text-xs font-bold text-primary tabular-nums">
-                            {displayScore}
-                          </span>
-                        ) : (
-                          <span className="text-xs font-normal text-muted-foreground">
-                            –
-                          </span>
-                        )}
                       </TableCell>
 
                       {/* Status Badge (ApplicationStage.Status / BatchApplications.Status) */}
