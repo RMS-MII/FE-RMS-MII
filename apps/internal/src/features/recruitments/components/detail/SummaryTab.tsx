@@ -1,53 +1,70 @@
-import type { Recruitment } from "../../types"
+import { Skeleton } from "@workspace/ui/components/skeleton"
 import { Panel } from "@/shared/components"
 import { formatDate, formatNumber } from "@/shared/lib/format"
-import { mockEmployees } from "../../data/mock"
-import { candidates } from "@/data/mock"
+import { useGetBatchApplicationsQuery } from "../../api/applications-api"
+import { useGetEmployeesQuery } from "../../api/employees-api"
+import type { Recruitment } from "../../types"
 
 export interface SummaryTabProps {
   recruitment: Recruitment
 }
 
 export function SummaryTab({ recruitment }: SummaryTabProps) {
-  const rCands = candidates.filter((c) => c.recruitmentId === recruitment.id)
-  const activeCount = rCands.filter(
-    (c) => c.status === "in_progress" || c.status === "pending"
-  ).length
-  const outCount = rCands.filter(
-    (c) => c.status === "rejected" || c.status === "withdrawn"
-  ).length
-  const owner =
-    mockEmployees.find(
-      (e) => e.id === recruitment.createdBy || e.id === recruitment.ownerId
-    ) ?? mockEmployees[0]
+  const batchId = recruitment.id
+  const totalQuery = useGetBatchApplicationsQuery({ id: batchId, pageSize: 1 })
+  const activeQuery = useGetBatchApplicationsQuery({ id: batchId, status: 1, pageSize: 1 })
+  const rejectedQuery = useGetBatchApplicationsQuery({ id: batchId, status: 2, pageSize: 1 })
+  const droppedQuery = useGetBatchApplicationsQuery({ id: batchId, status: 3, pageSize: 1 })
+  const employeesQuery = useGetEmployeesQuery(
+    { activeOnly: false },
+    { skip: !recruitment.createdBy }
+  )
+
+  const countsLoading = [totalQuery, activeQuery, rejectedQuery, droppedQuery]
+    .some((query) => query.isLoading)
+  const countsError = [totalQuery, activeQuery, rejectedQuery, droppedQuery]
+    .some((query) => query.isError)
+  const countsReady = !countsLoading && !countsError &&
+    totalQuery.data && activeQuery.data && rejectedQuery.data && droppedQuery.data
+  const owner = employeesQuery.data?.find(
+    (employee) => employee.id.toLowerCase() === recruitment.createdBy?.toLowerCase()
+  )
 
   const rows: [string, React.ReactNode][] = [
     [
       "Batch Code",
-      <span
-        key="code"
-        className="font-semibold text-foreground"
-      >
+      <span key="code" className="font-semibold text-foreground">
         {recruitment.batchCode}
       </span>,
     ],
     ["Position", recruitment.name],
-    ["Department", recruitment.departmentName || recruitment.division || "—"],
+    ["Department", recruitment.departmentName || "—"],
     [
       "Period",
-      `${formatDate(recruitment.startDate || recruitment.openDate || "")} to ${formatDate(recruitment.endDate || recruitment.closeDate || "")}`,
+      recruitment.startDate && recruitment.endDate
+        ? `${formatDate(recruitment.startDate)} to ${formatDate(recruitment.endDate)}`
+        : "—",
     ],
-    ["Person in Charge", owner?.fullName ?? (recruitment as any).createdByName ?? "—"],
+    [
+      "Person in Charge",
+      employeesQuery.isLoading
+        ? <Skeleton key="owner-loading" className="h-4 w-40" />
+        : owner?.fullName ?? "—",
+    ],
     [
       "Candidates",
-      <span key="cands" className="tabular-nums">
-        {formatNumber(rCands.length)} total, {activeCount} active, {outCount} out of process
-      </span>,
+      countsLoading
+        ? <Skeleton key="candidates-loading" className="h-4 w-72 max-w-full" />
+        : countsError || !countsReady
+          ? "Unable to load candidate counts"
+          : <span key="candidates" className="tabular-nums">
+              {formatNumber(totalQuery.data.totalItems)} total, {formatNumber(activeQuery.data.totalItems)} active, {formatNumber(rejectedQuery.data.totalItems + droppedQuery.data.totalItems)} out of process
+            </span>,
     ],
     [
       "Description",
       <p key="desc" className="max-w-prose leading-relaxed text-foreground">
-        {recruitment.description}
+        {recruitment.description || "—"}
       </p>,
     ],
   ]
@@ -58,7 +75,7 @@ export function SummaryTab({ recruitment }: SummaryTabProps) {
         {rows.map(([label, value]) => (
           <div
             key={label}
-            className="grid gap-1 px-5 py-3.5 sm:grid-cols-[180px_1fr] sm:gap-4 items-baseline"
+            className="grid items-baseline gap-1 px-5 py-3.5 sm:grid-cols-[180px_1fr] sm:gap-4"
           >
             <dt className="text-sm font-medium text-muted-foreground">{label}</dt>
             <dd className="text-sm text-foreground">{value}</dd>
@@ -68,4 +85,3 @@ export function SummaryTab({ recruitment }: SummaryTabProps) {
     </Panel>
   )
 }
-

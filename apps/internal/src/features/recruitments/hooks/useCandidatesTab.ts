@@ -33,7 +33,7 @@ export const statusToneMap: Record<
   rejected: "danger",
   withdrawn: "neutral",
   upcoming: "neutral",
-  dropped: "neutral",
+  dropped: "danger",
   submitted: "warning",
   expired: "danger",
   prioritized: "success",

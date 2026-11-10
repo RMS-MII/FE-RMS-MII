@@ -32,9 +32,9 @@ const stageStatuses = {
     Icon: XCircle,
   },
   dropped: {
-    label: "Dropped",
-    className: "bg-neutral-soft text-neutral",
-    Icon: Circle,
+    label: "Dropped · Not passed",
+    className: "bg-danger-soft text-danger",
+    Icon: XCircle,
   },
   unknown: {
     label: "Unknown",
@@ -57,7 +57,7 @@ const stageStatuses = {
     Icon: XCircle,
   },
   rejected: {
-    label: "Rejected",
+    label: "Rejected · Not passed",
     className: "bg-danger-soft text-danger",
     Icon: XCircle,
   },
@@ -112,6 +112,7 @@ export function StageTimelineProgress({
               stageStatuses.unknown
             const Icon = status.Icon
             const isSelected = selectedStageIndex === index
+            const isNotPassed = ["dropped", "rejected", "expired"].includes(stage.status)
             const score =
               stage.totalScore ?? stage.testEvaluation?.score ?? null
             const date = stage.completedAt || stage.startedAt
@@ -132,10 +133,14 @@ export function StageTimelineProgress({
                     currentStageIndex === index ? "step" : undefined
                   }
                   className={cn(
-                    "flex w-full cursor-pointer items-start gap-3 rounded-xl border p-3 text-left transition-colors focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none",
+                    "flex w-full cursor-pointer items-start gap-3 rounded-xl border p-3 text-left transition-all focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none",
                     isSelected
-                      ? "border-primary/30 bg-primary/5"
-                      : "border-border bg-card hover:bg-muted/50"
+                      ? isNotPassed
+                        ? "border-danger/50 bg-danger-soft/30 ring-2 ring-primary ring-offset-2 ring-offset-card shadow-sm"
+                        : "border-primary/50 bg-primary/5 ring-2 ring-primary ring-offset-2 ring-offset-card shadow-sm"
+                      : isNotPassed
+                        ? "border-danger/30 bg-danger-soft/20 hover:bg-danger-soft/40"
+                        : "border-border bg-card hover:bg-muted/50"
                   )}
                 >
                   <span
@@ -147,16 +152,27 @@ export function StageTimelineProgress({
                     <Icon className="size-4" aria-hidden />
                   </span>
                   <span className="min-w-0 flex-1 space-y-1.5">
-                    <span className="block text-sm leading-5 font-medium break-words text-foreground">
-                      {stage.sequence ?? index + 1}. {stage.stageName}
+                    <span className="flex items-start justify-between gap-2">
+                      <span className="min-w-0 text-sm leading-5 font-medium wrap-break-word text-foreground">
+                        {stage.sequence ?? index + 1}. {stage.stageName}
+                      </span>
+                      {isSelected && (
+                        <span className="shrink-0 rounded-full bg-primary px-2 py-0.5 text-[10px] font-semibold text-primary-foreground">
+                          Viewing
+                        </span>
+                      )}
                     </span>
-                    <span className="block text-xs text-muted-foreground">
+                    <span className={cn("block text-xs font-medium", isNotPassed ? "text-danger" : "text-muted-foreground")}>
                       {status.label}
                     </span>
                     <span className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1 text-xs text-muted-foreground tabular-nums">
                       <span>
                         {score !== null
                           ? "Score: " + score
+                          : stage.status === "dropped"
+                            ? stage.stageType === "test"
+                              ? "No test submission"
+                              : "No completed assessment"
                           : stage.passingScore != null
                             ? "Min score: " + stage.passingScore
                             : "Not evaluated"}
