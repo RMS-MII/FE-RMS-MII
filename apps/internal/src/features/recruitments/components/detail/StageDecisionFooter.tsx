@@ -12,6 +12,7 @@ export interface StageDecisionFooterProps {
   application: CandidateApplicationDetailItem
   stage: CandidateApplicationStageItem | undefined
   isViewingActiveStage: boolean
+  usesBatchLifecycle: boolean
   onEvaluateStage: (status: EvaluateStageCommand["status"], notes: string) => void | Promise<void>
   onGoToActiveStage?: () => void
   isEvaluating?: boolean
@@ -19,7 +20,7 @@ export interface StageDecisionFooterProps {
 }
 
 export function StageDecisionFooter({
-  application, stage, isViewingActiveStage, onEvaluateStage,
+  application, stage, isViewingActiveStage, usesBatchLifecycle, onEvaluateStage,
   onGoToActiveStage, isEvaluating = false, onBack,
 }: StageDecisionFooterProps) {
   const formId = useId()
@@ -28,10 +29,14 @@ export function StageDecisionFooter({
   const [actionError, setActionError] = useState<string | null>(null)
 
   const isActive = isViewingActiveStage &&
-    (stage?.lifecycleStatus === "Active" || stage?.lifecycleStatus === 1)
+    (!usesBatchLifecycle ||
+      ["active", "1"].includes(String(stage?.lifecycleStatus).toLowerCase()))
   const canDecide = Boolean(
     stage?.applicationStageId && isActive && application.finalStatus == null &&
-    (stage.stageType === "test" || stage.stageType === "interview")
+    (stage.stageType === "test" || stage.stageType === "interview") &&
+    (usesBatchLifecycle ||
+      (application.status === "in_progress" &&
+        (!stage.isCompleted || stage.status === "expired")))
   )
   const canPass = canDecide && Boolean(stage?.evaluationReady) &&
     !["prioritized", "considered"].includes(stage?.status ?? "")
@@ -78,10 +83,12 @@ export function StageDecisionFooter({
             {isRecorded && isActive ? (
               <>
                 <p className="text-sm font-medium text-foreground">
-                  Internal decision: {stage?.isPassed ? "Passed" : "Not passed"}
+                  {usesBatchLifecycle ? "Internal decision" : "Stage decision"}: {stage?.isPassed ? "Passed" : "Not passed"}
                 </p>
                 <p className="text-xs text-muted-foreground">
-                  The candidate will see the result when this batch stage is published.
+                  {usesBatchLifecycle
+                    ? "The candidate will see the result when this batch stage is published."
+                    : "This decision has been recorded for the application."}
                 </p>
               </>
             ) : canDecide ? (
@@ -95,7 +102,9 @@ export function StageDecisionFooter({
               <p className="flex items-start gap-2 text-sm text-muted-foreground">
                 <Lock className="mt-0.5 size-4 shrink-0" aria-hidden />
                 {stage
-                  ? "Decisions are available only for candidates in the active batch stage."
+                  ? isRecorded
+                    ? "The decision for this stage has already been recorded."
+                    : "Decisions are available only for candidates in the active stage."
                   : "No stage is available for evaluation."}
               </p>
             )}

@@ -121,29 +121,14 @@ export function useManageStages({ id }: UseManageStagesProps) {
     }
   }, [recruitment?.batchStages, recruitment?.stages])
 
-  // Selected stage for right panel configuration (defaults to first stage if exists)
-  const [selectedTempId, setSelectedTempId] = useState<string | null>(() => {
-    return stages[0]?.tempId ?? null
-  })
-
-  useEffect(() => {
-    if (stages.length > 0 && !selectedTempId) {
-      setSelectedTempId(stages[0].tempId)
-    } else if (stages.length === 0) {
-      setSelectedTempId(null)
-    }
-  }, [stages, selectedTempId])
+  // One expanded stage at a time; null means the sequence is fully collapsed.
+  const [selectedTempId, setSelectedTempId] = useState<string | null>(null)
 
   const [savedSuccess, setSavedSuccess] = useState(false)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
 
   const selectedIndex = stages.findIndex((s) => s.tempId === selectedTempId)
   const selectedStage = selectedIndex !== -1 ? stages[selectedIndex] : null
-  const nextStage =
-    selectedIndex !== -1 && selectedIndex < stages.length - 1
-      ? stages[selectedIndex + 1]
-      : null
-
   const handleFieldChange = <K extends keyof EditableStage>(
     field: K,
     value: EditableStage[K]
@@ -339,7 +324,6 @@ export function useManageStages({ id }: UseManageStagesProps) {
     setSelectedTempId,
     selectedIndex,
     selectedStage,
-    nextStage,
     savedSuccess,
     isSaving: isSavingStages,
     errorMessage,
