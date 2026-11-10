@@ -2,6 +2,7 @@ import type { ExamAnswers } from "./types"
 
 export interface ExamDraft {
   started: boolean
+  sessionStartedAt: number | null
   answers: ExamAnswers
   currentIndex: number
   updatedAt: string
@@ -41,6 +42,10 @@ export function loadExamDraft(
 
     return {
       started: parsed.started,
+      sessionStartedAt:
+        typeof parsed.sessionStartedAt === "number"
+          ? parsed.sessionStartedAt
+          : null,
       answers: parsed.answers as ExamAnswers,
       currentIndex: parsed.currentIndex,
       updatedAt: parsed.updatedAt ?? new Date().toISOString(),

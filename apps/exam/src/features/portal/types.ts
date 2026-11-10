@@ -32,6 +32,7 @@ export interface CandidateStageTask {
   status: StatusValue
   startedAt: string
   endAt: string
+  attemptStartedAt: string | null
   completedAt: string | null
   isAttempts: boolean
   durationTest: string | null

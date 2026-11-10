@@ -177,7 +177,7 @@ function StageAction({
         })}
       >
         <Play className="size-4" />
-        Mulai Tes
+        {stage.attemptStartedAt ? "Lanjutkan Tes" : "Mulai Tes"}
         <ArrowRight className="size-4" />
       </a>
     )

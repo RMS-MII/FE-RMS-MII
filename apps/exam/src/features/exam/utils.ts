@@ -61,28 +61,27 @@ export function parseTimeSpanToMs(value: string | null): number | null {
   return ((hours * 60 + minutes) * 60 + seconds) * 1000
 }
 
-export function getTestDeadline(test: CandidateTest): number | null {
+export function getTestDeadline(
+  test: CandidateTest,
+  sessionStartedAt: number | null
+): number | null {
+  const durationMs = parseTimeSpanToMs(test.durationTest)
+  const hasDuration = durationMs !== null && durationMs > 0
+
+  if (hasDuration) {
+    // Durasi pengerjaan dihitung dari saat kandidat benar-benar memulai.
+    // Belum mulai -> countdown belum berjalan.
+    return sessionStartedAt === null ? null : sessionStartedAt + durationMs
+  }
+
+  // Tanpa durasi khusus (mis. "00:00:00"): gunakan batas akhir akses.
   const endAt = parseServerDate(test.endAt)
 
   if (Number.isNaN(endAt)) {
     return null
   }
 
-  const durationMs = parseTimeSpanToMs(test.durationTest)
-
-  // Durasi 0 / "00:00:00" berarti tes tidak memiliki batas durasi khusus,
-  // jadi deadline mengikuti endAt saja.
-  if (durationMs === null || durationMs <= 0) {
-    return endAt
-  }
-
-  const startedAt = parseServerDate(test.startedAt)
-
-  if (Number.isNaN(startedAt)) {
-    return endAt
-  }
-
-  return Math.min(endAt, startedAt + durationMs)
+  return endAt
 }
 
 export function isMultipleChoice(questionType: string): boolean {

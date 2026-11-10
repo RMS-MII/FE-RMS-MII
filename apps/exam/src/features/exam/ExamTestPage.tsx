@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react"
-import { ApiError, submitCandidateTest } from "./api"
+import { ApiError, startCandidateTest, submitCandidateTest } from "./api"
 import { useCandidateTest, useExamTimer } from "./hooks"
 import { clearExamDraft, saveExamDraft, type ExamDraft } from "./storage"
 import type { CandidateTest, ExamAnswers, SubmitTestResult } from "./types"
@@ -13,10 +13,8 @@ import { ExamIntro } from "./components/ExamIntro"
 import { ExamResult } from "./components/ExamResult"
 import { ExamSession } from "./components/ExamSession"
 import {
-  ExamExpiredScreen,
   ExamLoadErrorScreen,
   ExamLoading,
-  ExamNotStartedScreen,
   ExamSubmissionErrorScreen,
 } from "./components/ExamStateScreens"
 import { SubmitTestDialog } from "./components/SubmitTestDialog"
@@ -72,6 +70,20 @@ function getLoadErrorContent(error: unknown): {
   }
 }
 
+function getStartErrorMessage(error: unknown): string {
+  if (error instanceof ApiError) {
+    if (error.status === 422) {
+      return (
+        error.detail ?? "Tes tidak dapat dimulai saat ini. Segera hubungi tim rekrutmen."
+      )
+    }
+
+    return error.detail ?? error.title ?? "Gagal memulai tes. Silakan coba lagi."
+  }
+
+  return "Tidak dapat terhubung ke server. Periksa koneksi internet Anda lalu coba lagi."
+}
+
 function getSubmissionErrorMessage(error: unknown): string {
   if (error instanceof ApiError) {
     if (error.status === 404) {
@@ -102,8 +114,23 @@ function getSubmissionErrorMessage(error: unknown): string {
 
 function ExamRunner({ test, initialDraft, receivedAt }: ExamRunnerProps) {
   const [phase, setPhase] = useState<ExamPhase>(() =>
-    initialDraft?.started ? "exam" : "intro"
+    test.attemptStartedAt ? "exam" : "intro"
   )
+  const [sessionStartedAt, setSessionStartedAt] = useState<number | null>(() => {
+    const serverAttemptStartedAt = test.attemptStartedAt
+      ? parseServerDate(test.attemptStartedAt)
+      : null
+
+    if (serverAttemptStartedAt !== null && !Number.isNaN(serverAttemptStartedAt)) {
+      return serverAttemptStartedAt
+    }
+
+    if (initialDraft?.started) {
+      return initialDraft.sessionStartedAt ?? Date.now()
+    }
+
+    return null
+  })
   const [answers, setAnswers] = useState<ExamAnswers>(
     () => initialDraft?.answers ?? {}
   )
@@ -122,6 +149,8 @@ function ExamRunner({ test, initialDraft, receivedAt }: ExamRunnerProps) {
   const [submitError, setSubmitError] = useState<string | null>(null)
   const [submitDialogOpen, setSubmitDialogOpen] = useState(false)
   const [timeUp, setTimeUp] = useState(false)
+  const [starting, setStarting] = useState(false)
+  const [startError, setStartError] = useState<string | null>(null)
 
   const submitAnswers = useCallback(
     async (options?: { force?: boolean }) => {
@@ -177,6 +206,7 @@ function ExamRunner({ test, initialDraft, receivedAt }: ExamRunnerProps) {
   const timer = useExamTimer(
     test,
     receivedAt,
+    sessionStartedAt,
     phase === "exam" ? handleTimeExpired : undefined
   )
 
@@ -195,11 +225,12 @@ function ExamRunner({ test, initialDraft, receivedAt }: ExamRunnerProps) {
 
     saveExamDraft(test.candidateId, test.applicationStageId, {
       started: true,
+      sessionStartedAt,
       answers,
       currentIndex,
       updatedAt: new Date().toISOString(),
     })
-  }, [answers, currentIndex, phase, test])
+  }, [answers, currentIndex, phase, sessionStartedAt, test])
 
   useEffect(() => {
     if (phase !== "exam") {
@@ -218,17 +249,43 @@ function ExamRunner({ test, initialDraft, receivedAt }: ExamRunnerProps) {
     }
   }, [phase])
 
-  const handleStart = () => {
-    saveExamDraft(test.candidateId, test.applicationStageId, {
-      started: true,
-      answers: {},
-      currentIndex: 0,
-      updatedAt: new Date().toISOString(),
-    })
-    setAnswers({})
-    setCurrentIndex(0)
-    setSubmitError(null)
-    setPhase("exam")
+  const handleStart = async () => {
+    if (starting) {
+      return
+    }
+
+    setStarting(true)
+    setStartError(null)
+
+    try {
+      const response = await startCandidateTest(
+        test.candidateId,
+        test.applicationStageId
+      )
+
+      const startedAtMs = parseServerDate(response.attemptStartedAt)
+
+      const normalizedStartedAtMs = Number.isNaN(startedAtMs)
+        ? Date.now()
+        : startedAtMs
+
+      setSessionStartedAt(normalizedStartedAtMs)
+      saveExamDraft(test.candidateId, test.applicationStageId, {
+        started: true,
+        sessionStartedAt: normalizedStartedAtMs,
+        answers: {},
+        currentIndex: 0,
+        updatedAt: new Date().toISOString(),
+      })
+      setAnswers({})
+      setCurrentIndex(0)
+      setSubmitError(null)
+      setPhase("exam")
+    } catch (startFailure) {
+      setStartError(getStartErrorMessage(startFailure))
+    } finally {
+      setStarting(false)
+    }
   }
 
   const handleSelect = (questionId: string, optionId: string) => {
@@ -305,21 +362,32 @@ function ExamRunner({ test, initialDraft, receivedAt }: ExamRunnerProps) {
   }
 
   if (phase === "intro") {
-    if (timer.remainingMs !== null && timer.remainingMs <= 0) {
-      return <ExamExpiredScreen deadline={formatDateTime(test.endAt)} />
-    }
-
     const startsAt = parseServerDate(test.startedAt)
+    const endsAt = parseServerDate(test.endAt)
+    const hasValidWindow = !Number.isNaN(startsAt) && !Number.isNaN(endsAt)
 
-    if (!Number.isNaN(startsAt) && timer.serverNow < startsAt) {
-      return <ExamNotStartedScreen startedAt={formatDateTime(test.startedAt)} />
-    }
+    const canStart =
+      !hasValidWindow ||
+      (timer.serverNow >= startsAt && timer.serverNow <= endsAt)
+
+    const startMessage = !hasValidWindow
+      ? null
+      : timer.serverNow < startsAt
+        ? `Tombol Mulai Tes tersedia mulai ${formatDateTime(test.startedAt)}.`
+        : timer.serverNow > endsAt
+          ? "Waktu untuk memulai tes sudah berakhir."
+          : null
 
     return (
       <ExamIntro
         test={test}
-        remainingMs={timer.remainingMs}
-        onStart={handleStart}
+        canStart={canStart}
+        startMessage={startMessage}
+        starting={starting}
+        startError={startError}
+        onStart={() => {
+          void handleStart()
+        }}
       />
     )
   }

@@ -1,5 +1,6 @@
 import type {
   CandidateTest,
+  StartTestResult,
   SubmitTestCommand,
   SubmitTestResult,
 } from "./types"
@@ -92,6 +93,18 @@ export function getCandidateTest(
   return request<CandidateTest>(
     `/portal/${encodeURIComponent(candidateId)}/stages/${encodeURIComponent(stageId)}/test`,
     { method: "GET" },
+    signal
+  )
+}
+
+export function startCandidateTest(
+  candidateId: string,
+  stageId: string,
+  signal?: AbortSignal
+) {
+  return request<StartTestResult>(
+    `/portal/${encodeURIComponent(candidateId)}/stages/${encodeURIComponent(stageId)}/test/start`,
+    { method: "POST" },
     signal
   )
 }
