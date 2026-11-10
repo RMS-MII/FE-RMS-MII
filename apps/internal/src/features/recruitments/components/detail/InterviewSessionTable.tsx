@@ -70,17 +70,15 @@ export interface InterviewSessionTableProps {
   onClearDateFilter?: () => void
   onViewDetail?: (session: InterviewSessionItem) => void
   onReviewReschedule?: (session: InterviewSessionItem) => void
-  onAdjustSchedule?: (session: InterviewSessionItem) => void
   isFilterPendingReschedule?: boolean
   className?: string
 }
 
-export function InterviewSessionTable({
+export const InterviewSessionTable = React.memo(function InterviewSessionTable({
   sessions,
   selectedDate,
   onClearDateFilter,
   onReviewReschedule,
-  onAdjustSchedule,
   isFilterPendingReschedule = false,
   className = "",
 }: InterviewSessionTableProps) {
@@ -427,17 +425,6 @@ export function InterviewSessionTable({
                             >
                               Review Reschedule
                             </button>
-                          ) : (session.status === "rescheduled" ||
-                              session.rescheduleRequest?.status ===
-                                "approved") &&
-                            onAdjustSchedule ? (
-                            <button
-                              type="button"
-                              onClick={() => onAdjustSchedule(session)}
-                              className="cursor-pointer rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold text-primary transition-colors hover:bg-primary/20"
-                            >
-                              Adjust Schedule
-                            </button>
                           ) : (
                             <span className="text-xs text-muted-foreground/60">
                               —
@@ -465,4 +452,4 @@ export function InterviewSessionTable({
       </div>
     </div>
   )
-}
+})

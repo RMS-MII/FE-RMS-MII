@@ -9,6 +9,9 @@ import {
   FileText,
 } from "lucide-react"
 import { Button } from "@workspace/ui/components/button"
+import { DatePicker } from "@workspace/ui/components/date-picker"
+import { TimePicker } from "@workspace/ui/components/time-picker"
+import { Textarea } from "@workspace/ui/components/textarea"
 import { Input } from "@workspace/ui/components/input"
 import { request, date, labels, safeUrl } from "../api"
 import type { Session } from "../api"
@@ -24,6 +27,12 @@ export function SessionDetail({
   const [mode, setMode] = useState<"reschedule" | "submission" | null>(
     route?.[3] ? "submission" : null
   )
+
+  const [schedule, setSchedule] = useState({
+    startDate: "",
+    startTime: "",
+    endTime: "",
+  })
 
   const [link, setLink] = useState(s.fileSubmission || "")
 
@@ -65,9 +74,18 @@ export function SessionDetail({
   function reschedule(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     const f = new FormData(event.currentTarget)
-    const start = new Date(String(f.get("start")))
-    const end = new Date(String(f.get("end")))
-    if (start <= new Date() || end <= start) {
+    if (!schedule.startDate || !schedule.startTime || !schedule.endTime) {
+      setError("Lengkapi tanggal dan jam mulai serta selesai.")
+      return
+    }
+    const start = new Date(`${schedule.startDate}T${schedule.startTime}`)
+    const end = new Date(`${schedule.startDate}T${schedule.endTime}`)
+    if (
+      !Number.isFinite(start.getTime()) ||
+      !Number.isFinite(end.getTime()) ||
+      start <= new Date() ||
+      end <= start
+    ) {
       setError(
         "Pilih waktu mendatang dengan waktu selesai setelah waktu mulai."
       )
@@ -151,9 +169,11 @@ export function SessionDetail({
             <Button
               variant="outline"
               disabled={busy}
-              onClick={() =>
+              onClick={() => {
+                setError("")
+                setMessage("")
                 setMode(mode === "reschedule" ? null : "reschedule")
-              }
+              }}
             >
               Ajukan reschedule
             </Button>
@@ -168,27 +188,52 @@ export function SessionDetail({
               {Intl.DateTimeFormat().resolvedOptions().timeZone}. Jadwal baru
               memerlukan persetujuan HR.
             </p>
-            <label>
-              Mulai
-              <Input
-                type="datetime-local"
-                name="start"
-                required
-                disabled={busy}
-              />
-            </label>
-            <label>
-              Selesai
-              <Input
-                type="datetime-local"
-                name="end"
-                required
-                disabled={busy}
-              />
-            </label>
+            <label htmlFor="reschedule-start-date">Tanggal usulan</label>
+            <DatePicker
+              id="reschedule-start-date"
+              value={schedule.startDate}
+              minDate={new Date().toLocaleDateString("en-CA")}
+              placeholder="Pilih tanggal usulan"
+              disabled={busy}
+              onChange={(value) => {
+                setSchedule({ ...schedule, startDate: value })
+                setError("")
+              }}
+            />
+            <div className="reschedule-fields">
+              <div className="reschedule-time-field">
+                <label htmlFor="reschedule-start-time">Jam mulai</label>
+                <TimePicker
+                  id="reschedule-start-time"
+                  value={schedule.startTime}
+                  disabled={busy}
+                  placeholder="Pilih jam"
+                  onChange={(value) => {
+                    setSchedule({ ...schedule, startTime: value })
+                    setError("")
+                  }}
+                />
+              </div>
+              <div className="reschedule-time-field">
+                <label htmlFor="reschedule-end-time">Jam selesai</label>
+                <TimePicker
+                  id="reschedule-end-time"
+                  value={schedule.endTime}
+                  minTime={schedule.startTime || undefined}
+                  disabled={busy}
+                  placeholder="Pilih jam"
+                  onChange={(value) => {
+                    setSchedule({ ...schedule, endTime: value })
+                    setError("")
+                  }}
+                />
+              </div>
+            </div>
             <label>
               Alasan
-              <textarea
+              <Textarea
+                className="reschedule-reason"
+                placeholder="Ceritakan alasan Anda mengajukan perubahan jadwal…"
                 name="reason"
                 maxLength={100}
                 required
@@ -196,9 +241,19 @@ export function SessionDetail({
                 rows={3}
               />
             </label>
-            <Button disabled={busy} type="submit">
-              {busy ? "Mengirim…" : "Kirim usulan"}
-            </Button>
+            <div className="reschedule-actions">
+              <Button
+                variant="outline"
+                disabled={busy}
+                type="button"
+                onClick={() => setMode(null)}
+              >
+                Batal
+              </Button>
+              <Button disabled={busy} type="submit">
+                {busy ? "Mengirim…" : "Kirim usulan"}
+              </Button>
+            </div>
           </form>
         )}
 

@@ -107,7 +107,8 @@ export function ReviewRescheduleDialog({
           </div>
           <DialogDescription>
             Candidate requested to adjust their interview time. Review the
-            comparison below and make a decision.
+            comparison below and make a decision. Approval updates this session
+            immediately and requires confirmation of the new schedule.
           </DialogDescription>
         </DialogHeader>
 
