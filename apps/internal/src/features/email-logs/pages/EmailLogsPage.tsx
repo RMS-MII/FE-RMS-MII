@@ -30,6 +30,7 @@ const emailTypes: { value: EmailType; label: string }[] = [
   { value: "TakeHome", label: "Take-home test" },
   { value: "Rejection", label: "Rejection" },
   { value: "FinalResult", label: "Final result" },
+  { value: "StageResult", label: "Stage result" },
 ]
 const emailStatusItems = [
   { label: "All Status", value: "all" },

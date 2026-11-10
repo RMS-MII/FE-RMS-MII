@@ -74,6 +74,7 @@ export interface CandidateAnswerRecapDto {
 export interface ApplicationStageRecapDto {
   applicationStageId: string | null
   batchStageId: string
+  lifecycleStatus: "Inactive" | "Active" | "Completed" | 0 | 1 | 2
   sequence: number
   stageName: string
   stageTypeId: string

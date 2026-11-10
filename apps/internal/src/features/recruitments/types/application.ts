@@ -90,7 +90,7 @@ export interface RegisterCandidatesCommand {
 }
 
 export interface EvaluateStageCommand {
-  status: "Prioritized" | "Considered" | "Rejected"
+  status: "Prioritized" | "Considered" | "Rejected" | "Dropped"
   notes: string
 }
 
@@ -195,12 +195,14 @@ export interface CandidateApplicationStageItem {
   /** Configuration ID used for UI navigation only. */
   stageId: string
   batchStageId: string
+  lifecycleStatus?: "Inactive" | "Active" | "Completed" | 0 | 1 | 2
   /** Execution ID; null until the application stage has started. */
   applicationStageId: string | null
   apiStatus?: ApplicationStageStatusValue | null
   isStarted?: boolean
   isCompleted?: boolean
   isPassed?: boolean
+  isAttempts?: boolean
   /** Whether recorded BE data satisfies the category-specific stage evaluation preconditions. */
   evaluationReady?: boolean
   startDate?: string

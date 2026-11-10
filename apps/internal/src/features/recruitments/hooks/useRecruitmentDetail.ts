@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react"
 import { useNavigate } from "@tanstack/react-router"
-import { recruitmentPipeline } from "../data/mock"
 import { getRecruitmentInterviewSessions, mockInterviewSessions } from "../data/interviewMock"
+import type { PipelineItem, StageState } from "../types"
 import { useGetBatchByIdQuery } from "../api/recruitments-api"
 import { useGetBatchApplicationsQuery } from "../api/applications-api"
 import { useGetBatchInterviewSessionsQuery } from "../api/interviews-api"
@@ -80,7 +80,21 @@ export function useRecruitmentDetail({
 
   const pipelineItems = useMemo(() => {
     if (!recruitment) return []
-    return recruitmentPipeline(recruitment)
+    return (recruitment.batchStages ?? []).map((stage, index): PipelineItem => {
+      const lifecycle = String(stage.lifecycleStatus ?? "Inactive").toLowerCase()
+      const state: StageState = lifecycle === "completed" || lifecycle === "2"
+        ? "done"
+        : lifecycle === "active" || lifecycle === "1"
+          ? "current"
+          : "upcoming"
+
+      return {
+        name: stage.stageName || stage.stageTypeName || `Stage ${index + 1}`,
+        count: stage.candidateCount ?? undefined,
+        state,
+        note: !stage.isActive ? "Disabled" : undefined,
+      }
+    })
   }, [recruitment])
 
   const handleStageSelect = (index: number) => {
