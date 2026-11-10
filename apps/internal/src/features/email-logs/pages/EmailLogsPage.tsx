@@ -67,7 +67,7 @@ export function EmailLogsPage() {
   const [from, setFrom] = useState("")
   const [to, setTo] = useState("")
   const [page, setPage] = useState(1)
-  const [retryNotice, setRetryNotice] = useState<string | null>(null)
+  const [, setRetryNotice] = useState<string | null>(null)
   const [retryEmailLog, { isLoading: isRetrying, originalArgs: retryingLogId }] = useRetryEmailLogMutation()
 
   const { data, error, isLoading, isError, refetch } = useGetEmailLogsQuery(
@@ -103,11 +103,6 @@ export function EmailLogsPage() {
       />
 
       <Panel>
-        {retryNotice && (
-          <div role="status" className="border-b border-border bg-muted/40 px-5 py-3 text-sm text-foreground">
-            {retryNotice}
-          </div>
-        )}
         <div className="flex flex-col gap-3 border-b border-border px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex flex-1 flex-wrap items-center gap-2.5">
             <SearchInput
