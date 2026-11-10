@@ -20,6 +20,7 @@ import {
   Layers,
 } from "lucide-react"
 import type { InterviewSessionItem } from "../../types"
+import { formatWibDate, getWibDateKey } from "@/shared/lib/utcDateTime"
 
 export interface InterviewMiniCalendarProps {
   sessions: InterviewSessionItem[]
@@ -35,7 +36,7 @@ export function InterviewMiniCalendar({
   sessions,
   selectedDate,
   onSelectDate,
-  currentDate = format(new Date(), "yyyy-MM-dd"),
+  currentDate = getWibDateKey(new Date()),
   isFilterPendingReschedule = false,
   onTogglePendingReschedule,
   className = "",
@@ -47,7 +48,7 @@ export function InterviewMiniCalendar({
   const sessionsByDate = React.useMemo(() => {
     const map = new Map<string, InterviewSessionItem[]>()
     for (const s of sessions) {
-      const dateKey = format(parseISO(s.scheduledStart), "yyyy-MM-dd")
+      const dateKey = getWibDateKey(s.scheduledStart)
       const list = map.get(dateKey) || []
       list.push(s)
       map.set(dateKey, list)
@@ -227,7 +228,7 @@ export function InterviewMiniCalendar({
         >
           <span className="flex items-center gap-2">
             <Clock className="size-3.5 text-primary" />
-            <span>Today ({format(today, "dd MMM")})</span>
+            <span>Today ({formatWibDate(currentDate, { year: undefined })})</span>
           </span>
           <span className="font-semibold text-foreground">
             {todaySessionsCount} session{todaySessionsCount !== 1 ? "s" : ""}

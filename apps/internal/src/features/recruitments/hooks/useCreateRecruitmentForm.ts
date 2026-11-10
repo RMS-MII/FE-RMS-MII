@@ -3,6 +3,7 @@ import type { Recruitment } from "../types"
 import { validateRecruitmentFormData } from "../utils"
 import { useGetDepartmentsQuery } from "../api/departments-api"
 import { useCreateBatchMutation } from "../api/recruitments-api"
+import { wibDateTimeInputToUtcISOString } from "@/shared/lib/utcDateTime"
 
 export interface UseCreateRecruitmentFormProps {
   open?: boolean
@@ -64,8 +65,8 @@ export function useCreateRecruitmentForm({
     if (!validate()) return
     setSubmitError(null)
 
-    const startIso = new Date(openDate).toISOString()
-    const endIso = new Date(closeDate).toISOString()
+    const startIso = wibDateTimeInputToUtcISOString(openDate)
+    const endIso = wibDateTimeInputToUtcISOString(closeDate)
 
     try {
       const createdBatch = await createBatchApi({

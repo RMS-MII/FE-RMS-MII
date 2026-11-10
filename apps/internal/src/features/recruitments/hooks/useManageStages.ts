@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from "react"
-import { format } from "date-fns"
+import { formatWibTime, getWibDateKey, wibDateTimeInputToUtcISOString } from "@/shared/lib/utcDateTime"
 import { useNavigate } from "@tanstack/react-router"
 import {
   useGetBatchByIdQuery,
@@ -21,13 +21,15 @@ function toLocalDateTimeInput(value: string | null | undefined, isEnd = false) {
   if (!value) return ""
 
   const datePart = value.slice(0, 10)
-  const timePart = value.slice(11, 16)
-  if (!value.includes("T") || timePart === "00:00") {
+  if (!value.includes("T")) {
     return `${datePart}T${isEnd ? "23:59" : "00:00"}`
   }
 
-  const date = new Date(value)
-  return Number.isNaN(date.getTime()) ? "" : format(date, "yyyy-MM-dd'T'HH:mm")
+  try {
+    return `${getWibDateKey(value)}T${formatWibTime(value)}`
+  } catch {
+    return ""
+  }
 }
 
 export function getInitialEditableStages(recruitment: Recruitment | null): EditableStage[] {
@@ -301,8 +303,8 @@ export function useManageStages({ id }: UseManageStagesProps) {
               s.passingScore !== null && s.passingScore !== undefined
                 ? Number(s.passingScore)
                 : null,
-            startDate: new Date(s.startDate).toISOString(),
-            endDate: new Date(s.endDate).toISOString(),
+            startDate: wibDateTimeInputToUtcISOString(s.startDate),
+            endDate: wibDateTimeInputToUtcISOString(s.endDate),
           })),
         },
       }).unwrap()

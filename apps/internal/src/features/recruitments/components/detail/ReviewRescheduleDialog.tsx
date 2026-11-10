@@ -12,7 +12,7 @@ import { Textarea } from "@workspace/ui/components/textarea"
 import { Label } from "@workspace/ui/components/label"
 import { Button } from "@workspace/ui/components/button"
 import { CancelButton } from "@/shared/components"
-import { format, parseISO } from "date-fns"
+import { formatWibDate, formatWibTime } from "@/shared/lib/utcDateTime"
 import type { InterviewSessionItem } from "../../types"
 import {
   Clock,
@@ -21,6 +21,7 @@ import {
   CheckCircle2,
   XCircle,
   Calendar,
+  Loader2,
 } from "lucide-react"
 
 export interface ReviewRescheduleDialogProps {
@@ -45,17 +46,12 @@ export function ReviewRescheduleDialog({
 }: ReviewRescheduleDialogProps) {
   const [reviewNotes, setReviewNotes] = useState("")
   const [rejectError, setRejectError] = useState("")
-  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [submittingDecision, setSubmittingDecision] = useState<"approve" | "reject" | null>(null)
+  const isSubmitting = submittingDecision !== null
 
   if (!session || !session.rescheduleRequest) return null
 
   const req = session.rescheduleRequest
-
-  // Format current and proposed datetimes
-  const currentStart = parseISO(session.scheduledStart)
-  const currentEnd = parseISO(session.scheduledEnd)
-  const proposedStart = parseISO(req.proposedStart)
-  const proposedEnd = parseISO(req.proposedEnd)
 
   const handleReview = async (decision: "approve" | "reject") => {
     if (isSubmitting) return
@@ -69,7 +65,7 @@ export function ReviewRescheduleDialog({
       setRejectError("Reviewer notes must be 100 characters or fewer.")
       return
     }
-    setIsSubmitting(true)
+    setSubmittingDecision(decision)
     setRejectError("")
     try {
       if (decision === "approve") {
@@ -90,7 +86,7 @@ export function ReviewRescheduleDialog({
           .message
       )
     } finally {
-      setIsSubmitting(false)
+      setSubmittingDecision(null)
     }
   }
 
@@ -149,13 +145,13 @@ export function ReviewRescheduleDialog({
                 </span>
                 <div className="flex items-center gap-2 pt-0.5 text-xs font-semibold text-foreground">
                   <Calendar className="size-3.5 shrink-0 text-muted-foreground" />
-                  <span>{format(currentStart, "EEE, dd MMM yyyy")}</span>
+                  <span>{formatWibDate(session.scheduledStart, { weekday: "short" })}</span>
                 </div>
                 <div className="flex items-center gap-2 text-xs text-muted-foreground">
                   <Clock className="size-3.5 shrink-0 text-muted-foreground" />
                   <span>
-                    {format(currentStart, "HH:mm")} –{" "}
-                    {format(currentEnd, "HH:mm")}
+                    {formatWibTime(session.scheduledStart)} –{" "}
+                    {formatWibTime(session.scheduledEnd)} WIB
                   </span>
                 </div>
               </div>
@@ -168,13 +164,13 @@ export function ReviewRescheduleDialog({
                 </span>
                 <div className="flex items-center gap-2 pt-0.5 text-xs font-semibold text-amber-950 dark:text-amber-100">
                   <Calendar className="size-3.5 shrink-0 text-amber-600 dark:text-amber-400" />
-                  <span>{format(proposedStart, "EEE, dd MMM yyyy")}</span>
+                  <span>{formatWibDate(req.proposedStart, { weekday: "short" })}</span>
                 </div>
                 <div className="flex items-center gap-2 text-xs text-amber-800 dark:text-amber-300">
                   <Clock className="size-3.5 shrink-0 text-amber-600 dark:text-amber-400" />
                   <span>
-                    {format(proposedStart, "HH:mm")} –{" "}
-                    {format(proposedEnd, "HH:mm")}
+                    {formatWibTime(req.proposedStart)} –{" "}
+                    {formatWibTime(req.proposedEnd)} WIB
                   </span>
                 </div>
               </div>
@@ -236,8 +232,8 @@ export function ReviewRescheduleDialog({
             onClick={() => void handleReview("reject")}
             className="h-10 cursor-pointer gap-1.5 rounded-full border-rose-300 px-4 text-xs font-semibold text-rose-700 hover:bg-rose-50 hover:text-rose-800 dark:border-rose-800 dark:text-rose-300 dark:hover:bg-rose-950/50"
           >
-            <XCircle className="size-4" />
-            <span>Decline</span>
+            {submittingDecision === "reject" ? <Loader2 className="size-4 animate-spin" aria-hidden /> : <XCircle className="size-4" />}
+            <span>{submittingDecision === "reject" ? "Declining..." : "Decline"}</span>
           </Button>
           <Button
             type="button"
@@ -245,8 +241,8 @@ export function ReviewRescheduleDialog({
             onClick={() => void handleReview("approve")}
             className="h-10 cursor-pointer gap-1.5 rounded-full border-0 bg-primary px-5 text-xs font-semibold text-primary-foreground shadow-xs hover:bg-primary/90"
           >
-            <CheckCircle2 className="size-4" />
-            <span>Approve Request</span>
+            {submittingDecision === "approve" ? <Loader2 className="size-4 animate-spin" aria-hidden /> : <CheckCircle2 className="size-4" />}
+            <span>{submittingDecision === "approve" ? "Approving..." : "Approve Request"}</span>
           </Button>
         </DialogFooter>
       </DialogContent>

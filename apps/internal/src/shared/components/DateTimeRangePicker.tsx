@@ -122,7 +122,7 @@ export function DateTimeRangePicker({
           <div className="flex w-full flex-col gap-4 border-t border-border pt-3 sm:w-44 sm:border-l sm:border-t-0 sm:pl-4 sm:pt-2">
             <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
               <Clock3 className="size-4 text-muted-foreground" aria-hidden />
-              Set time
+              Set time (WIB)
             </div>
             <label className="space-y-1.5 text-xs font-medium text-muted-foreground">
               Start time
