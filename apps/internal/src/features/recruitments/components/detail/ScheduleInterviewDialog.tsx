@@ -164,17 +164,18 @@ export function ScheduleInterviewDialog({
       const collected: typeof allApplications = []
       let page = 1
       let hasNextPage = true
-      while (hasNextPage) {
+      while (hasNextPage && !cancelled) {
         const result = await loadApplications({
           id: recruitment.id,
           page,
           pageSize: 100,
-        }).unwrap()
+        }, true).unwrap()
+        if (cancelled) return
         collected.push(...result.items)
+        setAllApplications([...collected])
         hasNextPage = result.hasNextPage
         page += 1
       }
-      if (!cancelled) setAllApplications(collected)
     }
     setAllApplications([])
     void loadRemainingPages().catch((error) => {
@@ -440,7 +441,7 @@ export function ScheduleInterviewDialog({
                   placeholder={
                     selectedCandidate
                       ? `${selectedCandidate.name} (${selectedCandidate.codeApplication})`
-                      : isApplicationsLoading
+                      : isApplicationsLoading && unscheduledCandidates.length === 0
                         ? "Loading candidates..."
                         : unscheduledCandidates.length === 0
                         ? "No unscheduled candidates"
@@ -449,7 +450,7 @@ export function ScheduleInterviewDialog({
                   searchPlaceholder="Search candidate by name, email, or code..."
                   emptyText="No unscheduled candidates for this stage"
                   disabled={
-                    isRescheduleMode || isApplicationsLoading || unscheduledCandidates.length === 0
+                    isRescheduleMode || unscheduledCandidates.length === 0
                   }
                   selectedIds={candidateId ? [candidateId] : []}
                   onSelect={(opt) => {

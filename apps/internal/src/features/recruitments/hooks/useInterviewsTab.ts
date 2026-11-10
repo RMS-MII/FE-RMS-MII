@@ -170,8 +170,6 @@ export function useInterviewsTab({
     useState<InterviewSessionItem | null>(null)
   const [isReviewRescheduleOpen, setIsReviewRescheduleOpen] =
     useState<boolean>(false)
-  const [sessionToReplace, setSessionToReplace] =
-    useState<InterviewSessionItem | null>(null)
 
   // Pending reschedules count
   const pendingReschedules = useMemo(
@@ -270,7 +268,6 @@ export function useInterviewsTab({
         ...input,
         batchId: recruitment.id,
       }).unwrap()
-      setSessionToReplace(null)
     },
     [scheduleInterviewMutation, recruitment.id]
   )
@@ -314,13 +311,8 @@ export function useInterviewsTab({
       notes?: string
     ) => {
       await reviewReschedule(sessionId, "Approved", notes)
-      const session = sessions.find((item) => item.id === sessionId)
-      if (session) {
-        setSessionToReplace(session)
-        setIsScheduleOpen(true)
-      }
     },
-    [reviewReschedule, sessions]
+    [reviewReschedule]
   )
 
   const handleRejectReschedule = useCallback(
@@ -376,8 +368,6 @@ export function useInterviewsTab({
     // Dialog states
     isScheduleOpen,
     setIsScheduleOpen,
-    sessionToReplace,
-    setSessionToReplace,
     rescheduleSessionToReview,
     isReviewRescheduleOpen,
     setIsReviewRescheduleOpen,

@@ -32,7 +32,7 @@ export interface InterviewMiniCalendarProps {
   className?: string
 }
 
-export function InterviewMiniCalendar({
+export const InterviewMiniCalendar = React.memo(function InterviewMiniCalendar({
   sessions,
   selectedDate,
   onSelectDate,
@@ -266,4 +266,4 @@ export function InterviewMiniCalendar({
       </div>
     </div>
   )
-}
+})
