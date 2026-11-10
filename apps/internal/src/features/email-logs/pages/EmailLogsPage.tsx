@@ -1,6 +1,7 @@
 import { useState } from "react"
 import { format } from "date-fns"
-import { AlertTriangle, MailCheck, MailX } from "lucide-react"
+import { AlertTriangle, Loader2, MailCheck, MailX, RotateCw } from "lucide-react"
+import { Button } from "@workspace/ui/components/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@workspace/ui/components/select"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@workspace/ui/components/table"
 import {
@@ -15,8 +16,7 @@ import {
 } from "@/shared/components"
 import { DatePicker } from "@/shared/components/DatePicker"
 import { useDebounce } from "@/shared/hooks/useDebounce"
-import { cn } from "@/shared/lib/utils"
-import { useGetEmailLogsQuery } from "../api/email-logs-api"
+import { useGetEmailLogsQuery, useRetryEmailLogMutation } from "../api/email-logs-api"
 import type { EmailDeliveryStatus, EmailType } from "../types"
 
 const PAGE_SIZE = 10
@@ -35,6 +35,8 @@ const emailStatusItems = [
   { label: "All Status", value: "all" },
   { label: "Sent", value: "Sent" },
   { label: "Failed", value: "Failed" },
+  { label: "Retry queued", value: "Pending" },
+  { label: "Sending", value: "Sending" },
 ]
 const emailTypeItems = [
   { label: "All email types", value: "all" },
@@ -65,18 +67,33 @@ export function EmailLogsPage() {
   const [from, setFrom] = useState("")
   const [to, setTo] = useState("")
   const [page, setPage] = useState(1)
+  const [retryNotice, setRetryNotice] = useState<string | null>(null)
+  const [retryEmailLog, { isLoading: isRetrying, originalArgs: retryingLogId }] = useRetryEmailLogMutation()
 
-  const { data, error, isLoading, isFetching, isError, refetch } = useGetEmailLogsQuery({
-    search: debouncedSearch,
-    status: status === "all" ? undefined : status,
-    type: type === "all" ? undefined : type,
-    from: from ? `${from}T00:00:00` : undefined,
-    to: to ? `${to}T23:59:59.999` : undefined,
-    page,
-    pageSize: PAGE_SIZE,
-  })
+  const { data, error, isLoading, isError, refetch } = useGetEmailLogsQuery(
+    {
+      search: debouncedSearch,
+      status: status === "all" ? undefined : status,
+      type: type === "all" ? undefined : type,
+      from: from ? `${from}T00:00:00` : undefined,
+      to: to ? `${to}T23:59:59.999` : undefined,
+      page,
+      pageSize: PAGE_SIZE,
+    },
+    { pollingInterval: 5000, skipPollingIfUnfocused: true, refetchOnFocus: true },
+  )
 
   const logs = data?.items ?? []
+
+  const handleRetry = async (id: string) => {
+    setRetryNotice(null)
+    try {
+      await retryEmailLog(id).unwrap()
+      setRetryNotice("Email retry queued. Its status will update as the background worker processes it.")
+    } catch (retryError) {
+      setRetryNotice(getErrorMessage(retryError))
+    }
+  }
 
   return (
     <div className="space-y-6">
@@ -86,6 +103,11 @@ export function EmailLogsPage() {
       />
 
       <Panel>
+        {retryNotice && (
+          <div role="status" className="border-b border-border bg-muted/40 px-5 py-3 text-sm text-foreground">
+            {retryNotice}
+          </div>
+        )}
         <div className="flex flex-col gap-3 border-b border-border px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex flex-1 flex-wrap items-center gap-2.5">
             <SearchInput
@@ -108,6 +130,8 @@ export function EmailLogsPage() {
                 <SelectItem value="all" className="cursor-pointer rounded-lg text-sm">All Status</SelectItem>
                 <SelectItem value="Sent" className="cursor-pointer rounded-lg text-sm">Sent</SelectItem>
                 <SelectItem value="Failed" className="cursor-pointer rounded-lg text-sm">Failed</SelectItem>
+                <SelectItem value="Pending" className="cursor-pointer rounded-lg text-sm">Retry queued</SelectItem>
+                <SelectItem value="Sending" className="cursor-pointer rounded-lg text-sm">Sending</SelectItem>
               </SelectContent>
             </Select>
             <Select items={emailTypeItems} value={type} onValueChange={(value) => {
@@ -144,7 +168,7 @@ export function EmailLogsPage() {
           </div>
         </div>
 
-        <div className={cn("overflow-x-auto", isFetching && !isLoading && "opacity-60")}>
+        <div className="overflow-x-auto">
           <Table>
             <TableHeader className="bg-card">
               <TableRow className="hover:bg-transparent">
@@ -154,18 +178,19 @@ export function EmailLogsPage() {
                 <TableHead>Email type</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead className="pr-5">Details</TableHead>
+                <TableHead className="pr-5">Action</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {isLoading ? (
                 <TableSkeleton
                   rowCount={5}
-                  colWidths={["w-32", "w-36", "w-44", "w-28", "w-16", ["w-32", "w-24"]]}
-                  cellClassNames={["pl-5", "", "", "", "", "pr-5"]}
+                  colWidths={["w-32", "w-36", "w-44", "w-28", "w-16", ["w-32", "w-24"], "w-20"]}
+                  cellClassNames={["pl-5", "", "", "", "", "", "pr-5"]}
                 />
               ) : isError ? (
                 <TableRow>
-                  <TableCell colSpan={6} className="h-64 text-center">
+                  <TableCell colSpan={7} className="h-64 text-center">
                     <ErrorState
                       title="Failed to load email logs"
                       description={getErrorMessage(error)}
@@ -175,7 +200,7 @@ export function EmailLogsPage() {
                 </TableRow>
               ) : logs.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={6} className="h-64 text-center">
+                  <TableCell colSpan={7} className="h-64 text-center">
                     <EmptyState
                       title="No email logs found"
                       description="Change your search or filters to view other delivery attempts."
@@ -193,8 +218,8 @@ export function EmailLogsPage() {
                     </TableCell>
                     <TableCell className="py-3.5">
                       <StatusBadge
-                        tone={log.status === "Sent" ? "success" : "danger"}
-                        icon={log.status === "Sent" ? <MailCheck /> : <MailX />}
+                        tone={log.status === "Sent" ? "success" : log.status === "Failed" ? "danger" : "info"}
+                        icon={log.status === "Sent" ? <MailCheck /> : log.status === "Failed" ? <MailX /> : <Loader2 className={log.status === "Sending" ? "animate-spin" : undefined} />}
                       >
                         {log.status}
                       </StatusBadge>
@@ -205,8 +230,31 @@ export function EmailLogsPage() {
                           <AlertTriangle className="mt-0.5 size-4 shrink-0" />
                           <span className="line-clamp-2">{log.errorMessage || "Email delivery failed."}</span>
                         </div>
+                      ) : log.status === "Pending" ? (
+                        <span className="text-muted-foreground">Waiting in retry queue</span>
+                      ) : log.status === "Sending" ? (
+                        <span className="text-muted-foreground">Retry is being sent</span>
                       ) : (
                         <span className="text-muted-foreground">Sent {formatDate(log.sentAt)}</span>
+                      )}
+                    </TableCell>
+                    <TableCell className="py-3.5 pr-5">
+                      {log.canRetry && (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          className="gap-1.5 rounded-full"
+                          disabled={isRetrying}
+                          onClick={() => void handleRetry(log.id)}
+                        >
+                          {isRetrying && retryingLogId === log.id ? (
+                            <Loader2 className="size-3.5 animate-spin" aria-hidden />
+                          ) : (
+                            <RotateCw className="size-3.5" aria-hidden />
+                          )}
+                          Retry
+                        </Button>
                       )}
                     </TableCell>
                   </TableRow>
