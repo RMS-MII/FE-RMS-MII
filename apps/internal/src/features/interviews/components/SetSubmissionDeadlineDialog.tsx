@@ -11,7 +11,7 @@ import { Input } from "@workspace/ui/components/input"
 import { Textarea } from "@workspace/ui/components/textarea"
 import { Label } from "@workspace/ui/components/label"
 import { CancelButton, DatePicker, SaveButton } from "@/shared/components"
-import { format, parseISO } from "date-fns"
+import { formatWibTime, getWibDateKey, wibToUtcISOString } from "@/shared/lib/utcDateTime"
 import {
   FileClock,
   FileCheck,
@@ -43,9 +43,8 @@ export function SetSubmissionDeadlineDialog({
     if (open && session) {
       if (session.endedSubmissionAt) {
         try {
-          const d = parseISO(session.endedSubmissionAt)
-          setDeadlineDate(format(d, "yyyy-MM-dd"))
-          setDeadlineTime(format(d, "HH:mm"))
+          setDeadlineDate(getWibDateKey(session.endedSubmissionAt))
+          setDeadlineTime(formatWibTime(session.endedSubmissionAt))
         } catch {
           setDeadlineDate("")
           setDeadlineTime("23:59")
@@ -53,8 +52,7 @@ export function SetSubmissionDeadlineDialog({
       } else {
         // Default to same date as scheduled interview or 1 day prior
         try {
-          const interviewDate = parseISO(session.scheduledStart)
-          setDeadlineDate(format(interviewDate, "yyyy-MM-dd"))
+          setDeadlineDate(getWibDateKey(session.scheduledStart))
           setDeadlineTime("23:59")
         } catch {
           setDeadlineDate("")
@@ -79,7 +77,7 @@ export function SetSubmissionDeadlineDialog({
       return
     }
 
-    const endedSubmissionAtISO = `${deadlineDate}T${deadlineTime}:00`
+    const endedSubmissionAtISO = wibToUtcISOString(deadlineDate, deadlineTime)
     onSaveDeadline(session.id, endedSubmissionAtISO)
     onOpenChange(false)
   }

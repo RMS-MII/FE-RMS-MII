@@ -16,6 +16,7 @@ import {
 } from "@workspace/ui/components/select"
 import { Button } from "@workspace/ui/components/button"
 import { CalendarPlus, AlertTriangle } from "lucide-react"
+import { formatWibDate, formatWibTime } from "@/shared/lib/utcDateTime"
 
 export interface InterviewsTabProps {
   recruitment: Recruitment
@@ -95,10 +96,8 @@ export function InterviewsTab({
               </span>{" "}
               <span className="text-amber-800 dark:text-amber-300">
                 {pendingReschedules[0]?.candidateName} requested reschedule to{" "}
-                {pendingReschedules[0]?.rescheduleRequest?.proposedStart.slice(
-                  0,
-                  10
-                )}
+                {pendingReschedules[0]?.rescheduleRequest &&
+                  `${formatWibDate(pendingReschedules[0].rescheduleRequest.proposedStart)} at ${formatWibTime(pendingReschedules[0].rescheduleRequest.proposedStart)} WIB`}
                 .
               </span>
             </div>

@@ -27,7 +27,7 @@ import {
   type SearchComboboxOption,
 } from "@/shared/components"
 import { addMinutesToTime, isTimeBefore } from "@/shared/lib/timeUtils"
-import { format } from "date-fns"
+import { formatWibDate, formatWibTime, getWibDateKey, wibToUtcISOString } from "@/shared/lib/utcDateTime"
 import type {
   Recruitment,
   InterviewSessionItem,
@@ -202,14 +202,14 @@ export function ScheduleInterviewDialog({
     if (!open || !sessionToReschedule) return
     const proposedStart = sessionToReschedule.rescheduleRequest?.proposedStart
     const proposedEnd = sessionToReschedule.rescheduleRequest?.proposedEnd
-    const start = proposedStart ? new Date(proposedStart) : new Date(sessionToReschedule.scheduledStart)
-    const end = proposedEnd ? new Date(proposedEnd) : new Date(sessionToReschedule.scheduledEnd)
+    const start = proposedStart ?? sessionToReschedule.scheduledStart
+    const end = proposedEnd ?? sessionToReschedule.scheduledEnd
     setCandidateId(sessionToReschedule.candidateId)
     setApplicationStageId(sessionToReschedule.applicationStageId ?? "")
     setSessionName(sessionToReschedule.sessionName)
-    setScheduledDate(format(start, "yyyy-MM-dd"))
-    setStartTime(format(start, "HH:mm"))
-    setEndTime(format(end, "HH:mm"))
+    setScheduledDate(getWibDateKey(start))
+    setStartTime(formatWibTime(start))
+    setEndTime(formatWibTime(end))
     setMode(sessionToReschedule.isOnline ? "online" : "onsite")
     setMeetingUrl(sessionToReschedule.meetingUrl ?? "")
     setLocation(sessionToReschedule.location ?? "")
@@ -291,7 +291,7 @@ export function ScheduleInterviewDialog({
     ) {
       errs.endTime = "End time must be after start time."
     }
-    if (scheduledDate && startTime && new Date(`${scheduledDate}T${startTime}:00`) <= new Date())
+    if (scheduledDate && startTime && new Date(wibToUtcISOString(scheduledDate, startTime)) <= new Date())
       errs.scheduledDate = "Schedule must be in the future."
     if (sessionName.trim().length > 200)
       errs.sessionName = "Session title must be 200 characters or fewer."
@@ -326,8 +326,8 @@ export function ScheduleInterviewDialog({
     if (!candidateInfo || !selectedStage?.applicationStageId) return
     const request: ScheduleInterviewSessionRequest = {
       sessionName: sessionName.trim(),
-      scheduledStart: new Date(`${scheduledDate}T${startTime}:00`).toISOString(),
-      scheduledEnd: new Date(`${scheduledDate}T${endTime}:00`).toISOString(),
+      scheduledStart: wibToUtcISOString(scheduledDate, startTime),
+      scheduledEnd: wibToUtcISOString(scheduledDate, endTime),
       isOnline: mode === "online",
       location: mode === "onsite" ? location.trim() : null,
       meetingUrl: mode === "online" ? meetingUrl.trim() : null,
@@ -350,7 +350,9 @@ export function ScheduleInterviewDialog({
   }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={(nextOpen) => {
+      if (!isScheduling) onOpenChange(nextOpen)
+    }}>
       <DialogContent className="max-h-[92vh] overflow-y-auto rounded-2xl sm:max-w-3xl lg:max-w-4xl">
         <DialogHeader>
           <div className="flex items-center gap-2">
@@ -399,21 +401,11 @@ export function ScheduleInterviewDialog({
             <p className="text-muted-foreground">
               Candidate proposed:{" "}
               <span className="font-medium text-foreground">
-                {sessionToReschedule.rescheduleRequest.proposedStart.slice(
-                  0,
-                  10
-                )}{" "}
+                {formatWibDate(sessionToReschedule.rescheduleRequest.proposedStart)}{" "}
                 (
-                {sessionToReschedule.rescheduleRequest.proposedStart.slice(
-                  11,
-                  16
-                )}{" "}
+                {formatWibTime(sessionToReschedule.rescheduleRequest.proposedStart)}{" "}
                 -{" "}
-                {sessionToReschedule.rescheduleRequest.proposedEnd.slice(
-                  11,
-                  16
-                )}
-                )
+                {formatWibTime(sessionToReschedule.rescheduleRequest.proposedEnd)} WIB)
               </span>
             </p>
             {sessionToReschedule.rescheduleRequest.reason && (
@@ -582,7 +574,7 @@ export function ScheduleInterviewDialog({
                     htmlFor="interview-start-time"
                     className="px-1 text-sm font-medium"
                   >
-                    Start Time <span className="text-destructive">*</span>
+                    Start Time (WIB) <span className="text-destructive">*</span>
                   </Label>
                   <TimePicker
                     id="interview-start-time"
@@ -619,7 +611,7 @@ export function ScheduleInterviewDialog({
                     htmlFor="interview-end-time"
                     className="px-1 text-sm font-medium"
                   >
-                    End Time <span className="text-destructive">*</span>
+                    End Time (WIB) <span className="text-destructive">*</span>
                   </Label>
                   <TimePicker
                     id="interview-end-time"
@@ -834,11 +826,13 @@ export function ScheduleInterviewDialog({
         </form>
 
         <DialogFooter className="mt-4 gap-2 bg-white sm:gap-2">
-          <CancelButton onClick={() => onOpenChange(false)} />
+          <CancelButton disabled={isScheduling} onClick={() => onOpenChange(false)} />
           <SaveButton
             type="submit"
             form={formId}
             disabled={Boolean(scheduleRestriction) || isScheduling || isInterviewersLoading}
+            isLoading={isScheduling}
+            loadingText={isRescheduleMode ? "Rescheduling..." : "Scheduling..."}
           >
             {isRescheduleMode ? "Save & Reschedule" : "Schedule Interview"}
           </SaveButton>

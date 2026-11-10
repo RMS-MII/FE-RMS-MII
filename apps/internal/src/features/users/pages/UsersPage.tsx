@@ -1,5 +1,5 @@
 import { useState } from "react"
-import { format } from "date-fns"
+import { safeFormatWibDateTime } from "@/shared/lib/utcDateTime"
 import { UserRound } from "lucide-react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@workspace/ui/components/select"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@workspace/ui/components/table"
@@ -23,12 +23,6 @@ const accountStatusItems = [
   { label: "Active", value: "active" },
   { label: "Inactive", value: "inactive" },
 ]
-
-function formatDate(value: string | null) {
-  if (!value) return "Never"
-  const date = new Date(value)
-  return Number.isNaN(date.getTime()) ? "—" : format(date, "dd MMM yyyy, HH:mm")
-}
 
 function getErrorMessage(error: unknown) {
   if (error && typeof error === "object" && "data" in error) {
@@ -151,7 +145,7 @@ export function UsersPage() {
                       </StatusBadge>
                     </TableCell>
                     <TableCell className="whitespace-nowrap py-3.5 pr-5 text-sm text-muted-foreground">
-                      {formatDate(user.lastLoginAt)}
+                      {safeFormatWibDateTime(user.lastLoginAt, "Never")}
                     </TableCell>
                   </TableRow>
                 ))
