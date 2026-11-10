@@ -16,6 +16,7 @@ import { Route as AuthDashboardRouteImport } from './routes/_auth/dashboard'
 import { Route as AuthEmailLogsRouteImport } from './routes/_auth/email-logs'
 import { Route as AuthUsersRouteImport } from './routes/_auth/users'
 import { Route as AuthCandidatesIndexRouteImport } from './routes/_auth/candidates/index'
+import { Route as AuthCandidatesIdRouteImport } from './routes/_auth/candidates/$id'
 import { Route as AuthInterviewsIndexRouteImport } from './routes/_auth/interviews/index'
 import { Route as AuthRecruitmentsIndexRouteImport } from './routes/_auth/recruitments/index'
 import { Route as AuthInterviewsSchedulesIndexRouteImport } from './routes/_auth/interviews/schedules/index'
@@ -56,6 +57,11 @@ const AuthUsersRoute = AuthUsersRouteImport.update({
 const AuthCandidatesIndexRoute = AuthCandidatesIndexRouteImport.update({
   id: '/candidates/',
   path: '/candidates/',
+  getParentRoute: () => AuthRoute,
+} as any)
+const AuthCandidatesIdRoute = AuthCandidatesIdRouteImport.update({
+  id: '/candidates/$id',
+  path: '/candidates/$id',
   getParentRoute: () => AuthRoute,
 } as any)
 const AuthInterviewsIndexRoute = AuthInterviewsIndexRouteImport.update({
@@ -104,6 +110,7 @@ export interface FileRoutesByFullPath {
   '/dashboard': typeof AuthDashboardRoute
   '/email-logs': typeof AuthEmailLogsRoute
   '/users': typeof AuthUsersRoute
+  '/candidates/$id': typeof AuthCandidatesIdRoute
   '/candidates/': typeof AuthCandidatesIndexRoute
   '/interviews/': typeof AuthInterviewsIndexRoute
   '/recruitments/': typeof AuthRecruitmentsIndexRoute
@@ -119,6 +126,7 @@ export interface FileRoutesByTo {
   '/email-logs': typeof AuthEmailLogsRoute
   '/users': typeof AuthUsersRoute
   '/': typeof AuthIndexRoute
+  '/candidates/$id': typeof AuthCandidatesIdRoute
   '/candidates': typeof AuthCandidatesIndexRoute
   '/interviews': typeof AuthInterviewsIndexRoute
   '/recruitments': typeof AuthRecruitmentsIndexRoute
@@ -136,6 +144,7 @@ export interface FileRoutesById {
   '/_auth/email-logs': typeof AuthEmailLogsRoute
   '/_auth/users': typeof AuthUsersRoute
   '/_auth/': typeof AuthIndexRoute
+  '/_auth/candidates/$id': typeof AuthCandidatesIdRoute
   '/_auth/candidates/': typeof AuthCandidatesIndexRoute
   '/_auth/interviews/': typeof AuthInterviewsIndexRoute
   '/_auth/recruitments/': typeof AuthRecruitmentsIndexRoute
@@ -153,6 +162,7 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/email-logs'
     | '/users'
+    | '/candidates/$id'
     | '/candidates/'
     | '/interviews/'
     | '/recruitments/'
@@ -168,6 +178,7 @@ export interface FileRouteTypes {
     | '/email-logs'
     | '/users'
     | '/'
+    | '/candidates/$id'
     | '/candidates'
     | '/interviews'
     | '/recruitments'
@@ -184,6 +195,7 @@ export interface FileRouteTypes {
     | '/_auth/email-logs'
     | '/_auth/users'
     | '/_auth/'
+    | '/_auth/candidates/$id'
     | '/_auth/candidates/'
     | '/_auth/interviews/'
     | '/_auth/recruitments/'
@@ -250,6 +262,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthCandidatesIndexRouteImport
       parentRoute: typeof AuthRoute
     }
+    '/_auth/candidates/$id': {
+      id: '/_auth/candidates/$id'
+      path: '/candidates/$id'
+      fullPath: '/candidates/$id'
+      preLoaderRoute: typeof AuthCandidatesIdRouteImport
+      parentRoute: typeof AuthRoute
+    }
     '/_auth/interviews/': {
       id: '/_auth/interviews/'
       path: '/interviews'
@@ -307,6 +326,7 @@ interface AuthRouteChildren {
   AuthEmailLogsRoute: typeof AuthEmailLogsRoute
   AuthUsersRoute: typeof AuthUsersRoute
   AuthIndexRoute: typeof AuthIndexRoute
+  AuthCandidatesIdRoute: typeof AuthCandidatesIdRoute
   AuthCandidatesIndexRoute: typeof AuthCandidatesIndexRoute
   AuthInterviewsIndexRoute: typeof AuthInterviewsIndexRoute
   AuthRecruitmentsIndexRoute: typeof AuthRecruitmentsIndexRoute
@@ -322,6 +342,7 @@ const AuthRouteChildren: AuthRouteChildren = {
   AuthEmailLogsRoute: AuthEmailLogsRoute,
   AuthUsersRoute: AuthUsersRoute,
   AuthIndexRoute: AuthIndexRoute,
+  AuthCandidatesIdRoute: AuthCandidatesIdRoute,
   AuthCandidatesIndexRoute: AuthCandidatesIndexRoute,
   AuthInterviewsIndexRoute: AuthInterviewsIndexRoute,
   AuthRecruitmentsIndexRoute: AuthRecruitmentsIndexRoute,

@@ -4,6 +4,7 @@ import type { Chip, SortDirection } from "@/shared/components"
 import { useGetCandidatesQuery } from "../api/candidates-api"
 import type { Candidate, CandidateSearchParams, CandidateSortKey } from "../types"
 import { sortCandidates } from "../utils"
+import { mapApplicationStatus } from "@/features/recruitments/utils/statusAdapters"
 
 export const genderItems = [
   { label: "All Genders", value: "all" },
@@ -24,13 +25,13 @@ export function mapGenderDto(gender: number | string | undefined | null): string
 }
 
 export function mapBatchStatusDto(status: number | string | undefined | null): string {
-  const s = String(status ?? "").toLowerCase()
-  if (s === "0" || s === "pending") return "Pending"
-  if (s === "1" || s === "in_progress" || s === "inprogress") return "In Progress"
-  if (s === "2" || s === "passed" || s === "accepted") return "Accepted"
-  if (s === "3" || s === "failed" || s === "rejected") return "Rejected"
-  if (s === "4" || s === "withdrawn") return "Withdrawn"
-  return String(status ?? "")
+  switch (mapApplicationStatus(status)) {
+    case "in_progress": return "In Progress"
+    case "rejected": return "Rejected"
+    case "dropped": return "Dropped"
+    case "accepted": return "Accepted"
+    default: return "Unknown"
+  }
 }
 
 export function useCandidatesList() {
@@ -45,9 +46,6 @@ export function useCandidatesList() {
   const sortDirection = (searchParams.order as SortDirection) ?? "desc"
   const page = searchParams.page ? Number(searchParams.page) : 1
   const pageSize = searchParams.pageSize ? Number(searchParams.pageSize) : 5
-
-  const [selectedCandidate, setSelectedCandidate] = useState<Candidate | null>(null)
-  const [isDetailOpen, setIsDetailOpen] = useState(false)
 
   // Local state for smooth typing in SearchInput
   const [searchTerm, setSearchTerm] = useState(search)
@@ -109,6 +107,7 @@ export function useCandidatesList() {
 
     return pagedData.items.map((dto) => {
       const assignedBatches = (dto.assignedBatches || []).map((b) => ({
+        applicationId: b.applicationId,
         batchId: b.batchId,
         batchCode: b.batchCode,
         batchName: b.batchName,
@@ -178,8 +177,10 @@ export function useCandidatesList() {
   }
 
   const handleOpenDetail = (candidate: Candidate) => {
-    setSelectedCandidate(candidate)
-    setIsDetailOpen(true)
+    void navigate({
+      to: "/candidates/$id",
+      params: { id: candidate.id },
+    })
   }
 
   // Active filter chips for easy reset
@@ -240,9 +241,6 @@ export function useCandidatesList() {
     isFetching,
     isError,
     refetch,
-    selectedCandidate,
-    isDetailOpen,
-    setIsDetailOpen,
     activeChips,
     genderItems,
     batchStatusItems,
