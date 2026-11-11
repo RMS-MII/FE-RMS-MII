@@ -43,14 +43,23 @@ export function OfferingLetterSection({
 
   if (readOnly) {
     return application.fileOfferingLetter ? (
-      <div className="border-b border-border p-6">
-        <a className="text-sm font-medium text-primary hover:underline"
-          href={application.fileOfferingLetter} target="_blank" rel="noreferrer">
+      <section className="space-y-2 border-b border-border p-6" aria-labelledby="offering-letter-title">
+        <h2 id="offering-letter-title" className="text-base font-semibold text-foreground">
+          Offering Letter
+        </h2>
+        <a
+          href={application.fileOfferingLetter}
+          target="_blank"
+          rel="noreferrer"
+          className="inline-flex items-center gap-2 break-all text-sm font-medium text-primary hover:underline"
+        >
           Open current offering letter
+          <ExternalLink className="size-4 shrink-0" aria-hidden />
         </a>
-      </div>
+      </section>
     ) : null
   }
+
   if (!canManageOffering) return null
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {

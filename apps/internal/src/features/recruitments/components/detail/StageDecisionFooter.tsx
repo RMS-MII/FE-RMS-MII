@@ -21,8 +21,8 @@ export interface StageDecisionFooterProps {
 }
 
 export function StageDecisionFooter({
-  application, stage, isViewingActiveStage, usesBatchLifecycle, readOnly = false, onEvaluateStage,
-  onGoToActiveStage, isEvaluating = false, onBack,
+  application, stage, isViewingActiveStage, usesBatchLifecycle, onEvaluateStage,
+  onGoToActiveStage, isEvaluating = false, readOnly = false, onBack,
 }: StageDecisionFooterProps) {
   const formId = useId()
   const [decision, setDecision] = useState<"pass" | "fail" | null>(null)
@@ -107,7 +107,9 @@ export function StageDecisionFooter({
             ) : (
               <p className="flex items-start gap-2 text-sm text-muted-foreground">
                 <Lock className="mt-0.5 size-4 shrink-0" aria-hidden />
-                {stage
+                {readOnly
+                  ? "This recruitment is closed. Candidate decisions are read-only."
+                  : stage
                   ? isRecorded
                     ? "The decision for this stage has already been recorded."
                     : "Decisions are available only for candidates in the active stage."

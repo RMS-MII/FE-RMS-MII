@@ -36,7 +36,6 @@ import {
 import { getApiError } from "@/shared/api/api-error"
 import { safeFormatDate } from "@/shared/lib/format"
 import { cn } from "@/shared/lib/utils"
-import { getRecruitmentStatusMeta } from "../../types"
 import { formatStageCategory } from "../../utils"
 import type {
   BatchStageLifecycleStatus,
@@ -50,6 +49,7 @@ import { useGetBatchApplicationsQuery } from "../../api/applications-api"
 import { useStagesTab } from "../../hooks/useStagesTab"
 import { CheckCircle2, CirclePlay, Pencil, UserPlus, X } from "lucide-react"
 import { useState } from "react"
+import { isRecruitmentClosed } from "../../utils/recruitmentUtils"
 
 export interface StagesTabProps {
   recruitment: Recruitment
@@ -115,6 +115,7 @@ export function StagesTab({
   onCreateStage,
   onEditStage,
 }: StagesTabProps) {
+  const isClosed = isRecruitmentClosed(recruitment)
   const {
     stages,
     isLoading,
@@ -157,7 +158,6 @@ export function StagesTab({
     activeStage !== undefined &&
     activeStageIndex >= 0 &&
     activeStageIndex === configuredStages.length - 1
-  const isClosed = getRecruitmentStatusMeta(recruitment.status).label === "Closed"
   const hasStartedLifecycle = stages.some((stage) => {
     const lifecycleStatus = normalizeLifecycleStatus(stage.lifecycleStatus)
     return lifecycleStatus === "active" || lifecycleStatus === "completed"
@@ -170,7 +170,7 @@ export function StagesTab({
   const canStartFirstStage = Boolean(eligibleCandidates?.totalItems)
 
   const handleConfirmTransition = async () => {
-    if (!pendingTransition) return
+    if (!pendingTransition || isClosed) return
     setTransitionError(null)
 
     try {
@@ -254,9 +254,11 @@ export function StagesTab({
               <div className="flex items-center gap-2">
                 <EditButton
                   onClick={onEditStage}
-                  disabled={isClosed || hasStartedLifecycle}
+                  disabled={hasStartedLifecycle || isClosed}
                   title={
-                    isClosed ? "This recruitment batch is closed" : hasStartedLifecycle
+                    isClosed
+                      ? "Closed recruitment cannot be edited"
+                      : hasStartedLifecycle
                       ? "Stages cannot be reconfigured after activation"
                       : undefined
                   }
@@ -351,10 +353,10 @@ export function StagesTab({
                             ? { label: "In Progress", tone: "info" as const }
                             : { label: "Upcoming", tone: "neutral" as const }
                   const transitionAction: StageTransitionAction | null =
-                    lifecycleStatus === "inactive" &&
+                    !isClosed && lifecycleStatus === "inactive" &&
                     nextStageToActivate?.id === stage.id
                       ? "activate"
-                      : lifecycleStatus === "active" &&
+                      : !isClosed && lifecycleStatus === "active" &&
                           isFinalActiveStage &&
                           activeStage?.id === stage.id
                         ? "complete"
@@ -436,6 +438,8 @@ export function StagesTab({
                           <span className="text-xs text-muted-foreground">
                             —
                           </span>
+                        ) : stageInterviewers.length === 0 && isClosed ? (
+                          <span className="text-xs text-muted-foreground">—</span>
                         ) : stageInterviewers.length === 0 ? (
                           <button
                             type="button"
@@ -453,13 +457,11 @@ export function StagesTab({
                                 <Tooltip key={employee.id}>
                                   <TooltipTrigger
                                     className={cn(
-                                      "inline-flex cursor-pointer items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium shadow-xs transition-colors",
+                                      "inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium shadow-xs transition-colors",
+                                      !isClosed && "cursor-pointer",
                                       statusColors[empStatus]
                                     )}
-                                    disabled={isClosed}
-                                    onClick={() =>
-                                      handleOpenAssignDialog(stage, index)
-                                    }
+                                    onClick={isClosed ? undefined : () => handleOpenAssignDialog(stage, index)}
                                   >
                                     <span className="max-w-30 truncate">
                                       {employee.fullName}
@@ -495,17 +497,16 @@ export function StagesTab({
                                 </Tooltip>
                               )
                             )}
-                            <button
-                              type="button"
-                              disabled={isClosed}
-                              onClick={() =>
-                                handleOpenAssignDialog(stage, index)
-                              }
-                              className="inline-flex size-6 shrink-0 cursor-pointer items-center justify-center rounded-full border border-dashed border-border text-muted-foreground transition-colors hover:border-primary hover:text-primary"
-                              title="Edit interviewer"
-                            >
-                              <Pencil className="size-3" />
-                            </button>
+                            {!isClosed && (
+                              <button
+                                type="button"
+                                onClick={() => handleOpenAssignDialog(stage, index)}
+                                className="inline-flex size-6 shrink-0 cursor-pointer items-center justify-center rounded-full border border-dashed border-border text-muted-foreground transition-colors hover:border-primary hover:text-primary"
+                                title="Edit interviewer"
+                              >
+                                <Pencil className="size-3" />
+                              </button>
+                            )}
                           </div>
                         )}
                       </TableCell>
@@ -557,7 +558,7 @@ export function StagesTab({
         </Panel>
       </div>
 
-      {isDialogOpen && (
+      {isDialogOpen && !isClosed && (
         <AssignInterviewersDialog
           open={isDialogOpen}
           onOpenChange={setIsDialogOpen}
@@ -569,7 +570,7 @@ export function StagesTab({
       )}
 
       <Dialog
-        open={pendingTransition !== null}
+        open={pendingTransition !== null && !isClosed}
         onOpenChange={(open) => {
           if (!isTransitioning && !open) setPendingTransition(null)
         }}

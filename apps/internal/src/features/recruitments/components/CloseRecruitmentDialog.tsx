@@ -21,6 +21,7 @@ import {
 } from "../api/recruitments-api"
 import { getRecruitmentStatusMeta } from "../types"
 import type { Recruitment } from "../types"
+import { getRecruitmentCloseRestriction } from "../utils/recruitmentUtils"
 
 interface CloseRecruitmentDialogProps {
   recruitment: Recruitment
@@ -61,10 +62,8 @@ export function CloseRecruitmentDialog({
     useUpdateBatchStatusMutation()
   const statusMeta = batch ? getRecruitmentStatusMeta(batch.status) : null
   const isOpen = statusMeta?.label === "Open"
-  const hasActiveStage = batch?.batchStages?.some((stage) =>
-    ["active", "1"].includes(String(stage.lifecycleStatus).toLowerCase())
-  )
-  const canClose = Boolean(batch && isOpen && !hasActiveStage && !isFetching && !isError)
+  const closeRestriction = batch ? getRecruitmentCloseRestriction(batch) : null
+  const canClose = Boolean(batch && isOpen && !closeRestriction && !isFetching && !isError)
 
   const handleOpenChange = (nextOpen: boolean) => {
     if (!isSubmitting) onOpenChange(nextOpen)
@@ -150,9 +149,9 @@ export function CloseRecruitmentDialog({
                 </div>
               </dl>
 
-              {isOpen && hasActiveStage ? (
-                <p role="status" className="rounded-xl bg-amber-50 p-4 text-sm text-amber-800">
-                  Complete the active stage before closing this recruitment batch.
+              {isOpen && closeRestriction ? (
+                <p role="status" className="rounded-xl bg-amber-500/10 px-4 py-3 text-sm text-amber-800">
+                  {closeRestriction}
                 </p>
               ) : isOpen ? (
                 <>
@@ -161,6 +160,9 @@ export function CloseRecruitmentDialog({
                     <ul className="list-disc space-y-1.5 pl-4 text-xs leading-relaxed text-muted-foreground">
                       <li>
                         Candidate applications and interview schedules become read-only.
+                      </li>
+                      <li>
+                        Stage settings, interviewer assignments, and candidate decisions will be locked.
                       </li>
                       <li>
                         Existing candidates and interview sessions will keep

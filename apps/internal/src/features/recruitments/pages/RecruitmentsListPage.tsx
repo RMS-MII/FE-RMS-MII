@@ -185,7 +185,7 @@ export function RecruitmentsListPage() {
         {/* Table Section */}
         <div className="overflow-x-auto">
           <Table>
-            <TableHeader className="bg-card">
+            <TableHeader className="bg-muted/50">
               <TableRow className="hover:bg-transparent">
                 <TableSortHeader
                   label="Code"
@@ -390,10 +390,17 @@ export function RecruitmentsListPage() {
                               </DropdownMenuItem>
                             )}
                             {statusMeta.label === "Open" && (
-                              <DropdownMenuItem variant="destructive" onClick={() => {
-                                setSuccessMessage(null)
-                                setRecruitmentToClose(recruitment)
-                              }}>
+                              <DropdownMenuItem
+                                variant="destructive"
+                                disabled={recruitment.canClose !== true}
+                                title={recruitment.canClose === true
+                                  ? "Close Recruitment"
+                                  : "Complete all active selection stages before closing."}
+                                onClick={() => {
+                                  setSuccessMessage(null)
+                                  setRecruitmentToClose(recruitment)
+                                }}
+                              >
                                 <CircleStop className="size-4" aria-hidden />
                                 Close Recruitment
                               </DropdownMenuItem>

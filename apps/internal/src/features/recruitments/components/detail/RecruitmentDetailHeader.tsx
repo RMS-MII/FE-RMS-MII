@@ -7,6 +7,7 @@ import { StatusBadge, BackButton } from "@/shared/components"
 import { formatDate } from "@/shared/lib/format"
 import { OpenRecruitmentDialog } from "../OpenRecruitmentDialog"
 import { CloseRecruitmentDialog } from "../CloseRecruitmentDialog"
+import { getRecruitmentCloseRestriction } from "../../utils/recruitmentUtils"
 
 export interface RecruitmentDetailHeaderProps {
   recruitment: Recruitment
@@ -18,6 +19,7 @@ export function RecruitmentDetailHeader({
   const [isOpenDialogOpen, setIsOpenDialogOpen] = useState(false)
   const [isCloseDialogOpen, setIsCloseDialogOpen] = useState(false)
   const statusMeta = getRecruitmentStatusMeta(recruitment.status)
+  const closeRestriction = getRecruitmentCloseRestriction(recruitment)
 
   return (
     <div className="flex items-start gap-3.5">
@@ -53,6 +55,8 @@ export function RecruitmentDetailHeader({
           type="button"
           variant="outline"
           onClick={() => setIsCloseDialogOpen(true)}
+          disabled={Boolean(closeRestriction)}
+          title={closeRestriction ?? "Close Recruitment"}
           className="ml-auto shrink-0 gap-2 rounded-full border-destructive/40 text-destructive hover:bg-destructive/10 hover:text-destructive"
         >
           <CircleStop className="size-4" aria-hidden />

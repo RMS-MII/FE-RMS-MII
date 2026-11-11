@@ -5,7 +5,7 @@ import {
   StageList,
 } from "../components/stages"
 import { useManageStages, type UseManageStagesProps } from "../hooks/useManageStages"
-import { getRecruitmentStatusMeta } from "../types"
+import { isRecruitmentClosed } from "../utils/recruitmentUtils"
 
 export interface ManageStagesPageProps extends UseManageStagesProps {}
 
@@ -80,18 +80,6 @@ export function ManageStagesPage({ id }: ManageStagesPageProps) {
     )
   }
 
-  if (getRecruitmentStatusMeta(recruitment.status).label === "Closed") {
-    return (
-      <Panel className="space-y-4 p-6">
-        <p>This recruitment batch is closed. Its stages are read-only.</p>
-        <BackButton
-          to={`/recruitments/${recruitment.id}?tab=stages`}
-          label="Back to Recruitment Detail"
-        />
-      </Panel>
-    )
-  }
-
   return (
     <div className="space-y-6 pb-12">
       {/* Top Header */}
@@ -112,33 +100,41 @@ export function ManageStagesPage({ id }: ManageStagesPageProps) {
         </div>
       </div>
 
-      <StageOverviewBanner
-        recruitment={recruitment}
-        totalStages={stages.length}
-        onCancel={handleCancel}
-        onSave={handleSave}
-        isSaved={savedSuccess}
-        isLoading={isSaving}
-      />
+      {isRecruitmentClosed(recruitment) ? (
+        <Panel className="p-6 text-sm text-muted-foreground">
+          This recruitment is closed. Its selection stages are read-only.
+        </Panel>
+      ) : (
+        <>
+          <StageOverviewBanner
+            recruitment={recruitment}
+            totalStages={stages.length}
+            onCancel={handleCancel}
+            onSave={handleSave}
+            isSaved={savedSuccess}
+            isLoading={isSaving}
+          />
 
-      {errorMessage && (
-        <div className="rounded-xl border border-destructive/20 bg-destructive/10 px-4 py-3 text-sm text-destructive font-medium">
-          {errorMessage}
-        </div>
+          {errorMessage && (
+            <div className="rounded-xl border border-destructive/20 bg-destructive/10 px-4 py-3 text-sm text-destructive font-medium">
+              {errorMessage}
+            </div>
+          )}
+
+          <StageList
+            stages={stages}
+            stageTypes={stageTypes}
+            selectedId={selectedTempId}
+            onSelect={setSelectedTempId}
+            onFieldChange={handleFieldChange}
+            onAddStage={handleAddStage}
+            onMoveUp={handleMoveUp}
+            onMoveDown={handleMoveDown}
+            onReorder={handleReorder}
+            onRemoveStage={handleRemoveStage}
+          />
+        </>
       )}
-
-      <StageList
-        stages={stages}
-        stageTypes={stageTypes}
-        selectedId={selectedTempId}
-        onSelect={setSelectedTempId}
-        onFieldChange={handleFieldChange}
-        onAddStage={handleAddStage}
-        onMoveUp={handleMoveUp}
-        onMoveDown={handleMoveDown}
-        onReorder={handleReorder}
-        onRemoveStage={handleRemoveStage}
-      />
     </div>
   )
 }

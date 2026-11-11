@@ -32,7 +32,7 @@ import {
   SelectValue,
 } from "@workspace/ui/components/select"
 import { Button } from "@workspace/ui/components/button"
-import { Eye, UserPlus, AlertCircle } from "lucide-react"
+import { Eye, UserPlus } from "lucide-react"
 import {
   useCandidatesTab,
   statusToneMap,
@@ -146,7 +146,6 @@ export function CandidatesTab({ recruitment }: CandidatesTabProps) {
               type="button"
               onClick={() => handleAddDialogOpenChange(true)}
               disabled={!canAddCandidates}
-              title={addRestriction ?? "Add candidate"}
               className={cn(
                 "h-10 shrink-0 gap-1.5 rounded-full border-0 px-4 text-sm font-medium shadow-none transition-all",
                 canAddCandidates
@@ -160,25 +159,17 @@ export function CandidatesTab({ recruitment }: CandidatesTabProps) {
           </div>
         </div>
 
-        {/* Explain the requirements for adding candidates. */}
-        {addRestriction && (
-          <div className="flex flex-col gap-3 border-b border-border bg-amber-500/10 px-5 py-3 text-xs text-amber-700 sm:flex-row sm:items-center sm:justify-between dark:text-amber-400">
-            <div className="flex items-center gap-2.5">
-              <AlertCircle className="size-4 shrink-0 text-amber-600 dark:text-amber-400" />
-              <p>{addRestriction}</p>
-            </div>
-          </div>
-        )}
-
         {/* Removable Active Filter Chips */}
+        {activeChips.length > 0 && (
         <div className="border-b border-border bg-muted/20 px-6 py-2.5">
           <FilterChips chips={activeChips} onReset={handleResetFilters} />
         </div>
+        )}
 
         {/* Candidate Application Table */}
         <div className="overflow-x-auto">
           <Table>
-            <TableHeader className="bg-card">
+            <TableHeader className="bg-muted/50">
               <TableRow className="hover:bg-transparent">
                 <TableHead className="w-12 pl-5 text-center">#</TableHead>
 
@@ -304,9 +295,6 @@ export function CandidatesTab({ recruitment }: CandidatesTabProps) {
                               size="sm"
                               onClick={() => handleAddDialogOpenChange(true)}
                               disabled={!canAddCandidates}
-                              title={
-                                addRestriction ?? "Add your first candidate"
-                              }
                               className="cursor-pointer rounded-full border-0 bg-muted/60 text-foreground hover:bg-muted"
                             >
                               Add your first candidate
