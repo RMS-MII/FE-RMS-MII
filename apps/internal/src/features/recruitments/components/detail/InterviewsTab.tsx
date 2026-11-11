@@ -1,4 +1,5 @@
 import type { Recruitment, InterviewSessionItem } from "../../types"
+import { getRecruitmentStatusMeta } from "../../types"
 import { Panel, SearchInput, ErrorState } from "@/shared/components"
 import { getApiError } from "@/shared/api/api-error"
 import { InterviewMiniCalendar } from "./InterviewMiniCalendar"
@@ -31,6 +32,7 @@ export function InterviewsTab({
   onViewSessionDetail,
   onReviewReschedule,
 }: InterviewsTabProps) {
+  const readOnly = getRecruitmentStatusMeta(recruitment.status).label === "Closed"
   const {
     canScheduleInterview,
     scheduleRestriction,
@@ -83,7 +85,7 @@ export function InterviewsTab({
   return (
     <Panel className="space-y-0">
       {/* Top Pending Reschedule Banner Alert (if any) */}
-      {pendingReschedules.length > 0 && !isFilterPendingReschedule && (
+      {!readOnly && pendingReschedules.length > 0 && !isFilterPendingReschedule && (
         <div className="flex flex-col items-start justify-between gap-3 border-b border-border bg-amber-50 px-5 py-3 text-xs text-amber-950 sm:flex-row sm:items-center">
           <div className="flex items-center gap-2.5">
             <AlertTriangle className="size-4 shrink-0 text-amber-600 dark:text-amber-400" />
@@ -261,7 +263,7 @@ export function InterviewsTab({
               selectedDate={selectedDate}
               onClearDateFilter={handleClearDateFilter}
               onViewDetail={onViewSessionDetail}
-              onReviewReschedule={handleOpenReviewReschedule}
+              onReviewReschedule={readOnly ? undefined : handleOpenReviewReschedule}
               isFilterPendingReschedule={isFilterPendingReschedule}
             />
           </div>
@@ -284,7 +286,7 @@ export function InterviewsTab({
       {/* Review Reschedule Dialog */}
       <ReviewRescheduleDialog
         key={rescheduleSessionToReview?.rescheduleRequest?.id ?? "no-request"}
-        open={isReviewRescheduleOpen}
+        open={!readOnly && isReviewRescheduleOpen}
         onOpenChange={setIsReviewRescheduleOpen}
         session={rescheduleSessionToReview}
         onApprove={handleApproveReschedule}

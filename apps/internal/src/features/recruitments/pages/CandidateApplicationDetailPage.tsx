@@ -18,6 +18,7 @@ import { StageEvaluationEvidence } from "../components/detail/StageEvaluationEvi
 import { StageDecisionFooter } from "../components/detail/StageDecisionFooter"
 import { OfferingLetterSection } from "../components/detail/OfferingLetterSection"
 import type { EvaluateStageCommand } from "../types/application"
+import { getRecruitmentStatusMeta } from "../types"
 
 export interface CandidateApplicationDetailPageProps {
   batchId: string
@@ -47,6 +48,7 @@ function ApplicationDetailContent({
   const [selectedStageId, setSelectedStageId] = useState<string | null>(null)
 
   const stages = application?.applicationStages ?? []
+  const readOnly = getRecruitmentStatusMeta(application?.batch.status).label === "Closed"
   const usesBatchLifecycle = stages.some((stage) =>
     !["inactive", "0"].includes(String(stage.lifecycleStatus ?? "Inactive").toLowerCase())
   )
@@ -189,7 +191,7 @@ function ApplicationDetailContent({
                 </p>
               )}
             </div>
-            <OfferingLetterSection application={application} />
+            <OfferingLetterSection application={application} readOnly={readOnly} />
             <div
               className={
                 stages.length > 0
@@ -226,6 +228,7 @@ function ApplicationDetailContent({
               stage={stages[selectedStageIndex]}
               isViewingActiveStage={selectedStageIndex === activeStageIndex}
               usesBatchLifecycle={usesBatchLifecycle}
+              readOnly={readOnly}
               onEvaluateStage={handleEvaluateStage}
               onGoToActiveStage={activeStageIndex >= 0
                 ? () => setSelectedStageId(null)

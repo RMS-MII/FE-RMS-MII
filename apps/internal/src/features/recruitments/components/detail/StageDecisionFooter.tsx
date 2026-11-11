@@ -13,6 +13,7 @@ export interface StageDecisionFooterProps {
   stage: CandidateApplicationStageItem | undefined
   isViewingActiveStage: boolean
   usesBatchLifecycle: boolean
+  readOnly?: boolean
   onEvaluateStage: (status: EvaluateStageCommand["status"], notes: string) => void | Promise<void>
   onGoToActiveStage?: () => void
   isEvaluating?: boolean
@@ -20,7 +21,7 @@ export interface StageDecisionFooterProps {
 }
 
 export function StageDecisionFooter({
-  application, stage, isViewingActiveStage, usesBatchLifecycle, onEvaluateStage,
+  application, stage, isViewingActiveStage, usesBatchLifecycle, readOnly = false, onEvaluateStage,
   onGoToActiveStage, isEvaluating = false, onBack,
 }: StageDecisionFooterProps) {
   const formId = useId()
@@ -32,7 +33,7 @@ export function StageDecisionFooter({
     (!usesBatchLifecycle ||
       ["active", "1"].includes(String(stage?.lifecycleStatus).toLowerCase()))
   const canDecide = Boolean(
-    stage?.applicationStageId && isActive && application.finalStatus == null &&
+    !readOnly && stage?.applicationStageId && isActive && application.finalStatus == null &&
     (stage.stageType === "test" || stage.stageType === "interview") &&
     (usesBatchLifecycle ||
       (application.status === "in_progress" &&
@@ -80,7 +81,12 @@ export function StageDecisionFooter({
       <div className="shrink-0 border-t border-border bg-card px-6 py-4">
         <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
           <div className="min-w-0 space-y-1">
-            {isRecorded && isActive ? (
+            {readOnly ? (
+              <p className="flex items-center gap-2 text-sm text-muted-foreground">
+                <Lock className="size-4" aria-hidden />
+                This recruitment batch is closed. This application is read-only.
+              </p>
+            ) : isRecorded && isActive ? (
               <>
                 <p className="text-sm font-medium text-foreground">
                   {usesBatchLifecycle ? "Internal decision" : "Stage decision"}: {stage?.isPassed ? "Passed" : "Not passed"}
@@ -133,7 +139,7 @@ export function StageDecisionFooter({
         </div>
       </div>
 
-      <Dialog open={decision !== null} onOpenChange={(open) => {
+      <Dialog open={!readOnly && decision !== null} onOpenChange={(open) => {
         if (!open && !isEvaluating) setDecision(null)
       }}>
         <DialogContent className="max-h-[90dvh] gap-0 overflow-y-auto rounded-2xl bg-card p-0 sm:max-w-md">

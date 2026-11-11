@@ -5,6 +5,7 @@ import {
   StageList,
 } from "../components/stages"
 import { useManageStages, type UseManageStagesProps } from "../hooks/useManageStages"
+import { getRecruitmentStatusMeta } from "../types"
 
 export interface ManageStagesPageProps extends UseManageStagesProps {}
 
@@ -76,6 +77,18 @@ export function ManageStagesPage({ id }: ManageStagesPageProps) {
           No recruitment found with ID: {id}
         </Panel>
       </div>
+    )
+  }
+
+  if (getRecruitmentStatusMeta(recruitment.status).label === "Closed") {
+    return (
+      <Panel className="space-y-4 p-6">
+        <p>This recruitment batch is closed. Its stages are read-only.</p>
+        <BackButton
+          to={`/recruitments/${recruitment.id}?tab=stages`}
+          label="Back to Recruitment Detail"
+        />
+      </Panel>
     )
   }
 

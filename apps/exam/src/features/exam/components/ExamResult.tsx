@@ -1,9 +1,9 @@
-import { CheckCircle2, Clock3, FileCheck2, UserRound } from "lucide-react"
+import { CheckCircle2, Clock3, FileCheck2 } from "lucide-react"
 import { Badge } from "@workspace/ui/components/badge"
 import { Card, CardContent } from "@workspace/ui/components/card"
 import { Brand } from "./Brand"
 import type { SubmitTestResult } from "../types"
-import { formatDateTime, formatStageStatus } from "../utils"
+import { formatDateTime } from "../utils"
 
 interface ExamResultProps {
   result: SubmitTestResult

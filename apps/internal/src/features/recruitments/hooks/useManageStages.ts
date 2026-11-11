@@ -247,6 +247,18 @@ export function useManageStages({ id }: UseManageStagesProps) {
       }
       stageNames.add(name.toLowerCase())
 
+      if (s.type === "test" && s.passingScore == null) {
+        setErrorMessage(`Test stage "${name}" requires a passing score.`)
+        setSelectedTempId(s.tempId)
+        return
+      }
+      if (s.passingScore != null &&
+          (!Number.isFinite(s.passingScore) || s.passingScore < 0 || s.passingScore > 100)) {
+        setErrorMessage(`Stage "${name}": Passing score must be between 0 and 100.`)
+        setSelectedTempId(s.tempId)
+        return
+      }
+
       if ((batchStart && s.startDate && s.startDate < batchStart) ||
           (batchEnd && s.endDate && s.endDate > batchEnd)) {
         setErrorMessage(`Stage "${name}" must be within the batch period (${batchStart.replace("T", " ")} to ${batchEnd.replace("T", " ")} WIB).`)

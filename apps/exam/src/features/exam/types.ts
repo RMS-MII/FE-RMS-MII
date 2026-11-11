@@ -59,7 +59,6 @@ export interface SubmitTestResult {
   batchStageId: string
   stageName: string
   status: string | number
-  totalScore: number | string | null
   completedAt: string | null
   serverTimeUtc: string
 }

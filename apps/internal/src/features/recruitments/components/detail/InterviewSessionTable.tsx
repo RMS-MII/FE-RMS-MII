@@ -435,6 +435,7 @@ export const InterviewSessionTable = React.memo(function InterviewSessionTable({
                           {isPendingReschedule && (
                             <button
                               type="button"
+                              disabled={!onReviewReschedule}
                               onClick={() => onReviewReschedule?.(session)}
                               className="inline-flex cursor-pointer items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold text-amber-800 transition-colors hover:bg-amber-200 dark:bg-amber-950 dark:text-amber-300"
                             >

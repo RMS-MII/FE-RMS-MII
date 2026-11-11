@@ -61,7 +61,10 @@ export function CloseRecruitmentDialog({
     useUpdateBatchStatusMutation()
   const statusMeta = batch ? getRecruitmentStatusMeta(batch.status) : null
   const isOpen = statusMeta?.label === "Open"
-  const canClose = Boolean(batch && isOpen && !isFetching && !isError)
+  const hasActiveStage = batch?.batchStages?.some((stage) =>
+    ["active", "1"].includes(String(stage.lifecycleStatus).toLowerCase())
+  )
+  const canClose = Boolean(batch && isOpen && !hasActiveStage && !isFetching && !isError)
 
   const handleOpenChange = (nextOpen: boolean) => {
     if (!isSubmitting) onOpenChange(nextOpen)
@@ -147,14 +150,17 @@ export function CloseRecruitmentDialog({
                 </div>
               </dl>
 
-              {isOpen ? (
+              {isOpen && hasActiveStage ? (
+                <p role="status" className="rounded-xl bg-amber-50 p-4 text-sm text-amber-800">
+                  Complete the active stage before closing this recruitment batch.
+                </p>
+              ) : isOpen ? (
                 <>
                   <div className="space-y-2 rounded-xl bg-muted/50 p-4 text-sm text-foreground">
                     <p className="font-medium">After closing this batch:</p>
                     <ul className="list-disc space-y-1.5 pl-4 text-xs leading-relaxed text-muted-foreground">
                       <li>
-                        Adding new candidates and scheduling new interviews will
-                        be disabled.
+                        Candidate applications and interview schedules become read-only.
                       </li>
                       <li>
                         Existing candidates and interview sessions will keep

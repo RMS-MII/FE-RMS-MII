@@ -144,7 +144,8 @@ export const labels: Record<string, string> = {
 }
 
 export function examUrl(candidateId: string, stageId: string) {
-  const template = import.meta.env.VITE_EXAM_URL_TEMPLATE as string | undefined
+  const template =
+  import.meta.env.DEV && "http://localhost:5174/portal/{candidateId}/stages/{stageId}/test"
 
   return template
     ? safeUrl(

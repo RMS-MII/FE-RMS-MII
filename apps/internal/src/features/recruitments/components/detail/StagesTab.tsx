@@ -36,6 +36,7 @@ import {
 import { getApiError } from "@/shared/api/api-error"
 import { safeFormatDate } from "@/shared/lib/format"
 import { cn } from "@/shared/lib/utils"
+import { getRecruitmentStatusMeta } from "../../types"
 import { formatStageCategory } from "../../utils"
 import type {
   BatchStageLifecycleStatus,
@@ -156,6 +157,7 @@ export function StagesTab({
     activeStage !== undefined &&
     activeStageIndex >= 0 &&
     activeStageIndex === configuredStages.length - 1
+  const isClosed = getRecruitmentStatusMeta(recruitment.status).label === "Closed"
   const hasStartedLifecycle = stages.some((stage) => {
     const lifecycleStatus = normalizeLifecycleStatus(stage.lifecycleStatus)
     return lifecycleStatus === "active" || lifecycleStatus === "completed"
@@ -230,7 +232,7 @@ export function StagesTab({
           title="No stages configured"
           description="Define the selection pipeline stages for this recruitment batch to begin accepting applications."
           action={
-            onCreateStage ? (
+            onCreateStage && !isClosed ? (
               <CreateButton onClick={onCreateStage}>
                 Configure Stages
               </CreateButton>
@@ -252,9 +254,9 @@ export function StagesTab({
               <div className="flex items-center gap-2">
                 <EditButton
                   onClick={onEditStage}
-                  disabled={hasStartedLifecycle}
+                  disabled={isClosed || hasStartedLifecycle}
                   title={
-                    hasStartedLifecycle
+                    isClosed ? "This recruitment batch is closed" : hasStartedLifecycle
                       ? "Stages cannot be reconfigured after activation"
                       : undefined
                   }
@@ -437,6 +439,7 @@ export function StagesTab({
                         ) : stageInterviewers.length === 0 ? (
                           <button
                             type="button"
+                            disabled={isClosed}
                             onClick={() => handleOpenAssignDialog(stage, index)}
                             className="group inline-flex cursor-pointer items-center gap-1.5 rounded-full border border-dashed border-border px-3 py-1 text-xs font-medium text-muted-foreground transition-colors hover:border-primary hover:text-primary"
                           >
@@ -453,6 +456,7 @@ export function StagesTab({
                                       "inline-flex cursor-pointer items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium shadow-xs transition-colors",
                                       statusColors[empStatus]
                                     )}
+                                    disabled={isClosed}
                                     onClick={() =>
                                       handleOpenAssignDialog(stage, index)
                                     }
@@ -493,6 +497,7 @@ export function StagesTab({
                             )}
                             <button
                               type="button"
+                              disabled={isClosed}
                               onClick={() =>
                                 handleOpenAssignDialog(stage, index)
                               }
@@ -512,7 +517,7 @@ export function StagesTab({
                       </TableCell>
 
                       <TableCell className="py-3.5 pr-5 text-center">
-                        {transitionAction ? (
+                        {!isClosed && transitionAction ? (
                           <Button
                             type="button"
                             size="sm"

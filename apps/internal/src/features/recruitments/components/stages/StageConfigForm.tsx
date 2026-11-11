@@ -92,13 +92,19 @@ export function StageConfigForm({
 
       <div className="space-y-1.5">
         <label htmlFor={`${stage.tempId}-score`} className="text-xs font-semibold text-foreground">
-          Passing Score (%) <span className="font-normal text-muted-foreground">(Optional)</span>
+          Passing Score (%) {stage.type === "test" ? (
+            <span className="text-destructive">*</span>
+          ) : (
+            <span className="font-normal text-muted-foreground">(Optional)</span>
+          )}
         </label>
         <Input
           id={`${stage.tempId}-score`}
           type="number"
           min={0}
           max={100}
+          step="0.01"
+          required={stage.type === "test"}
           value={stage.passingScore ?? ""}
           onChange={(event) =>
             onFieldChange("passingScore", event.target.value === "" ? null : Number(event.target.value))

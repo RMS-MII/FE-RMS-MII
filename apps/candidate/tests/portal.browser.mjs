@@ -39,7 +39,7 @@ try {
             stageName: "Technical assessment",
             status: "Prioritized",
             endAt: "2027-01-01T00:00:00Z",
-            canTakeTest: false,
+            canTakeTest: true,
             sessions: [],
           },
           {
@@ -128,6 +128,15 @@ try {
   await page.getByText("Final interview", { exact: true }).waitFor()
   await page.getByRole("heading", { name: "Application progress" }).waitFor()
   await page.getByRole("heading", { name: "Next steps" }).waitFor()
+  const openExam = page.getByRole("link", { name: "Open exam" })
+  if (await openExam.count()) {
+    assert.equal(
+      new URL(await openExam.getAttribute("href")).pathname,
+      `/portal/${candidate}/stages/st1/test`
+    )
+  } else {
+    await page.getByText("Use the exam link in your invitation email.").waitFor()
+  }
   assert.equal(await page.locator("html").getAttribute("lang"), "en")
   assert.equal(await page.getByText("1 of 3 stages passed").count(), 1)
   assert.equal(
@@ -290,6 +299,11 @@ try {
     .fill("I have a scheduling conflict.")
   await page.getByRole("button", { name: "Send request" }).click()
   await page.getByText("Reschedule: Awaiting review").waitFor()
+  await page.goto(`${base}/portal/${candidate}`)
+  assert.equal(
+    await page.getByRole("link", { name: "View interview details" }).getAttribute("href"),
+    `/portal/${candidate}/sessions/${session}`
+  )
   await page.setViewportSize({ width: 390, height: 844 })
   assert.equal(
     await page.evaluate(
