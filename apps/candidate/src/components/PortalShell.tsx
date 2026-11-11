@@ -41,8 +41,8 @@ export function PortalShell({
         </svg>
         <span>Metrodata</span>
       </a>
-      <p className="nav-label">PORTAL KANDIDAT</p>
-      <nav aria-label="Navigasi portal" className="portal-nav">
+      <p className="nav-label">Candidate portal</p>
+      <nav aria-label="Portal navigation" className="portal-nav">
         <a
           className={
             !interviewSessionId && portalPage === "overview" ? "current" : ""
@@ -56,22 +56,24 @@ export function PortalShell({
           onClick={() => dialog.current?.close()}
         >
           <LayoutDashboard size={18} />
-          Ringkasan
+          Overview
         </a>
         <a
           className={
-            !interviewSessionId && portalPage === "interviews" ? "current" : ""
+            interviewSessionId || portalPage === "interviews" ? "current" : ""
           }
           aria-current={
-            !interviewSessionId && portalPage === "interviews"
-              ? "page"
-              : undefined
+            interviewSessionId
+              ? "location"
+              : portalPage === "interviews"
+                ? "page"
+                : undefined
           }
           href={`${prefix}/interviews`}
           onClick={() => dialog.current?.close()}
         >
           <CalendarDays size={18} />
-          Jadwal interview
+          Interviews
         </a>
         <a
           className={
@@ -86,15 +88,13 @@ export function PortalShell({
           onClick={() => dialog.current?.close()}
         >
           <FileText size={18} />
-          Tugas take-home
+          Take-home tasks
         </a>
       </nav>
       {!!data?.applications.length && (
         <>
-          <p className="nav-label">
-            LAMARAN ANDA <span>{data.applications.length}</span>
-          </p>
-          <nav aria-label="Pilih lamaran" className="application-nav">
+          <p className="nav-label">Your applications</p>
+          <nav aria-label="Select application" className="application-nav">
             {data.applications.map((a) => (
               <button
                 key={a.id}
@@ -121,13 +121,23 @@ export function PortalShell({
         <div className="help-note">
           <HelpCircle size={17} />
           <div>
-            <strong>Butuh bantuan?</strong>
-            <p>Hubungi tim HR melalui email undangan Anda.</p>
+            <strong>Need help?</strong>
+            <p>
+              Reply to your invitation email to contact the recruitment team.
+            </p>
           </div>
         </div>
         {data && (
           <div className="sidebar-profile">
-            <div className="avatar">{data.candidateName.slice(0, 1)}</div>
+            <div className="avatar" aria-hidden="true">
+              {data.candidateName
+                .trim()
+                .split(/\s+/)
+                .slice(0, 2)
+                .map((part) => part[0])
+                .join("")
+                .toUpperCase()}
+            </div>
             <div>
               <strong>{data.candidateName}</strong>
               <small>{data.candidateEmail}</small>
@@ -139,9 +149,12 @@ export function PortalShell({
   )
   return (
     <div className="portal">
+      <a className="skip-link" href="#main-content">
+        Skip to content
+      </a>
       <aside className="desktop-sidebar">{navigation}</aside>
       <dialog
-        aria-label="Navigasi portal kandidat"
+        aria-label="Candidate portal navigation"
         ref={dialog}
         className="mobile-sidebar"
         onClick={(e) => {
@@ -153,7 +166,7 @@ export function PortalShell({
             className="drawer-close"
             variant="ghost"
             size="icon"
-            aria-label="Tutup navigasi"
+            aria-label="Close navigation"
             onClick={() => dialog.current?.close()}
           >
             <X size={18} />
@@ -168,21 +181,19 @@ export function PortalShell({
               className="mobile-menu"
               variant="ghost"
               size="icon"
-              aria-label="Buka navigasi"
+              aria-label="Open navigation"
               onClick={() => dialog.current?.showModal()}
             >
               <Menu size={18} />
             </Button>
-            <span>Portal kandidat</span>
+            <span>Candidate portal</span>
             <ChevronRight size={13} />
             <strong>{pageTitle}</strong>
           </div>
-          <span className="workspace-caption">RMS MII</span>
         </header>
         {children}
         <footer className="portal-footer">
           © {new Date().getFullYear()} PT Mitra Integrasi Informatika
-          <span>Portal Kandidat</span>
         </footer>
       </div>
     </div>
