@@ -11,6 +11,7 @@ import type {
   AssignInterviewersRequest,
   AssignInterviewersResponse,
   BatchStageTransitionDto,
+  BatchDashboardResponse,
 } from "../types"
 
 export const recruitmentsApi = baseApi.injectEndpoints({
@@ -46,6 +47,13 @@ export const recruitmentsApi = baseApi.injectEndpoints({
     getBatchById: builder.query<Recruitment, string>({
       query: (id) => `/batches/${id}`,
       providesTags: (_result, _err, id) => [{ type: "Recruitment", id }],
+    }),
+    getBatchDashboard: builder.query<BatchDashboardResponse, void>({
+      query: () => ({
+        url: "/batches/dashboard",
+        method: "GET",
+      }),
+      providesTags: () => [{ type: "Recruitment", id: "DASHBOARD" }],
     }),
     getBatchStages: builder.query<BatchStageWithInterviewers[], string>({
       query: (id) => `/batches/${id}/stages`,
@@ -171,6 +179,7 @@ export const recruitmentsApi = baseApi.injectEndpoints({
 export const {
   useGetBatchesQuery,
   useGetBatchByIdQuery,
+  useGetBatchDashboardQuery,
   useGetBatchStagesQuery,
   useLazyGetBatchesQuery,
   useLazyGetBatchByIdQuery,
