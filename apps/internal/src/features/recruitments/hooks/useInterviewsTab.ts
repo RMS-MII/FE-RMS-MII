@@ -52,6 +52,7 @@ export function mapDtoToSessionItem(
       employeeId: inv.employeeId,
       employeeName: inv.fullName,
       employeeEmail: inv.email,
+      isLead: inv.isLead,
       role: inv.jobTitle || "Interviewer",
       status: mapSessionInterviewStatus(inv.status),
       apiStatus: inv.status,

@@ -20,6 +20,12 @@ import {
   TableRow,
 } from "@workspace/ui/components/table"
 import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@workspace/ui/components/tooltip"
+import {
   DataTablePagination,
   StatusBadge,
   type Tone,
@@ -199,7 +205,7 @@ export const InterviewSessionTable = React.memo(function InterviewSessionTable({
                 <TableHead className="min-w-44">Candidate</TableHead>
                 <TableHead className="min-w-32">Stage</TableHead>
                 <TableHead className="min-w-36">Schedule</TableHead>
-                <TableHead className="min-w-40">Interviewers</TableHead>
+                <TableHead className="min-w-64">Interviewers</TableHead>
                 <TableHead className="min-w-44">Mode</TableHead>
                 <TableHead className="min-w-28 text-center">Status</TableHead>
                 <TableHead className="w-20 pr-4 text-center">Action</TableHead>
@@ -298,29 +304,54 @@ export const InterviewSessionTable = React.memo(function InterviewSessionTable({
                       {/* Assigned Interviewers with Approval Status Badge */}
                       <TableCell className="py-3 text-xs">
                         {session.interviewers.length > 0 ? (
-                          <div className="flex flex-wrap items-center gap-1.5">
-                            {session.interviewers.map((inv) => {
-                              const statusStyle =
-                                interviewerStatusColors[inv.status] ||
-                                "bg-muted text-muted-foreground border border-border"
-                              const statusDesc =
-                                interviewerStatusLabels[inv.status] ||
-                                inv.status
+                          <TooltipProvider>
+                            <div className="grid grid-cols-2 gap-1.5">
+                              {session.interviewers.map((inv) => {
+                                const statusStyle =
+                                  interviewerStatusColors[inv.status] ||
+                                  "bg-muted text-muted-foreground border border-border"
+                                const statusDesc =
+                                  interviewerStatusLabels[inv.status] ||
+                                  inv.status
 
-                              return (
-                                <span
-                                  key={inv.id}
-                                  title={`${inv.employeeName} • ${statusDesc}`}
-                                  className={cn(
-                                    "inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium transition-colors select-none",
-                                    statusStyle
-                                  )}
-                                >
-                                  {inv.employeeName}
-                                </span>
-                              )
-                            })}
-                          </div>
+                                return (
+                                  <Tooltip key={inv.id}>
+                                    <TooltipTrigger
+                                      className={cn(
+                                        "inline-flex min-w-0 cursor-help items-center justify-center rounded-full px-2.5 py-1 text-xs font-medium transition-colors hover:opacity-80 focus-visible:outline-2 focus-visible:outline-primary",
+                                        statusStyle
+                                      )}
+                                    >
+                                      <span className="truncate">{inv.employeeName}</span>
+                                      {inv.isLead && (
+                                        <span className="ml-1 shrink-0 border-l border-current/30 pl-1 font-semibold">
+                                          Lead
+                                        </span>
+                                      )}
+                                    </TooltipTrigger>
+                                    <TooltipContent
+                                      align="start"
+                                      className="w-60 flex-col items-stretch gap-2 border border-border bg-card p-3 text-foreground shadow-md"
+                                    >
+                                      <div className="min-w-0">
+                                        <p className="truncate text-sm font-semibold">{inv.employeeName}</p>
+                                        <p className="text-xs text-muted-foreground">{inv.role || "Interviewer"}</p>
+                                      </div>
+                                      <div className="flex items-center justify-between gap-2 border-t border-border pt-2">
+                                        <span className="text-xs text-muted-foreground">Status</span>
+                                        <span className={cn("rounded-full px-2 py-0.5 text-xs font-medium", statusStyle)}>
+                                          {statusDesc}
+                                        </span>
+                                      </div>
+                                      {inv.isLead && (
+                                        <p className="text-xs font-medium text-primary">Lead interviewer</p>
+                                      )}
+                                    </TooltipContent>
+                                  </Tooltip>
+                                )
+                              })}
+                            </div>
+                          </TooltipProvider>
                         ) : (
                           <span className="text-xs text-muted-foreground italic">
                             Unassigned
