@@ -30,6 +30,9 @@ export function mapInterviewerSession(
 ): MyInterviewItem {
   const sessionStatus = enumKey(dto.sessionStatus)
   const interviewerStatus = enumKey(dto.interviewerStatus)
+  const sessionConfirmed = [
+    "scheduled", "1", "acceptedbyinterviewer", "4", "acceptedbycandidate", "5",
+  ].includes(sessionStatus)
   let status: MyInterviewItem["status"] = "pending"
 
   if (interviewerStatus === "completed" || interviewerStatus === "2") {
@@ -38,16 +41,30 @@ export function mapInterviewerSession(
     status = "cancelled"
   } else if (sessionStatus === "rescheduled" || sessionStatus === "3") {
     status = "rescheduled"
-  } else if (
-    sessionStatus === "acceptedbyinterviewer" ||
-    sessionStatus === "acceptedbycandidate" ||
-    sessionStatus === "4" ||
-    sessionStatus === "5"
-  ) {
+  } else if (sessionConfirmed) {
     status = "accepted"
   }
 
   const recommendation = mapAssessmentRecommendation(dto.assessmentRecommendation)
+  const panel = dto.panelInterviewers ?? []
+  const currentInterviewer = panel.find((member) => member.sessionInterviewId === dto.sessionInterviewId)
+  const panelInterviewers = panel.map((member) => {
+    const memberStatus = enumKey(member.status)
+    return {
+      id: member.sessionInterviewId,
+      name: member.fullName,
+      email: member.email,
+      role: member.jobTitle,
+      isLead: member.isLead,
+      isCurrent: member.sessionInterviewId === dto.sessionInterviewId,
+      status: memberStatus === "cancelled" || memberStatus === "3"
+        ? "cancelled" as const
+        : memberStatus === "completed" || memberStatus === "2"
+          ? "completed" as const
+          : sessionConfirmed ? "accepted" as const : "pending" as const,
+    }
+  })
+  const coInterviewers = panelInterviewers.filter((member) => !member.isCurrent)
   const assessment =
     dto.isAssessmentSubmitted &&
     dto.assessmentScore !== null &&
@@ -80,9 +97,11 @@ export function mapInterviewerSession(
     location: dto.location,
     status,
     interviewerEmployeeId: undefined,
-    interviewerName: "You",
-    interviewerEmail: "",
-    coInterviewers: undefined,
+    interviewerName: currentInterviewer?.fullName ?? "You",
+    interviewerEmail: currentInterviewer?.email ?? "",
+    isLead: dto.isLead,
+    panelInterviewers,
+    coInterviewers,
     fileSubmission: dto.fileSubmission,
     endedSubmissionAt: dto.endedSubmissionAt,
     assessment,
