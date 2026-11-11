@@ -35,6 +35,7 @@ try {
     scheduledStart: new Date(Date.now() - 7200000).toISOString(),
     scheduledEnd: new Date(Date.now() - 3600000).toISOString(),
     interviewerStatus: "InProgress",
+    isLead: true,
     isOnline: true,
     meetingUrl: "https://meet.google.com/example",
     isAssessmentSubmitted: false,
