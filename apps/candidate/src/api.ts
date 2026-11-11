@@ -63,20 +63,41 @@ export async function request<T>(
     method: body === undefined ? "GET" : "POST",
     headers: body === undefined ? {} : { "Content-Type": "application/json" },
     body: body === undefined ? undefined : JSON.stringify(body),
+  }).catch((error: unknown) => {
+    if (signal?.aborted) throw error
+    throw new Error("Could not connect. Check your connection and try again.")
   })
 
-  const data = await response.json().catch(() => null)
+  if (!response.ok) {
+    if (response.status === 404 || response.status === 403) {
+      throw new Error(
+        "This link is unavailable. Check your recruitment email for the latest link."
+      )
+    }
 
-  if (!response.ok)
-    throw new Error(
-      data?.detail ||
-        Object.values(data?.errors || {})
-          .flat()
-          .join(" ") ||
-        "Permintaan belum berhasil. Silakan coba lagi."
-    )
+    if ([400, 409, 422].includes(response.status)) {
+      if (path.endsWith("/submission"))
+        throw new Error(
+          "Could not save your work. Check the link and the submission deadline."
+        )
+      if (path.endsWith("/reschedule"))
+        throw new Error(
+          "Could not reschedule. Check your proposed time and refresh to see the latest interview status."
+        )
+      if (path.endsWith("/confirm"))
+        throw new Error(
+          "This interview could not be confirmed. Refresh to see the latest schedule."
+        )
+    }
 
-  return data as T
+    throw new Error("Something went wrong. Please try again.")
+  }
+
+  return response.json().catch(() => {
+    if (body === undefined)
+      throw new Error("Could not load your application. Try again.")
+    return null
+  }) as Promise<T>
 }
 
 export function safeUrl(value?: string) {
@@ -88,36 +109,38 @@ export function safeUrl(value?: string) {
   }
 }
 
+const jakartaDateTime = new Intl.DateTimeFormat("en-GB", {
+  dateStyle: "medium",
+  timeStyle: "short",
+  timeZone: "Asia/Jakarta",
+})
+
+export function parseDate(value: string) {
+  return new Date(/(?:Z|[+-]\d{2}:\d{2})$/.test(value) ? value : value + "Z")
+}
+
 export function date(value?: string) {
-  if (!value) return "—"
-  const utc = /(?:Z|[+-]\d{2}:\d{2})$/.test(value) ? value : value + "Z"
-  return (
-    new Intl.DateTimeFormat("id-ID", {
-      dateStyle: "medium",
-      timeStyle: "short",
-      timeZone: "Asia/Jakarta",
-    }).format(new Date(utc)) + " WIB"
-  )
+  return value ? `${jakartaDateTime.format(parseDate(value))} WIB` : "—"
 }
 
 export const labels: Record<string, string> = {
-  InProcess: "Dalam proses",
-  InProgress: "Sedang berjalan",
-  Submitted: "Sudah dikirim",
-  Prioritized: "Lolos",
-  Considered: "Lolos",
-  Rejected: "Tidak dilanjutkan",
-  Dropped: "Tidak dilanjutkan",
-  Expired: "Waktu berakhir",
-  Accepted: "Diterima",
-  PendingConfirmation: "Menunggu interviewer",
-  Scheduled: "Terjadwal",
-  AcceptedByInterviewer: "Menunggu konfirmasi Anda",
-  AcceptedByCandidate: "Kehadiran dikonfirmasi",
-  Rescheduled: "Jadwal diganti",
-  Pending: "Menunggu keputusan HR",
-  Approved: "Disetujui",
-  Upcoming: "Belum dimulai",
+  InProcess: "In progress",
+  InProgress: "In progress",
+  Submitted: "Submitted",
+  Prioritized: "Passed",
+  Considered: "Passed",
+  Rejected: "Not selected",
+  Dropped: "Not selected",
+  Expired: "Expired",
+  Accepted: "Accepted",
+  PendingConfirmation: "Awaiting interviewer",
+  Scheduled: "Scheduled",
+  AcceptedByInterviewer: "Confirmation needed",
+  AcceptedByCandidate: "Confirmed",
+  Rescheduled: "Rescheduled",
+  Pending: "Awaiting review",
+  Approved: "Approved",
+  Upcoming: "Not started",
 }
 
 export function examUrl(candidateId: string, stageId: string) {

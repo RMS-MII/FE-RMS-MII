@@ -16,7 +16,6 @@ import {
 } from "@workspace/ui/components/dialog"
 import { request, date, labels, safeUrl } from "../api"
 import type { Session } from "../api"
-import { Status } from "./Status"
 import { prefix } from "../route"
 export function SessionDetail({
   session: s,
@@ -53,13 +52,17 @@ export function SessionDetail({
       await request(`${prefix}/sessions/${s.id}/${action}`, body)
       setMessage(
         action === "confirm"
-          ? "Kehadiran Anda berhasil dikonfirmasi."
-          : "Permintaan terkirim. Tunggu keputusan tim HR."
+          ? "Your attendance is confirmed."
+          : "Request sent. The recruitment team will review your proposed time."
       )
       setRescheduleOpen(false)
       await refresh()
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Permintaan gagal.")
+      setError(
+        e instanceof Error
+          ? e.message
+          : "Could not complete the request. Try again."
+      )
     } finally {
       lock.current = false
       setBusy(false)
@@ -70,7 +73,7 @@ export function SessionDetail({
     event.preventDefault()
     const f = new FormData(event.currentTarget)
     if (!schedule.startDate || !schedule.startTime || !schedule.endTime) {
-      setError("Lengkapi tanggal dan jam mulai serta selesai.")
+      setError("Select a date, start time, and end time.")
       return
     }
     const start = new Date(`${schedule.startDate}T${schedule.startTime}`)
@@ -81,9 +84,7 @@ export function SessionDetail({
       start <= new Date() ||
       end <= start
     ) {
-      setError(
-        "Pilih waktu mendatang dengan waktu selesai setelah waktu mulai."
-      )
+      setError("Choose a future start time and an end time after it.")
       return
     }
     void mutate("reschedule", {
@@ -96,23 +97,22 @@ export function SessionDetail({
   return (
     <section className="panel detail">
       <div className="section-heading">
-        <h2>{s.sessionName}</h2>
-        <Status value={s.status} />
+        <h2>Interview schedule</h2>
       </div>
       <dl className="facts">
         <div>
           <dt>
-            <CalendarDays /> Jadwal interview
+            <CalendarDays /> Scheduled time
           </dt>
           <dd>
             {date(s.scheduledStart)}
             <br />
-            <span className="muted">Selesai {date(s.scheduledEnd)}</span>
+            <span className="muted">Ends {date(s.scheduledEnd)}</span>
           </dd>
         </div>
         <div>
           <dt>
-            <MapPin /> {s.isOnline ? "Online" : "Lokasi"}
+            <MapPin /> {s.isOnline ? "Online" : "Location"}
           </dt>
           <dd>
             {s.isOnline ? (
@@ -123,13 +123,13 @@ export function SessionDetail({
                   target="_blank"
                   rel="noreferrer"
                 >
-                  Buka ruang meeting <ArrowUpRight size={15} />
+                  Open meeting link <ArrowUpRight size={15} />
                 </a>
               ) : (
-                "Tautan meeting menyusul"
+                "Meeting link to be confirmed"
               )
             ) : (
-              s.location || "Lokasi menyusul"
+              s.location || "Location to be confirmed"
             )}
           </dd>
         </div>
@@ -137,17 +137,20 @@ export function SessionDetail({
           <dt>
             <Users /> Interviewer
           </dt>
-          <dd>{s.interviewers?.join(", ") || "Tim interviewer"}</dd>
+          <dd>{s.interviewers?.join(", ") || "Interview panel"}</dd>
         </div>
       </dl>
 
       {s.reschedule && (
         <div className="notice">
           <strong>
-            Reschedule: {labels[s.reschedule.status] || s.reschedule.status}
+            Reschedule:{" "}
+            {s.reschedule.status === "Rejected"
+              ? "Declined"
+              : labels[s.reschedule.status] || "Status unavailable"}
           </strong>
           <p>
-            Usulan: {date(s.reschedule.proposedStart)} –{" "}
+            Proposed time: {date(s.reschedule.proposedStart)} –{" "}
             {date(s.reschedule.proposedEnd)}
           </p>
         </div>
@@ -156,7 +159,7 @@ export function SessionDetail({
       <div className="actions">
         {s.canConfirm && (
           <Button disabled={busy} onClick={() => void mutate("confirm", {})}>
-            <Check size={16} /> Konfirmasi hadir
+            <Check size={16} /> Confirm attendance
           </Button>
         )}
         {s.canRequestReschedule && (
@@ -169,27 +172,29 @@ export function SessionDetail({
               setRescheduleOpen(open)
             }}
           >
-            <DialogTrigger render={<Button variant="outline" disabled={busy} />}>
-              Ajukan reschedule
+            <DialogTrigger
+              render={<Button variant="outline" disabled={busy} />}
+            >
+              Request reschedule
             </DialogTrigger>
             <DialogContent
-              className="max-h-[90dvh] overflow-y-auto rounded-2xl p-6 sm:max-w-lg"
+              className="portal-dialog max-h-[90dvh] overflow-y-auto rounded-2xl p-6 sm:max-w-lg"
               showCloseButton={!busy}
             >
               <DialogHeader>
-                <DialogTitle>Ajukan reschedule</DialogTitle>
+                <DialogTitle>Request reschedule</DialogTitle>
                 <DialogDescription>
-                  {s.sessionName} dijadwalkan pada {date(s.scheduledStart)}.
+                  {s.sessionName} is scheduled for {date(s.scheduledStart)}.
                 </DialogDescription>
               </DialogHeader>
               <form className="space-y-4 text-sm" onSubmit={reschedule}>
                 <div className="grid gap-2">
-                  <label htmlFor="reschedule-start-date">Tanggal usulan</label>
+                  <label htmlFor="reschedule-start-date">Proposed date</label>
                   <DatePicker
                     id="reschedule-start-date"
                     value={schedule.startDate}
                     minDate={new Date().toLocaleDateString("en-CA")}
-                    placeholder="Pilih tanggal usulan"
+                    placeholder="Select a date"
                     disabled={busy}
                     onChange={(value) => {
                       setSchedule({ ...schedule, startDate: value })
@@ -199,12 +204,12 @@ export function SessionDetail({
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div className="grid gap-2">
-                    <label htmlFor="reschedule-start-time">Jam mulai</label>
+                    <label htmlFor="reschedule-start-time">Start time</label>
                     <TimePicker
                       id="reschedule-start-time"
                       value={schedule.startTime}
                       disabled={busy}
-                      placeholder="Pilih jam"
+                      placeholder="Select time"
                       onChange={(value) => {
                         setSchedule({ ...schedule, startTime: value })
                         setError("")
@@ -212,13 +217,13 @@ export function SessionDetail({
                     />
                   </div>
                   <div className="grid gap-2">
-                    <label htmlFor="reschedule-end-time">Jam selesai</label>
+                    <label htmlFor="reschedule-end-time">End time</label>
                     <TimePicker
                       id="reschedule-end-time"
                       value={schedule.endTime}
                       minTime={schedule.startTime || undefined}
                       disabled={busy}
-                      placeholder="Pilih jam"
+                      placeholder="Select time"
                       onChange={(value) => {
                         setSchedule({ ...schedule, endTime: value })
                         setError("")
@@ -227,10 +232,10 @@ export function SessionDetail({
                   </div>
                 </div>
                 <label>
-                  Alasan
+                  Reason
                   <Textarea
                     className="mt-2 min-h-20 resize-y"
-                    placeholder="Ceritakan alasan Anda mengajukan perubahan jadwal…"
+                    placeholder="Tell us why you need to reschedule."
                     name="reason"
                     maxLength={100}
                     required
@@ -238,10 +243,9 @@ export function SessionDetail({
                     rows={3}
                   />
                 </label>
-                <p className="text-xs text-muted-foreground">
-                  Gunakan zona waktu perangkat Anda (
-                  {Intl.DateTimeFormat().resolvedOptions().timeZone}). Tim HR
-                  akan meninjau usulan jadwal baru.
+                <p className="text-sm text-muted-foreground">
+                  Times use your device’s time zone (
+                  {Intl.DateTimeFormat().resolvedOptions().timeZone}).
                 </p>
                 {error && (
                   <p role="alert" className="text-sm text-destructive">
@@ -258,10 +262,10 @@ export function SessionDetail({
                       setRescheduleOpen(false)
                     }}
                   >
-                    Batal
+                    Cancel
                   </Button>
                   <Button disabled={busy} type="submit">
-                    {busy ? "Mengirim…" : "Kirim usulan"}
+                    {busy ? "Sending…" : "Send request"}
                   </Button>
                 </DialogFooter>
               </form>

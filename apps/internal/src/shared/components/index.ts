@@ -1,4 +1,5 @@
 export * from "./PageHeader"
+export * from "./StatCard"
 export * from "./Panel"
 export * from "./SearchInput"
 export * from "./TableSortHeader"

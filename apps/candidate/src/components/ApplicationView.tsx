@@ -1,258 +1,204 @@
 import {
-  Check,
-  Clock3,
+  ArrowRight,
   ArrowUpRight,
   CalendarDays,
-  ChevronRight,
+  Check,
+  Clock3,
   FileText,
-  ArrowRight,
-  CircleCheck,
+  ListChecks,
 } from "lucide-react"
-import { date, labels, examUrl } from "../api"
-import type { Application, Session } from "../api"
+import { date, examUrl, parseDate, type Application } from "../api"
 import { Status } from "./Status"
 import { candidateId, prefix } from "../route"
-function SessionLink({ session: s }: { session: Session }) {
-  return (
-    <a className="session-row" href={`${prefix}/sessions/${s.id}`}>
-      <CalendarDays size={18} />
-      <div>
-        <strong>{s.sessionName}</strong>
-        <span>{date(s.scheduledStart)}</span>
-        <small>{labels[s.status] || s.status}</small>
-      </div>
-      <ChevronRight size={16} />
-    </a>
-  )
-}
+
 export function ApplicationView({
-  application: a,
+  application,
+  asOf,
 }: {
   application: Application
+  asOf: number
 }) {
-  const pipeline = a.pipeline?.length
-    ? a.pipeline
-    : a.stages.map((s) => ({
-        batchStageId: s.batchStageId,
-        stageName: s.stageName,
-      }))
-  const sessions = a.stages.flatMap((s) => s.sessions)
-  const exams = a.stages.filter((s) => s.canTakeTest)
-  const confirmations = sessions.filter((s) => s.canConfirm)
-  const submissions = sessions.filter(
-    (s) => s.canUploadSubmission && !s.isSubmitted
+  const stagesById = new Map(
+    application.stages.map((stage) => [stage.batchStageId, stage])
   )
-  const actionCount = exams.length + confirmations.length + submissions.length
-  const passed = a.stages.filter((s) =>
-    ["Prioritized", "Considered"].includes(s.status)
-  ).length
+  const pipeline = application.pipeline?.length
+    ? application.pipeline
+    : application.stages
+  const steps = pipeline.map((item) => {
+    const stage = stagesById.get(item.batchStageId)
+    return {
+      ...item,
+      stage,
+      passed: stage?.status === "Prioritized" || stage?.status === "Considered",
+      active: stage?.status === "InProgress" || stage?.status === "Submitted",
+    }
+  })
+  const passed = steps.filter((step) => step.passed).length
+  const sessions = application.stages.flatMap((stage) => stage.sessions)
+  const exams = application.stages.filter((stage) => stage.canTakeTest)
+  const confirmations = sessions.filter((session) => session.canConfirm)
+  const submissions = sessions.filter(
+    (session) => session.canUploadSubmission && !session.isSubmitted
+  )
+  const actions = [
+    ...confirmations.map((session) => ({
+      id: `confirm-${session.id}`,
+      icon: CalendarDays,
+      title: `Confirm ${session.sessionName}`,
+      detail: date(session.scheduledStart),
+      label: "Review invitation",
+      href: `${prefix}/sessions/${session.id}`,
+      external: false,
+    })),
+    ...exams.map((stage) => ({
+      id: stage.applicationStageId,
+      icon: FileText,
+      title: stage.stageName,
+      detail: `Due ${date(stage.endAt)}`,
+      label: "Open exam",
+      href: examUrl(candidateId, stage.applicationStageId),
+      external: true,
+    })),
+    ...submissions.map((session) => ({
+      id: `submit-${session.id}`,
+      icon: FileText,
+      title: "Submit take-home work",
+      detail: `${session.sessionName} · Due ${date(session.endedSubmissionAt)}`,
+      label: "View submission",
+      href: `${prefix}/assignments?session=${session.id}`,
+      external: false,
+    })),
+  ]
+  const upcoming = sessions
+    .filter(
+      (session) =>
+        ["Scheduled", "AcceptedByCandidate"].includes(session.status) &&
+        parseDate(session.scheduledStart).getTime() > asOf
+    )
+    .sort(
+      (a, b) =>
+        parseDate(a.scheduledStart).getTime() -
+        parseDate(b.scheduledStart).getTime()
+    )[0]
+
   return (
-    <>
-      <div className="panel application-header">
-        <div>
-          <p className="eyebrow">{a.codeApplication}</p>
-          <h2>{a.batchName}</h2>
-          <p className="muted">{a.departmentName}</p>
-        </div>
-        <Status value={a.status} />
-      </div>
-      <section className="panel next-actions" aria-labelledby="action-heading">
+    <div className="overview-grid">
+      <section className="panel timeline" aria-labelledby="progress-heading">
         <div className="section-heading">
-          <div>
-            <h2 id="action-heading">Perlu ditindaklanjuti</h2>
-            <p className="muted">Langkah berikutnya untuk lamaran ini.</p>
-          </div>
-          <span className="action-count">{actionCount} tindakan</span>
-        </div>
-        {!actionCount && (
-          <div className="quiet-state">
-            <CircleCheck size={20} />
-            <div>
-              <strong>Semua sudah ditangani</strong>
-              <p>
-                Belum ada tindakan yang perlu Anda lakukan. Pantau pembaruan
-                dari tim HR.
-              </p>
-            </div>
-          </div>
-        )}
-        {exams.map((s) => {
-          const url = examUrl(candidateId, s.applicationStageId)
-          return (
-            <div className="action-row" key={s.applicationStageId}>
-              <span className="action-icon">
-                <FileText size={19} />
-              </span>
-              <div>
-                <strong>{s.stageName}</strong>
-                <p>Batas pengerjaan: {date(s.endAt)}</p>
-              </div>
-              {url ? (
-                <a className="primary-link" href={url}>
-                  Buka web exam <ArrowUpRight size={15} />
-                </a>
-              ) : (
-                <span className="muted">Lihat tautan pada undangan HR</span>
-              )}
-            </div>
-          )
-        })}
-        {confirmations.map((s) => (
-          <div className="action-row" key={s.id}>
-            <span className="action-icon">
-              <CalendarDays size={19} />
-            </span>
-            <div>
-              <strong>Konfirmasi {s.sessionName}</strong>
-              <p>{date(s.scheduledStart)}</p>
-            </div>
-            <a className="primary-link" href={`${prefix}/sessions/${s.id}`}>
-              Tinjau jadwal <ArrowRight size={15} />
-            </a>
-          </div>
-        ))}
-        {submissions.map((s) => (
-          <div className="action-row" key={s.id}>
-            <span className="action-icon">
-              <FileText size={19} />
-            </span>
-            <div>
-              <strong>Kumpulkan tugas take-home</strong>
-              <p>
-                {s.sessionName} · {date(s.endedSubmissionAt)}
-              </p>
-            </div>
-            <a
-              className="primary-link"
-              href={`${prefix}/assignments?session=${s.id}`}
-            >
-              Kirim tugas <ArrowRight size={15} />
-            </a>
-          </div>
-        ))}
-      </section>
-      <div className="dashboard-columns">
-        <section className="panel timeline">
-          <div className="section-heading">
-            <h2>Progres seleksi</h2>
+          <h2 id="progress-heading">Application progress</h2>
+          {steps.length > 0 && (
             <span className="muted">
-              {passed} / {pipeline.length} tahap lolos
+              {passed} of {steps.length} stages passed
             </span>
-          </div>
-          {!pipeline.length && (
-            <p className="muted timeline-empty">
-              Tahapan seleksi sedang disiapkan oleh HR.
-            </p>
           )}
-          <div className="timeline-content">
-            {pipeline.map((p, i) => {
-              const stage = a.stages.find(
-                (s) => s.batchStageId === p.batchStageId
-              )
-              const complete =
-                stage && ["Prioritized", "Considered"].includes(stage.status)
-              const current =
-                stage && ["InProgress", "Submitted"].includes(stage.status)
-              return (
-                <article
-                  className={`stage ${current ? "stage-current" : ""}`}
-                  key={p.batchStageId}
+        </div>
+        {steps.length === 0 ? (
+          <p className="section-body muted">
+            The recruitment team is preparing the hiring stages.
+          </p>
+        ) : (
+          <ol className="timeline-content">
+            {steps.map(
+              ({ stage, stageName, batchStageId, passed, active }, index) => (
+                <li
+                  className="stage"
+                  key={batchStageId}
+                  aria-current={active ? "step" : undefined}
                 >
-                  <div
-                    className={`stage-number ${complete ? "done" : current ? "active" : ""}`}
+                  <span
+                    className={passed ? "stage-number done" : "stage-number"}
+                    aria-hidden="true"
                   >
-                    {complete ? (
-                      <Check size={15} />
-                    ) : (
-                      String(i + 1).padStart(2, "0")
-                    )}
-                  </div>
+                    {passed ? <Check size={16} /> : index + 1}
+                  </span>
                   <div className="stage-body">
                     <div className="stage-title">
-                      <h3>{p.stageName}</h3>
+                      <h3>{stageName}</h3>
                       <Status value={stage?.status || "Upcoming"} />
                     </div>
-                    {current && (
-                      <p className="muted deadline">
-                        <Clock3 size={13} /> Batas tahap: {date(stage.endAt)}
+                    {active && stage?.endAt && (
+                      <p className="stage-deadline muted">
+                        <Clock3 size={14} /> Stage deadline {date(stage.endAt)}
                       </p>
                     )}
-                    {stage && stage.sessions.length > 0 && (
-                      <details className="stage-details" open={current}>
-                        <summary>
-                          {stage.sessions.length} jadwal interview
-                        </summary>
-                        {stage.sessions.map((s) => (
-                          <SessionLink key={s.id} session={s} />
-                        ))}
-                      </details>
-                    )}
                   </div>
-                </article>
+                </li>
               )
-            })}
+            )}
+          </ol>
+        )}
+      </section>
+
+      <div className="overview-side">
+        <section className="panel next-steps" aria-labelledby="actions-heading">
+          <div className="section-heading">
+            <h2 id="actions-heading">Next steps</h2>
+            {actions.length > 0 && (
+              <span className="count">{actions.length}</span>
+            )}
           </div>
+          {actions.length > 0 ? (
+            <ul className="task-list">
+              {actions.map(
+                ({ id, icon: Icon, title, detail, label, href, external }) => (
+                  <li key={id} className="task-row">
+                    <span className="action-icon">
+                      <Icon size={18} />
+                    </span>
+                    <div>
+                      <h3>{title}</h3>
+                      <p className="muted">{detail}</p>
+                      {href ? (
+                        <a className="text-link" href={href}>
+                          {label}{" "}
+                          {external ? (
+                            <ArrowUpRight size={14} />
+                          ) : (
+                            <ArrowRight size={14} />
+                          )}
+                        </a>
+                      ) : (
+                        <p className="muted">
+                          Use the exam link in your invitation email.
+                        </p>
+                      )}
+                    </div>
+                  </li>
+                )
+              )}
+            </ul>
+          ) : (
+            <div className="quiet-state">
+              <span className="action-icon">
+                <ListChecks size={19} />
+              </span>
+              <p>No action needed right now.</p>
+            </div>
+          )}
         </section>
-        <aside className="dashboard-side">
-          <section className="panel" id="schedules">
+        {upcoming && (
+          <section className="panel" aria-labelledby="upcoming-heading">
             <div className="section-heading">
-              <h2>
-                <CalendarDays size={17} /> Jadwal interview
-              </h2>
+              <h2 id="upcoming-heading">Upcoming interview</h2>
             </div>
-            <div className="side-content">
-              {sessions.length ? (
-                [...sessions]
-                  .sort((x, y) =>
-                    x.scheduledStart.localeCompare(y.scheduledStart)
-                  )
-                  .map((s) => <SessionLink key={s.id} session={s} />)
-              ) : (
-                <p className="muted">
-                  Belum ada jadwal interview. Jadwal akan muncul setelah
-                  ditentukan oleh HR.
-                </p>
-              )}
+            <div className="task-row">
+              <span className="action-icon">
+                <CalendarDays size={18} />
+              </span>
+              <div>
+                <h3>{upcoming.sessionName}</h3>
+                <p className="muted">{date(upcoming.scheduledStart)}</p>
+                <a
+                  className="text-link"
+                  href={`${prefix}/sessions/${upcoming.id}`}
+                >
+                  View interview <ArrowRight size={14} />
+                </a>
+              </div>
             </div>
           </section>
-          <section className="panel" id="assignments">
-            <div className="section-heading">
-              <h2>
-                <FileText size={17} /> Tugas take-home
-              </h2>
-            </div>
-            <div className="side-content">
-              {sessions.some((s) => s.endedSubmissionAt) ? (
-                sessions
-                  .filter((s) => s.endedSubmissionAt)
-                  .map((s) => (
-                    <a
-                      className="assignment-row"
-                      key={s.id}
-                      href={`${prefix}/assignments?session=${s.id}`}
-                    >
-                      <strong>{s.sessionName}</strong>
-                      <span className="muted">
-                        Batas: {date(s.endedSubmissionAt)}
-                      </span>
-                      <span className="text-link">
-                        {s.isSubmitted
-                          ? "Lihat pengumpulan"
-                          : "Detail pengumpulan"}
-                        <ChevronRight size={14} />
-                      </span>
-                    </a>
-                  ))
-              ) : (
-                <p className="muted">
-                  Belum ada penugasan. Detail tugas akan dikirim melalui email
-                  interviewer.
-                </p>
-              )}
-            </div>
-          </section>
-        </aside>
+        )}
       </div>
-    </>
+    </div>
   )
 }

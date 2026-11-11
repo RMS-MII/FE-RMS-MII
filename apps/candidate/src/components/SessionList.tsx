@@ -40,27 +40,19 @@ export function SessionList({
   return (
     <section className="panel session-list">
       <div className="section-heading">
-        <div>
-          <p className="eyebrow">{application.codeApplication}</p>
-          <h2>{application.batchName}</h2>
-          <p className="muted">{application.departmentName}</p>
-        </div>
-        <span className="action-count">
-          {sessions.length} {assignments ? "tugas" : "jadwal"}
-        </span>
+        <h2>{assignments ? "Assigned work" : "Interview schedule"}</h2>
+        <span className="count">{sessions.length}</span>
       </div>
       {!sessions.length ? (
         <div className="empty">
           <Icon size={28} />
-          <h2>
-            {assignments
-              ? "Belum ada tugas take-home"
-              : "Belum ada jadwal interview"}
-          </h2>
+          <h3>
+            {assignments ? "No take-home tasks yet" : "No interviews yet"}
+          </h3>
           <p>
             {assignments
-              ? "Penugasan akan tampil setelah ditentukan oleh interviewer."
-              : "Jadwal akan tampil setelah ditentukan oleh tim HR."}
+              ? "Your interviewer’s assignments will appear here."
+              : "Scheduled interviews will appear here."}
           </p>
         </div>
       ) : (
@@ -77,7 +69,7 @@ export function SessionList({
                 </div>
                 {assignments ? (
                   <span className={`status ${s.isSubmitted ? "positive" : ""}`}>
-                    {s.isSubmitted ? "Sudah dikumpulkan" : "Belum dikumpulkan"}
+                    {s.isSubmitted ? "Submitted" : "Not submitted"}
                   </span>
                 ) : (
                   <Status value={s.status} />
@@ -86,7 +78,7 @@ export function SessionList({
               <dl className="session-list-meta">
                 <div>
                   <dt>
-                    {assignments ? "Batas pengumpulan" : "Waktu interview"}
+                    {assignments ? "Submission deadline" : "Interview time"}
                   </dt>
                   <dd>
                     {date(assignments ? s.endedSubmissionAt : s.scheduledStart)}
@@ -95,15 +87,15 @@ export function SessionList({
                 </div>
                 <div>
                   <dt>Interviewer</dt>
-                  <dd>{s.interviewers.join(", ") || "Belum ditentukan"}</dd>
+                  <dd>{s.interviewers.join(", ") || "To be confirmed"}</dd>
                 </div>
                 {!assignments && (
                   <div>
-                    <dt>Pelaksanaan</dt>
+                    <dt>Format</dt>
                     <dd>
                       {s.isOnline
                         ? "Online"
-                        : s.location || "Lokasi belum ditentukan"}
+                        : s.location || "Location to be confirmed"}
                     </dd>
                   </div>
                 )}
@@ -118,28 +110,26 @@ export function SessionList({
                         target="_blank"
                         rel="noreferrer"
                       >
-                        Buka materi take-home <ArrowUpRight size={15} />
+                        Open materials <ArrowUpRight size={15} />
                       </a>
                     )}
                     <Button
                       id={`submission-${s.id}`}
                       onClick={() => onSubmissionChange(s.id)}
                     >
-                      Detail pengumpulan
+                      View submission
                     </Button>
                   </div>
                 ) : (
                   <>
-                    <span className="muted">
-                      {s.canConfirm
-                        ? "Menunggu konfirmasi kehadiran Anda"
-                        : "Lihat detail untuk informasi jadwal"}
-                    </span>
                     <a
-                      className="primary-link"
+                      className={buttonVariants({
+                        variant: s.canConfirm ? "default" : "outline",
+                      })}
                       href={`${prefix}/sessions/${s.id}`}
                     >
-                      Tinjau jadwal <ArrowRight size={15} />
+                      {s.canConfirm ? "Review invitation" : "View interview"}{" "}
+                      <ArrowRight size={15} />
                     </a>
                   </>
                 )}

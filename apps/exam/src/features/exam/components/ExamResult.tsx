@@ -58,7 +58,7 @@ export function ExamResult({ result, candidateName }: ExamResultProps) {
                   {result.stageName}
                 </span>
               </div>
-              <div className="flex items-start justify-between gap-4">
+              {/* <div className="flex items-start justify-between gap-4">
                 <span className="flex items-center gap-2 text-xs text-muted-foreground">
                   <UserRound className="size-3.5 shrink-0" />
                   Status
@@ -69,7 +69,7 @@ export function ExamResult({ result, candidateName }: ExamResultProps) {
                 >
                   {formatStageStatus(result.status)}
                 </Badge>
-              </div>
+              </div> */}
               <div className="flex items-start justify-between gap-4">
                 <span className="flex items-center gap-2 text-xs text-muted-foreground">
                   <Clock3 className="size-3.5 shrink-0" />

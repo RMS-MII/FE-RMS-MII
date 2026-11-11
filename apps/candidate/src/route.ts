@@ -14,9 +14,9 @@ export const submissionSessionId = route?.[3]
     ? new URLSearchParams(window.location.search).get("session") || ""
     : ""
 export const pageTitle = interviewSessionId
-  ? "Detail interview"
+  ? "Interview details"
   : portalPage === "interviews"
-    ? "Jadwal interview"
+    ? "Interviews"
     : portalPage === "assignments"
-      ? "Tugas take-home"
-      : "Ringkasan"
+      ? "Take-home tasks"
+      : "Overview"
