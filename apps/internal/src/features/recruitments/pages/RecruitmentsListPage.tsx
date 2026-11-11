@@ -43,7 +43,6 @@ import { cn } from "@/shared/lib/utils"
 // Feature-owned data, api & types
 import type { Recruitment } from "../types"
 import { getRecruitmentStatusMeta } from "../types"
-import { activeCandidateCount } from "../data/mock"
 import { CreateRecruitmentDialog } from "../components/CreateRecruitmentDialog"
 import { OpenRecruitmentDialog } from "../components/OpenRecruitmentDialog"
 import { CloseRecruitmentDialog } from "../components/CloseRecruitmentDialog"
@@ -312,7 +311,7 @@ export function RecruitmentsListPage() {
                 /* 4. Data rows */
                 recruitments.map((recruitment) => {
                   const statusMeta = getRecruitmentStatusMeta(recruitment.status)
-                  const candidateCount = recruitment.stages ? activeCandidateCount(recruitment) : "—"
+                  const candidateCount = recruitment.activeCandidateCount ?? "—"
 
                   return (
                     <TableRow

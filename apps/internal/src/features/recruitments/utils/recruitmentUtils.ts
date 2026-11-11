@@ -56,6 +56,14 @@ export function validateRecruitmentFormData(formData: {
 
 /** Format current stage summary label for recruitment list table */
 export function formatCurrentStageText(r: Recruitment): string {
+  if (r.currentStageName !== undefined) {
+    if (r.currentStageName) return r.currentStageName
+    const status = String(r.status).toLowerCase()
+    return status === "closed" || status === "completed" || status === "3"
+      ? "All stages completed"
+      : "Not started"
+  }
+
   // If batchStages is provided from backend API
   if (r.batchStages && Array.isArray(r.batchStages)) {
     if (r.batchStages.length === 0) return "No stages"
