@@ -11,13 +11,13 @@ import {
   CandidatesTab,
   InterviewsTab,
 } from "../components/detail"
+import { getRecruitmentStatusMeta } from "../types"
 import { cn } from "@/shared/lib/utils"
 import {
   useRecruitmentDetail,
   type TabKey,
   type UseRecruitmentDetailProps,
 } from "../hooks/useRecruitmentDetail"
-import { isRecruitmentClosed } from "../utils/recruitmentUtils"
 
 export type { TabKey }
 
@@ -133,6 +133,8 @@ export function RecruitmentDetailPage(props: RecruitmentDetailPageProps) {
     )
   }
 
+  const isClosed = getRecruitmentStatusMeta(recruitment.status).label === "Closed"
+
   return (
     <div className="space-y-6">
       <RecruitmentDetailHeader recruitment={recruitment} />
@@ -142,7 +144,7 @@ export function RecruitmentDetailPage(props: RecruitmentDetailPageProps) {
           items={pipelineItems}
           selected={activeTab === "candidates" ? selectedStage : null}
           onSelect={handleStageSelect}
-          onCreateStage={isRecruitmentClosed(recruitment) ? undefined : handleCreateStage}
+          onCreateStage={isClosed ? undefined : handleCreateStage}
         />
         {recruitment.status === "draft" && (
           <p className="mt-2 text-xs text-muted-foreground">
@@ -205,7 +207,7 @@ export function RecruitmentDetailPage(props: RecruitmentDetailPageProps) {
         {activeTab === "stages" && (
           <StagesTab
             recruitment={recruitment}
-            onCreateStage={handleCreateStage}
+            onCreateStage={isClosed ? undefined : handleCreateStage}
             onEditStage={handleEditStage}
           />
         )}

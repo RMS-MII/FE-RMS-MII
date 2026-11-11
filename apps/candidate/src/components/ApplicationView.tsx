@@ -121,6 +121,14 @@ export function ApplicationView({
                         <Clock3 size={14} /> Stage deadline {date(stage.endAt)}
                       </p>
                     )}
+                  {stage?.sessions.map((session) => (
+                    <div key={session.id} className="mt-2">
+                      <a className="text-link" href={`${prefix}/sessions/${session.id}`}>
+                        View interview details <ArrowRight size={14} />
+                      </a>
+                      <p className="muted text-xs">{session.sessionName} · {date(session.scheduledStart)}</p>
+                    </div>
+                  ))}
                   </div>
                 </li>
               )

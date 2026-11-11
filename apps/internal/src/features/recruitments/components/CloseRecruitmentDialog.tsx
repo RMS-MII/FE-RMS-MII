@@ -159,8 +159,7 @@ export function CloseRecruitmentDialog({
                     <p className="font-medium">After closing this batch:</p>
                     <ul className="list-disc space-y-1.5 pl-4 text-xs leading-relaxed text-muted-foreground">
                       <li>
-                        Adding new candidates and scheduling new interviews will
-                        be disabled.
+                        Candidate applications and interview schedules become read-only.
                       </li>
                       <li>
                         Stage settings, interviewer assignments, and candidate decisions will be locked.

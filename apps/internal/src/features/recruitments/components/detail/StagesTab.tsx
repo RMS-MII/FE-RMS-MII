@@ -443,6 +443,7 @@ export function StagesTab({
                         ) : stageInterviewers.length === 0 ? (
                           <button
                             type="button"
+                            disabled={isClosed}
                             onClick={() => handleOpenAssignDialog(stage, index)}
                             className="group inline-flex cursor-pointer items-center gap-1.5 rounded-full border border-dashed border-border px-3 py-1 text-xs font-medium text-muted-foreground transition-colors hover:border-primary hover:text-primary"
                           >
@@ -517,7 +518,7 @@ export function StagesTab({
                       </TableCell>
 
                       <TableCell className="py-3.5 pr-5 text-center">
-                        {transitionAction ? (
+                        {!isClosed && transitionAction ? (
                           <Button
                             type="button"
                             size="sm"

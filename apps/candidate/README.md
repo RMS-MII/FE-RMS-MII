@@ -7,15 +7,15 @@ Aplikasi mandiri yang mengikuti shared UI aplikasi internal. Akses langsung lewa
 Dari root FE: `pnpm dev:candidate` (port 5175). Build: `pnpm build:candidate`.
 Buka `/portal/{candidateId}` menggunakan ID kandidat dari database. Aplikasi tidak menyertakan data demo saat dijalankan normal.
 
-Konfigurasi `.env.local`:
+Jalankan `pnpm dev:exam` (port 5174) agar tautan exam lokal dapat dibuka.
+Untuk mengganti alamat API atau exam, gunakan `.env.local`:
 
 ```dotenv
 VITE_API_BASE_URL=http://localhost:5160/api
-# Opsional, isi setelah route halaman disepakati dengan pemilik web exam:
-# VITE_EXAM_URL_TEMPLATE=https://exam.example/portal/{candidateId}/stages/{stageId}/test
+VITE_EXAM_URL_TEMPLATE=http://localhost:5174/portal/{candidateId}/stages/{stageId}/test
 ```
 
-Tanpa URL exam, portal menampilkan arahan untuk melihat undangan HR. Portal tidak memanggil GET test atau POST submit test.
+Build produksi perlu `VITE_EXAM_URL_TEMPLATE` yang mengarah ke host exam. Jika URL belum disetel, portal menampilkan arahan untuk melihat undangan HR. Portal tidak memanggil GET test atau POST submit test.
 
 ## Routing deployment dan email
 

@@ -33,7 +33,7 @@ export function getRecruitmentAddRestriction(
   if (action === "candidate" && stages.some((stage) =>
     ["active", "completed", "1", "2"].includes(String(stage.lifecycleStatus).toLowerCase())
   )) {
-    return null
+    return "Candidates cannot be added after the batch selection has started."
   }
 
   if (action === "interview" && getActiveRecruitmentInterviewStages(recruitment).length === 0) {
