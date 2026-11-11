@@ -124,7 +124,7 @@ export function ApplicationView({
             </div>
             <a
               className="primary-link"
-              href={`${prefix}/sessions/${s.id}/submission`}
+              href={`${prefix}/assignments?session=${s.id}`}
             >
               Kirim tugas <ArrowRight size={15} />
             </a>
@@ -229,7 +229,7 @@ export function ApplicationView({
                     <a
                       className="assignment-row"
                       key={s.id}
-                      href={`${prefix}/sessions/${s.id}/submission`}
+                      href={`${prefix}/assignments?session=${s.id}`}
                     >
                       <strong>{s.sessionName}</strong>
                       <span className="muted">

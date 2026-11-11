@@ -126,6 +126,9 @@ export interface MyInterviewItem {
   rescheduleRequest?: RescheduleRequestItem | null
 
   // Candidate take-home file submission if any (from InterviewSession table)
+  fileTakeHome?: string | null
+  candidateConfirmed?: boolean
+  canAssignTakeHome?: boolean
   fileSubmission?: string | null
   endedSubmissionAt?: string | null
 
@@ -141,6 +144,13 @@ export interface MyInterviewItem {
     gpa?: number
     education?: string
   }
+}
+
+export interface AssignTakeHomePayload {
+  fileTakeHome: string
+  endedSubmissionAt: string
+  taskTitle: string
+  instructions: string
 }
 
 export interface SubmitAssessmentPayload {
@@ -188,6 +198,8 @@ export interface InterviewerSessionDto {
   batchName: string
   stageName: string
   hasTakeHome: boolean
+  fileTakeHome?: string | null
+  canAssignTakeHome?: boolean
   endedSubmissionAt: string | null
   fileSubmission: string | null
   isLead: boolean

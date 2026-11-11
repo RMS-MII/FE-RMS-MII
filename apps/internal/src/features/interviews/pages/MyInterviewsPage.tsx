@@ -15,9 +15,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@workspace/ui/components/select"
-import type { MyInterviewItem, SubmitAssessmentPayload } from "../types"
+import type { AssignTakeHomePayload, MyInterviewItem, SubmitAssessmentPayload } from "../types"
 import { getApiError } from "@/shared/api/api-error"
 import {
+  useAssignTakeHomeMutation,
   useConfirmInterviewerSessionMutation,
   useGetInterviewerSessionsQuery,
   useSubmitInterviewerAssessmentMutation,
@@ -33,6 +34,7 @@ import {
   ConfirmAcceptInterviewDialog,
   InterviewAssessmentDialog,
   RequestRescheduleDialog,
+  AssignTakeHomeDialog,
 } from "../components"
 
 const statusItems = [
@@ -59,7 +61,12 @@ export function MyInterviewsPage() {
     isError,
     error,
     refetch,
-  } = useGetInterviewerSessionsQuery()
+  } = useGetInterviewerSessionsQuery(undefined, { refetchOnMountOrArgChange: true })
+  React.useEffect(() => {
+    const refresh = () => void refetch()
+    window.addEventListener("focus", refresh)
+    return () => window.removeEventListener("focus", refresh)
+  }, [refetch])
   const interviews = React.useMemo(
     () => (sessionDtos ?? []).map(mapInterviewerSession),
     [sessionDtos]
@@ -70,6 +77,16 @@ export function MyInterviewsPage() {
     useSubmitInterviewerAssessmentMutation()
   const [requestReschedule, { isLoading: isRequestingReschedule }] =
     useRequestInterviewerRescheduleMutation()
+
+  const [assignTakeHome, { isLoading: isAssigningTakeHome }] = useAssignTakeHomeMutation()
+  const [sessionToAssign, setSessionToAssign] = React.useState<MyInterviewItem | null>(null)
+  const [takeHomeNotice, setTakeHomeNotice] = React.useState<string | null>(null)
+
+  const handleAssignTakeHome = async (sessionId: string, body: AssignTakeHomePayload) => {
+    const result = await assignTakeHome({ sessionId, body }).unwrap()
+    setTakeHomeNotice(result.message)
+    setSessionToAssign(null)
+  }
 
   // Filters state
   const [search, setSearch] = React.useState("")
@@ -129,7 +146,7 @@ export function MyInterviewsPage() {
     } else if (statusFilter === "accepted") {
       result = result.filter((i) => i.status === "accepted")
     } else if (statusFilter === "needs_assessment") {
-      result = result.filter((i) => i.status === "accepted" && !i.assessment)
+      result = result.filter((i) => i.status === "accepted" && i.candidateConfirmed && !i.assessment)
     } else if (statusFilter === "completed") {
       result = result.filter((i) => i.status === "completed")
     } else if (statusFilter === "rescheduled") {
@@ -394,6 +411,9 @@ export function MyInterviewsPage() {
             {rescheduleNotice} Your request is waiting for HR review.
           </div>
         )}
+        {takeHomeNotice && (
+          <p className="border-b border-border px-5 py-3 text-sm" role="status">{takeHomeNotice}</p>
+        )}
         <MyInterviewsTable
           interviews={paginatedInterviews}
           isLoading={isLoading && !sessionDtos}
@@ -410,6 +430,10 @@ export function MyInterviewsPage() {
             if (!item.isLead) return
             setActionError(null)
             setSessionToAccept(item)
+          }}
+          onAssignTakeHome={(item) => {
+            setTakeHomeNotice(null)
+            setSessionToAssign(item)
           }}
           onSubmitAssessment={(item) => {
             setActionError(null)
@@ -470,6 +494,15 @@ export function MyInterviewsPage() {
           }}
           session={sessionToViewAssessment}
           readOnly
+        />
+      )}
+      {sessionToAssign && (
+        <AssignTakeHomeDialog
+          key={sessionToAssign.sessionId}
+          session={sessionToAssign}
+          onClose={() => setSessionToAssign(null)}
+          onAssign={handleAssignTakeHome}
+          busy={isAssigningTakeHome}
         />
       )}
       <RequestRescheduleDialog

@@ -1,6 +1,7 @@
 import { baseApi } from "@/shared/api/base-api"
 import type {
   ApiAssessmentRecommendation,
+  AssignTakeHomePayload,
   ConfirmInterviewResponseDto,
   InterviewerSessionDto,
   SubmitInterviewAssessmentDto,
@@ -14,6 +15,23 @@ import type {
 
 export const interviewerApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
+    assignTakeHome: builder.mutation<
+      { emailSent: boolean; message: string },
+      { sessionId: string; body: AssignTakeHomePayload }
+    >({
+      query: ({ sessionId, body }) => ({
+        url: `/interview-sessions/${sessionId}/take-home`,
+        method: "POST",
+        body,
+      }),
+      invalidatesTags: (result) => result
+        ? [
+            { type: "Interview", id: "INTERVIEWER_SESSIONS" },
+            { type: "Interview", id: "INTERVIEWER_DASHBOARD" },
+            { type: "Candidate", id: "APPLICATION_DETAILS" },
+          ]
+        : [],
+    }),
     requestInterviewerReschedule: builder.mutation<
       InterviewerRescheduleRequestDto,
       CreateRescheduleRequest
@@ -131,6 +149,7 @@ export const interviewerApi = baseApi.injectEndpoints({
 
 export const {
   useGetInterviewerSessionsQuery,
+  useAssignTakeHomeMutation,
   useRequestInterviewerRescheduleMutation,
   useConfirmInterviewerSessionMutation,
   useSubmitInterviewerAssessmentMutation,
