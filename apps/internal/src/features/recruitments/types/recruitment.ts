@@ -58,6 +58,8 @@ export interface Recruitment {
   createdAt?: string
   updatedAt?: string | null
   batchStages?: BatchStage[]
+  currentStageName?: string | null
+  activeCandidateCount?: number | null
 
   // Convenience aliases for UI components / mock compatibility
   code?: string
