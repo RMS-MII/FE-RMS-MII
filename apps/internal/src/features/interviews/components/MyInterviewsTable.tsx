@@ -10,7 +10,6 @@ import {
   AlertCircle,
   CheckCircle2,
   XCircle,
-  Users,
   CalendarClock,
   MoreHorizontal,
   FileText,
@@ -122,11 +121,7 @@ export function MyInterviewsTable({
               label="Mode & Logistics"
               className="min-w-44"
             />
-            <TableSortHeader
-              label="Interview Panel"
-              align="center"
-              className="min-w-36"
-            />
+            <TableSortHeader label="Interview Panel" className="min-w-48" />
             <TableSortHeader
               label="Attendance Status"
               sortKey="status"
@@ -317,119 +312,28 @@ export function MyInterviewsTable({
                     </div>
                   </TableCell>
 
-                  {/* Interview Panel (Co-interviewers) */}
-                  <TableCell className="py-3.5 text-center whitespace-nowrap text-xs">
-                    {item.coInterviewers && item.coInterviewers.length > 0 ? (
-                      <Popover>
-                        <PopoverTrigger
-                          render={
-                            <button
-                              type="button"
-                              className="inline-flex items-center gap-1.5 rounded-full bg-muted/60 hover:bg-muted p-1 pr-2.5 transition-colors cursor-pointer"
-                              title="Click to view panel members"
-                            >
-                              <div className="flex -space-x-1.5 overflow-hidden">
-                                <div
-                                  className="inline-flex size-5 rounded-full ring-2 ring-card bg-primary/20 text-primary font-bold text-[9px] items-center justify-center"
-                                  title="You"
-                                >
-                                  Me
-                                </div>
-                                {item.coInterviewers.slice(0, 2).map((co) => (
-                                  <div
-                                    key={co.id}
-                                    className="inline-flex size-5 rounded-full ring-2 ring-card bg-muted text-muted-foreground font-semibold text-[9px] items-center justify-center uppercase"
-                                    title={co.name}
-                                  >
-                                    {co.name.charAt(0)}
-                                  </div>
-                                ))}
-                                {item.coInterviewers.length > 2 && (
-                                  <div className="inline-flex size-5 rounded-full ring-2 ring-card bg-muted text-foreground font-bold text-[9px] items-center justify-center">
-                                    +{item.coInterviewers.length - 2}
-                                  </div>
-                                )}
-                              </div>
-                              <span className="text-[11px] font-medium text-foreground">
-                                {item.coInterviewers.length + 1} Panelists
+                  {/* Interview Panel */}
+                  <TableCell className="py-3.5 text-xs">
+                    {item.panelInterviewers.length > 0 ? (
+                      <div className="space-y-1.5">
+                        {item.panelInterviewers.map((member) => (
+                          <div key={member.id} className="flex items-center gap-1.5 whitespace-nowrap">
+                            <span className="max-w-36 truncate font-medium text-foreground" title={member.name}>
+                              {member.name}
+                            </span>
+                            {member.isCurrent && (
+                              <span className="text-[10px] text-muted-foreground">You</span>
+                            )}
+                            {member.isLead && (
+                              <span className="rounded-full bg-primary/10 px-1.5 py-0.5 text-[10px] font-semibold text-primary">
+                                Lead
                               </span>
-                            </button>
-                          }
-                        />
-                        <PopoverContent
-                          align="center"
-                          className="w-72 p-3.5 rounded-xl bg-card shadow-lg"
-                        >
-                          <div className="space-y-2 text-left">
-                            <div className="flex items-center justify-between border-b border-border/60 pb-1.5 text-xs font-semibold">
-                              <span className="flex items-center gap-1.5 text-foreground">
-                                <Users className="size-3.5 text-primary" />
-                                Panel Members
-                              </span>
-                              <span className="text-[10px] text-muted-foreground">
-                                {item.coInterviewers.length + 1} Interviewers
-                              </span>
-                            </div>
-
-                            <div className="space-y-1.5">
-                              {/* You */}
-                              <div className="flex items-center justify-between text-xs py-1">
-                                <div className="flex items-center gap-2 min-w-0">
-                                  <div className="size-5 rounded-full bg-primary/10 text-primary font-bold text-[10px] flex items-center justify-center shrink-0">
-                                    Me
-                                  </div>
-                                  <span className="font-medium text-foreground truncate">
-                                    {item.interviewerName} (You)
-                                  </span>
-                                </div>
-                                <span className="text-[10px] font-medium capitalize text-muted-foreground">
-                                  {item.status === "reschedule_requested"
-                                    ? "Reschedule"
-                                    : item.status}
-                                </span>
-                              </div>
-
-                              {/* Co-Interviewers */}
-                              {item.coInterviewers.map((co) => (
-                                <div
-                                  key={co.id}
-                                  className="flex items-center justify-between text-xs py-1 border-t border-border/30"
-                                >
-                                  <div className="flex items-center gap-2 min-w-0">
-                                    <div className="size-5 rounded-full bg-muted text-foreground font-semibold text-[10px] flex items-center justify-center shrink-0 uppercase">
-                                      {co.name.charAt(0)}
-                                    </div>
-                                    <div className="truncate">
-                                      <span className="font-medium text-foreground block truncate">
-                                        {co.name}
-                                      </span>
-                                      {co.role && (
-                                        <span className="text-[10px] text-muted-foreground block truncate">
-                                          {co.role}
-                                        </span>
-                                      )}
-                                    </div>
-                                  </div>
-                                  <span
-                                    className={cn(
-                                      "text-[10px] font-semibold shrink-0",
-                                      co.status === "accepted"
-                                        ? "text-emerald-600"
-                                        : "text-amber-600"
-                                    )}
-                                  >
-                                    {co.status === "accepted" ? "Confirmed" : "Pending"}
-                                  </span>
-                                </div>
-                              ))}
-                            </div>
+                            )}
                           </div>
-                        </PopoverContent>
-                      </Popover>
+                        ))}
+                      </div>
                     ) : (
-                      <span className="text-[11px] text-muted-foreground font-medium">
-                        Assigned to you
-                      </span>
+                      <span className="text-muted-foreground">Panel unavailable</span>
                     )}
                   </TableCell>
 
@@ -580,7 +484,7 @@ export function MyInterviewsTable({
                   {/* Action Buttons: Centered */}
                   <TableCell className="pr-5 py-3.5 text-center whitespace-nowrap">
                     {/* Attendance confirmation */}
-                    {isPending && (
+                    {isPending && item.isLead && (
                       <div className="flex items-center justify-center gap-1.5">
                         {onRequestReschedule && (
                           <Button type="button" variant="outline" size="sm" onClick={() => onRequestReschedule(item)} className="h-8 rounded-full px-3 text-xs">
@@ -597,6 +501,9 @@ export function MyInterviewsTable({
                           Accept
                         </Button>
                       </div>
+                    )}
+                    {isPending && !item.isLead && (
+                      <span className="text-xs text-muted-foreground">Awaiting lead confirmation</span>
                     )}
 
                     {/* Rescheduled sessions cannot be confirmed or assessed */}
@@ -632,7 +539,7 @@ export function MyInterviewsTable({
                                 <span>Submit Evaluation</span>
                               </DropdownMenuItem>
                             )}
-                            {onRequestReschedule && (
+                            {onRequestReschedule && item.isLead && (
                               <DropdownMenuItem
                                 onClick={() => onRequestReschedule(item)}
                                 className="cursor-pointer gap-2 text-xs font-medium"

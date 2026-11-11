@@ -24,8 +24,6 @@ export function SummaryTab({ recruitment }: SummaryTabProps) {
     .some((query) => query.isLoading)
   const countsError = [totalQuery, activeQuery, rejectedQuery, droppedQuery]
     .some((query) => query.isError)
-  const countsReady = !countsLoading && !countsError &&
-    totalQuery.data && activeQuery.data && rejectedQuery.data && droppedQuery.data
   const owner = employeesQuery.data?.find(
     (employee) => employee.id.toLowerCase() === recruitment.createdBy?.toLowerCase()
   )
@@ -55,7 +53,7 @@ export function SummaryTab({ recruitment }: SummaryTabProps) {
       "Candidates",
       countsLoading
         ? <Skeleton key="candidates-loading" className="h-4 w-72 max-w-full" />
-        : countsError || !countsReady
+        : countsError || !totalQuery.data || !activeQuery.data || !rejectedQuery.data || !droppedQuery.data
           ? "Unable to load candidate counts"
           : <span key="candidates" className="tabular-nums">
               {formatNumber(totalQuery.data.totalItems)} total, {formatNumber(activeQuery.data.totalItems)} active, {formatNumber(rejectedQuery.data.totalItems + droppedQuery.data.totalItems)} out of process

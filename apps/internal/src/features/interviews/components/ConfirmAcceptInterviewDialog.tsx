@@ -107,7 +107,7 @@ export function ConfirmAcceptInterviewDialog({
                       </div>
                       <div className="truncate">
                         <span className="font-medium text-foreground block truncate">
-                          {co.name}
+                          {co.name}{co.isLead ? " · Lead" : ""}
                         </span>
                         {co.role && (
                           <span className="text-xs text-muted-foreground block truncate">
@@ -118,11 +118,13 @@ export function ConfirmAcceptInterviewDialog({
                     </div>
 
                     <div className="shrink-0">
-                      {co.status === "accepted" ? (
+                      {co.status === "accepted" || co.status === "completed" ? (
                         <span className="inline-flex items-center gap-1 text-xs text-emerald-600 font-medium">
                           <CheckCircle2 className="size-3" />
-                          Confirmed
+                          {co.status === "completed" ? "Completed" : "Confirmed"}
                         </span>
+                      ) : co.status === "cancelled" ? (
+                        <span className="text-xs text-muted-foreground">Cancelled</span>
                       ) : (
                         <span className="inline-flex items-center gap-1 text-xs text-amber-600 font-medium">
                           <AlertCircle className="size-3" />
