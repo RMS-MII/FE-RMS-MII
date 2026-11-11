@@ -15,7 +15,7 @@ import {
   useGetRescheduleRequestsQuery,
 } from "../api/interviews-api"
 import type { ScheduleInterviewSessionRequest } from "../types"
-import { getRecruitmentAddRestriction } from "../utils/recruitmentUtils"
+import { getRecruitmentAddRestriction, isRecruitmentClosed } from "../utils/recruitmentUtils"
 import { getRecruitmentInterviewStages } from "../utils/stageUtils"
 
 export {
@@ -265,21 +265,23 @@ export function useInterviewsTab({
       applicationStageId: string
       body: ScheduleInterviewSessionRequest
     }) => {
+      if (!canScheduleInterview) throw new Error(scheduleRestriction ?? "Interview scheduling is unavailable.")
       await scheduleInterviewMutation({
         ...input,
         batchId: recruitment.id,
       }).unwrap()
     },
-    [scheduleInterviewMutation, recruitment.id]
+    [canScheduleInterview, scheduleRestriction, scheduleInterviewMutation, recruitment.id]
   )
 
   const handleOpenReviewReschedule = useCallback(
     (session: InterviewSessionItem) => {
+      if (isRecruitmentClosed(recruitment)) return
       setRescheduleSessionToReview(session)
       setIsReviewRescheduleOpen(true)
       onReviewReschedule?.(session)
     },
-    [onReviewReschedule]
+    [onReviewReschedule, recruitment]
   )
 
   const reviewReschedule = useCallback(
@@ -288,6 +290,7 @@ export function useInterviewsTab({
       decision: "Approved" | "Rejected",
       notes?: string
     ) => {
+      if (isRecruitmentClosed(recruitment)) throw new Error("Closed recruitment cannot be changed.")
       const requestId = sessions.find((session) => session.id === sessionId)
         ?.rescheduleRequest?.id
       if (!requestId)
@@ -301,7 +304,7 @@ export function useInterviewsTab({
       }).unwrap()
       setIsFilterPendingReschedule(false)
     },
-    [sessions, recruitment.id, reviewRescheduleMutation]
+    [sessions, recruitment, reviewRescheduleMutation]
   )
 
   const handleApproveReschedule = useCallback(

@@ -17,6 +17,7 @@ import {
   type TabKey,
   type UseRecruitmentDetailProps,
 } from "../hooks/useRecruitmentDetail"
+import { isRecruitmentClosed } from "../utils/recruitmentUtils"
 
 export type { TabKey }
 
@@ -141,7 +142,7 @@ export function RecruitmentDetailPage(props: RecruitmentDetailPageProps) {
           items={pipelineItems}
           selected={activeTab === "candidates" ? selectedStage : null}
           onSelect={handleStageSelect}
-          onCreateStage={handleCreateStage}
+          onCreateStage={isRecruitmentClosed(recruitment) ? undefined : handleCreateStage}
         />
         {recruitment.status === "draft" && (
           <p className="mt-2 text-xs text-muted-foreground">

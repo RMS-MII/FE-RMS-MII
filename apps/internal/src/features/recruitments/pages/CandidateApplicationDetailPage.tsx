@@ -42,6 +42,7 @@ function ApplicationDetailContent({
       currentData && belongsToBatch ? mapApplicationRecap(currentData) : null,
     [currentData, belongsToBatch]
   )
+  const isClosed = ["closed", "3"].includes(String(application?.batch.status ?? "").toLowerCase())
   const [evaluateStage, { isLoading: isEvaluating }] =
     useEvaluateStageMutation()
   const [selectedStageId, setSelectedStageId] = useState<string | null>(null)
@@ -121,7 +122,7 @@ function ApplicationDetailContent({
     status: EvaluateStageCommand["status"],
     notes: string
   ) => {
-    if (!application) return
+    if (!application || isClosed) throw new Error("Closed recruitment cannot be changed.")
     const stage = stages[selectedStageIndex]
     if (!stage?.applicationStageId) {
       throw new Error("This application stage has not been started.")
@@ -189,7 +190,7 @@ function ApplicationDetailContent({
                 </p>
               )}
             </div>
-            <OfferingLetterSection application={application} />
+            <OfferingLetterSection application={application} readOnly={isClosed} />
             <div
               className={
                 stages.length > 0
@@ -226,6 +227,7 @@ function ApplicationDetailContent({
               stage={stages[selectedStageIndex]}
               isViewingActiveStage={selectedStageIndex === activeStageIndex}
               usesBatchLifecycle={usesBatchLifecycle}
+              readOnly={isClosed}
               onEvaluateStage={handleEvaluateStage}
               onGoToActiveStage={activeStageIndex >= 0
                 ? () => setSelectedStageId(null)

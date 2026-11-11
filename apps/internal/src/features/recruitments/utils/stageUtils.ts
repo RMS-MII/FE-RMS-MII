@@ -68,6 +68,15 @@ export function getRecruitmentInterviewStages(recruitment: Recruitment): Pick<St
     }))
 }
 
+export function getActiveRecruitmentInterviewStages(recruitment: Recruitment): Pick<Stage, "id" | "name">[] {
+  const activeStageIds = new Set(
+    (recruitment.batchStages ?? [])
+      .filter((stage) => ["active", "1"].includes(String(stage.lifecycleStatus).toLowerCase()))
+      .map((stage) => stage.id)
+  )
+  return getRecruitmentInterviewStages(recruitment).filter((stage) => activeStageIds.has(stage.id))
+}
+
 /** Map StageTypeId to legacy stage category string using supplied stageTypes list */
 export function mapStageTypeToCategory(
   stageTypeId: string,

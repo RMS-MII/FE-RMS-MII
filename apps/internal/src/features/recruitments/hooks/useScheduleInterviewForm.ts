@@ -62,6 +62,7 @@ export function useScheduleInterviewForm({
       ).filter(
         (stage) => stage.applicationStageId &&
           stage.isStarted &&
+          ["active", "1"].includes(String(stage.lifecycleStatus).toLowerCase()) &&
           mapApplicationStageStatus(stage.status) === "in_progress"
       ),
     [applicationDetail]

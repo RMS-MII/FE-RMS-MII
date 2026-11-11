@@ -21,6 +21,7 @@ import {
 } from "../api/recruitments-api"
 import { getRecruitmentStatusMeta } from "../types"
 import type { Recruitment } from "../types"
+import { getRecruitmentCloseRestriction } from "../utils/recruitmentUtils"
 
 interface CloseRecruitmentDialogProps {
   recruitment: Recruitment
@@ -61,7 +62,8 @@ export function CloseRecruitmentDialog({
     useUpdateBatchStatusMutation()
   const statusMeta = batch ? getRecruitmentStatusMeta(batch.status) : null
   const isOpen = statusMeta?.label === "Open"
-  const canClose = Boolean(batch && isOpen && !isFetching && !isError)
+  const closeRestriction = batch ? getRecruitmentCloseRestriction(batch) : null
+  const canClose = Boolean(batch && isOpen && !closeRestriction && !isFetching && !isError)
 
   const handleOpenChange = (nextOpen: boolean) => {
     if (!isSubmitting) onOpenChange(nextOpen)
@@ -147,7 +149,11 @@ export function CloseRecruitmentDialog({
                 </div>
               </dl>
 
-              {isOpen ? (
+              {isOpen && closeRestriction ? (
+                <p role="status" className="rounded-xl bg-amber-500/10 px-4 py-3 text-sm text-amber-800">
+                  {closeRestriction}
+                </p>
+              ) : isOpen ? (
                 <>
                   <div className="space-y-2 rounded-xl bg-muted/50 p-4 text-sm text-foreground">
                     <p className="font-medium">After closing this batch:</p>
@@ -155,6 +161,9 @@ export function CloseRecruitmentDialog({
                       <li>
                         Adding new candidates and scheduling new interviews will
                         be disabled.
+                      </li>
+                      <li>
+                        Stage settings, interviewer assignments, and candidate decisions will be locked.
                       </li>
                       <li>
                         Existing candidates and interview sessions will keep

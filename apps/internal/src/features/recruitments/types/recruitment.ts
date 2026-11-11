@@ -60,6 +60,7 @@ export interface Recruitment {
   batchStages?: BatchStage[]
   currentStageName?: string | null
   activeCandidateCount?: number | null
+  canClose?: boolean | null
 
   // Convenience aliases for UI components / mock compatibility
   code?: string

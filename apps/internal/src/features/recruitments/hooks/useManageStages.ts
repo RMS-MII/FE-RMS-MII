@@ -1,6 +1,7 @@
 import { useState, useMemo, useEffect } from "react"
 import { formatWibTime, getWibDateKey, wibDateTimeInputToUtcISOString } from "@/shared/lib/utcDateTime"
 import { useNavigate } from "@tanstack/react-router"
+import { isRecruitmentClosed } from "../utils/recruitmentUtils"
 import {
   useGetBatchByIdQuery,
   useUpdateBatchStagesMutation,
@@ -206,6 +207,10 @@ export function useManageStages({ id }: UseManageStagesProps) {
 
   const handleSave = async () => {
     if (!recruitment) return
+    if (isRecruitmentClosed(recruitment)) {
+      setErrorMessage("Closed recruitment stages cannot be edited.")
+      return
+    }
 
     if (stages.length === 0) {
       setErrorMessage("At least one stage is required.")

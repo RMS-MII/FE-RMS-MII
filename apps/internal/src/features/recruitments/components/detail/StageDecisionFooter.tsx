@@ -13,6 +13,7 @@ export interface StageDecisionFooterProps {
   stage: CandidateApplicationStageItem | undefined
   isViewingActiveStage: boolean
   usesBatchLifecycle: boolean
+  readOnly?: boolean
   onEvaluateStage: (status: EvaluateStageCommand["status"], notes: string) => void | Promise<void>
   onGoToActiveStage?: () => void
   isEvaluating?: boolean
@@ -21,7 +22,7 @@ export interface StageDecisionFooterProps {
 
 export function StageDecisionFooter({
   application, stage, isViewingActiveStage, usesBatchLifecycle, onEvaluateStage,
-  onGoToActiveStage, isEvaluating = false, onBack,
+  onGoToActiveStage, isEvaluating = false, readOnly = false, onBack,
 }: StageDecisionFooterProps) {
   const formId = useId()
   const [decision, setDecision] = useState<"pass" | "fail" | null>(null)
@@ -32,7 +33,7 @@ export function StageDecisionFooter({
     (!usesBatchLifecycle ||
       ["active", "1"].includes(String(stage?.lifecycleStatus).toLowerCase()))
   const canDecide = Boolean(
-    stage?.applicationStageId && isActive && application.finalStatus == null &&
+    !readOnly && stage?.applicationStageId && isActive && application.finalStatus == null &&
     (stage.stageType === "test" || stage.stageType === "interview") &&
     (usesBatchLifecycle ||
       (application.status === "in_progress" &&
@@ -101,7 +102,9 @@ export function StageDecisionFooter({
             ) : (
               <p className="flex items-start gap-2 text-sm text-muted-foreground">
                 <Lock className="mt-0.5 size-4 shrink-0" aria-hidden />
-                {stage
+                {readOnly
+                  ? "This recruitment is closed. Candidate decisions are read-only."
+                  : stage
                   ? isRecorded
                     ? "The decision for this stage has already been recorded."
                     : "Decisions are available only for candidates in the active stage."

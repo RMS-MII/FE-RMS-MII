@@ -171,14 +171,16 @@ export function CandidatesTab({ recruitment }: CandidatesTabProps) {
         )}
 
         {/* Removable Active Filter Chips */}
+        {activeChips.length > 0 && (
         <div className="border-b border-border bg-muted/20 px-6 py-2.5">
           <FilterChips chips={activeChips} onReset={handleResetFilters} />
         </div>
+        )}
 
         {/* Candidate Application Table */}
         <div className="overflow-x-auto">
           <Table>
-            <TableHeader className="bg-card">
+            <TableHeader className="bg-muted/50">
               <TableRow className="hover:bg-transparent">
                 <TableHead className="w-12 pl-5 text-center">#</TableHead>
 

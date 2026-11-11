@@ -1,5 +1,18 @@
 import type { Recruitment } from "../types"
-import { getRecruitmentInterviewStages } from "./stageUtils"
+import { getActiveRecruitmentInterviewStages } from "./stageUtils"
+
+export function isRecruitmentClosed(recruitment: Recruitment): boolean {
+  return ["closed", "completed", "3"].includes(String(recruitment.status).toLowerCase())
+}
+
+export function getRecruitmentCloseRestriction(recruitment: Recruitment): string | null {
+  const stages = (recruitment.batchStages ?? []).filter((stage) => stage.isActive)
+  if (stages.length === 0) return "Configure at least one active stage before closing this recruitment."
+  if (stages.some((stage) => !["completed", "2"].includes(String(stage.lifecycleStatus).toLowerCase()))) {
+    return "Complete all active selection stages before closing this recruitment."
+  }
+  return null
+}
 
 /** Explain why new candidates or interviews cannot be added to a batch. */
 export function getRecruitmentAddRestriction(
@@ -20,11 +33,11 @@ export function getRecruitmentAddRestriction(
   if (action === "candidate" && stages.some((stage) =>
     ["active", "completed", "1", "2"].includes(String(stage.lifecycleStatus).toLowerCase())
   )) {
-    return "Candidates cannot be added after the batch selection has started."
+    return null
   }
 
-  if (action === "interview" && getRecruitmentInterviewStages(recruitment).length === 0) {
-    return "Configure an interview stage before scheduling interviews."
+  if (action === "interview" && getActiveRecruitmentInterviewStages(recruitment).length === 0) {
+    return "Activate an interview stage before scheduling interviews."
   }
 
   return null

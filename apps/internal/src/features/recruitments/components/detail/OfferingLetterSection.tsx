@@ -23,8 +23,10 @@ function isPending(status: string | null | undefined) {
 
 export function OfferingLetterSection({
   application,
+  readOnly = false,
 }: {
   application: CandidateApplicationDetailItem
+  readOnly?: boolean
 }) {
   const [url, setUrl] = useState(application.fileOfferingLetter ?? "")
   const [isConfirmOpen, setIsConfirmOpen] = useState(false)
@@ -38,6 +40,25 @@ export function OfferingLetterSection({
     application.status === "accepted" &&
     application.finalStatus === "accepted" &&
     isPending(application.offeringLetterStatus)
+
+  if (readOnly) {
+    return application.fileOfferingLetter ? (
+      <section className="space-y-2 border-b border-border p-6" aria-labelledby="offering-letter-title">
+        <h2 id="offering-letter-title" className="text-base font-semibold text-foreground">
+          Offering Letter
+        </h2>
+        <a
+          href={application.fileOfferingLetter}
+          target="_blank"
+          rel="noreferrer"
+          className="inline-flex items-center gap-2 break-all text-sm font-medium text-primary hover:underline"
+        >
+          Open current offering letter
+          <ExternalLink className="size-4 shrink-0" aria-hidden />
+        </a>
+      </section>
+    ) : null
+  }
 
   if (!canManageOffering) return null
 

@@ -5,6 +5,7 @@ import type { PipelineItem, StageState } from "../types"
 import { useGetBatchByIdQuery } from "../api/recruitments-api"
 import { useGetBatchApplicationsQuery } from "../api/applications-api"
 import { useGetBatchInterviewSessionsQuery } from "../api/interviews-api"
+import { isRecruitmentClosed } from "../utils/recruitmentUtils"
 
 export type TabKey =
   | "summary"
@@ -116,7 +117,7 @@ export function useRecruitmentDetail({
   }, [recruitment, candidatesCount, interviewsCount])
 
   const handleCreateStage = () => {
-    if (!recruitment) return
+    if (!recruitment || isRecruitmentClosed(recruitment)) return
     navigate({
       to: "/recruitments/$id/stages",
       params: { id: recruitment.id },
@@ -124,7 +125,7 @@ export function useRecruitmentDetail({
   }
 
   const handleEditStage = () => {
-    if (!recruitment) return
+    if (!recruitment || isRecruitmentClosed(recruitment)) return
     navigate({
       to: "/recruitments/$id/stages",
       params: { id: recruitment.id },

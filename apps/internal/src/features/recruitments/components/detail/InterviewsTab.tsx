@@ -17,6 +17,7 @@ import {
 import { Button } from "@workspace/ui/components/button"
 import { CalendarPlus, AlertTriangle } from "lucide-react"
 import { formatWibDate, formatWibTime } from "@/shared/lib/utcDateTime"
+import { isRecruitmentClosed } from "../../utils/recruitmentUtils"
 
 export interface InterviewsTabProps {
   recruitment: Recruitment
@@ -31,6 +32,7 @@ export function InterviewsTab({
   onViewSessionDetail,
   onReviewReschedule,
 }: InterviewsTabProps) {
+  const isClosed = isRecruitmentClosed(recruitment)
   const {
     canScheduleInterview,
     scheduleRestriction,
@@ -83,7 +85,7 @@ export function InterviewsTab({
   return (
     <Panel className="space-y-0">
       {/* Top Pending Reschedule Banner Alert (if any) */}
-      {pendingReschedules.length > 0 && !isFilterPendingReschedule && (
+      {pendingReschedules.length > 0 && !isFilterPendingReschedule && !isClosed && (
         <div className="flex flex-col items-start justify-between gap-3 border-b border-border bg-amber-50 px-5 py-3 text-xs text-amber-950 sm:flex-row sm:items-center">
           <div className="flex items-center gap-2.5">
             <AlertTriangle className="size-4 shrink-0 text-amber-600 dark:text-amber-400" />
@@ -261,7 +263,7 @@ export function InterviewsTab({
               selectedDate={selectedDate}
               onClearDateFilter={handleClearDateFilter}
               onViewDetail={onViewSessionDetail}
-              onReviewReschedule={handleOpenReviewReschedule}
+              onReviewReschedule={isClosed ? undefined : handleOpenReviewReschedule}
               isFilterPendingReschedule={isFilterPendingReschedule}
             />
           </div>
@@ -284,7 +286,7 @@ export function InterviewsTab({
       {/* Review Reschedule Dialog */}
       <ReviewRescheduleDialog
         key={rescheduleSessionToReview?.rescheduleRequest?.id ?? "no-request"}
-        open={isReviewRescheduleOpen}
+        open={isReviewRescheduleOpen && !isClosed}
         onOpenChange={setIsReviewRescheduleOpen}
         session={rescheduleSessionToReview}
         onApprove={handleApproveReschedule}

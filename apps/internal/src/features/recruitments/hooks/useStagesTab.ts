@@ -13,6 +13,7 @@ import {
 } from "../api/recruitments-api"
 import { stageCategoryToLegacyType } from "../utils/stageUtils"
 import { mapStageEmployeeStatus } from "../utils/statusAdapters"
+import { isRecruitmentClosed } from "../utils/recruitmentUtils"
 
 export function mapBatchStagesToStages(
   batchStages: BatchStageWithInterviewers[]
@@ -100,6 +101,7 @@ export function useStagesTab({ recruitment }: UseStagesTabProps) {
   )
 
   const handleOpenAssignDialog = (stage: Stage, index: number) => {
+    if (isRecruitmentClosed(recruitment)) return
     setAssignStage(stage)
     setAssignIndex(index)
     setIsDialogOpen(true)
@@ -115,6 +117,7 @@ export function useStagesTab({ recruitment }: UseStagesTabProps) {
     stageId: string,
     assignments: StageInterviewerAssignment[]
   ) => {
+    if (isRecruitmentClosed(recruitment)) throw new Error("Closed recruitment cannot be changed.")
     await assignInterviewersApi({
       batchId: recruitment.id,
       stageId,
@@ -124,11 +127,15 @@ export function useStagesTab({ recruitment }: UseStagesTabProps) {
     }).unwrap()
   }
 
-  const handleActivateStage = async (stageId: string) =>
-    activateStageApi({ batchId: recruitment.id, stageId }).unwrap()
+  const handleActivateStage = async (stageId: string) => {
+    if (isRecruitmentClosed(recruitment)) throw new Error("Closed recruitment cannot be changed.")
+    return activateStageApi({ batchId: recruitment.id, stageId }).unwrap()
+  }
 
-  const handleCompleteStage = async (stageId: string) =>
-    completeStageApi({ batchId: recruitment.id, stageId }).unwrap()
+  const handleCompleteStage = async (stageId: string) => {
+    if (isRecruitmentClosed(recruitment)) throw new Error("Closed recruitment cannot be changed.")
+    return completeStageApi({ batchId: recruitment.id, stageId }).unwrap()
+  }
 
   return {
     stages,
