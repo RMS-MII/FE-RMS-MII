@@ -17,6 +17,12 @@ export function getRecruitmentAddRestriction(
     return `This recruitment batch must be Open before ${actionLabel}.`
   }
 
+  if (action === "candidate" && stages.some((stage) =>
+    ["active", "completed", "1", "2"].includes(String(stage.lifecycleStatus).toLowerCase())
+  )) {
+    return "Candidates cannot be added after the batch selection has started."
+  }
+
   if (action === "interview" && getRecruitmentInterviewStages(recruitment).length === 0) {
     return "Configure an interview stage before scheduling interviews."
   }

@@ -215,6 +215,8 @@ export function useManageStages({ id }: UseManageStagesProps) {
     setErrorMessage(null)
 
     // Validation
+    const batchStart = toLocalDateTimeInput(recruitment.startDate ?? recruitment.openDate)
+    const batchEnd = toLocalDateTimeInput(recruitment.endDate ?? recruitment.closeDate, true)
     const stageNames = new Set<string>()
     for (let i = 0; i < stages.length; i++) {
       const s = stages[i]
@@ -244,6 +246,13 @@ export function useManageStages({ id }: UseManageStagesProps) {
         return
       }
       stageNames.add(name.toLowerCase())
+
+      if ((batchStart && s.startDate && s.startDate < batchStart) ||
+          (batchEnd && s.endDate && s.endDate > batchEnd)) {
+        setErrorMessage(`Stage "${name}" must be within the batch period (${batchStart.replace("T", " ")} to ${batchEnd.replace("T", " ")} WIB).`)
+        setSelectedTempId(s.tempId)
+        return
+      }
 
       if (!s.startDate) {
         setErrorMessage(`Stage "${name}" must have a start date.`)

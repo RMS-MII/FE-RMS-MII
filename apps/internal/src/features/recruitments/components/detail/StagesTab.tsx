@@ -45,6 +45,7 @@ import type {
   StageEmployeeStatus,
 } from "../../types"
 import { AssignInterviewersDialog } from "./AssignInterviewersDialog"
+import { useGetBatchApplicationsQuery } from "../../api/applications-api"
 import { useStagesTab } from "../../hooks/useStagesTab"
 import { CheckCircle2, CirclePlay, Pencil, UserPlus, X } from "lucide-react"
 import { useState } from "react"
@@ -159,6 +160,12 @@ export function StagesTab({
     const lifecycleStatus = normalizeLifecycleStatus(stage.lifecycleStatus)
     return lifecycleStatus === "active" || lifecycleStatus === "completed"
   })
+
+  const { currentData: eligibleCandidates } = useGetBatchApplicationsQuery(
+    { id: recruitment.id, status: 1, pageSize: 1 },
+    { skip: hasStartedLifecycle || configuredStages.length === 0 }
+  )
+  const canStartFirstStage = Boolean(eligibleCandidates?.totalItems)
 
   const handleConfirmTransition = async () => {
     if (!pendingTransition) return
@@ -351,6 +358,8 @@ export function StagesTab({
                         ? "complete"
                         : null
 
+                  const needsCandidates = transitionAction === "activate" &&
+                    !hasStartedLifecycle && !canStartFirstStage
                   const isInterviewStage =
                     stage.type === "interview" ||
                     stage.stageCategory === "Interview" ||
@@ -509,7 +518,10 @@ export function StagesTab({
                             size="sm"
                             variant={transitionAction === "complete" ? "default" : "outline"}
                             className="rounded-full"
-                            disabled={isTransitioning}
+                            disabled={isTransitioning || needsCandidates}
+                            title={needsCandidates
+                              ? "Register at least one eligible candidate before starting the first stage."
+                              : undefined}
                             onClick={() => {
                               setTransitionError(null)
                               setPendingTransition({ stage, action: transitionAction })

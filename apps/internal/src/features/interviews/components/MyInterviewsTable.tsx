@@ -54,6 +54,7 @@ export interface MyInterviewsTableProps {
   onAcceptInvitation?: (item: MyInterviewItem) => void
   onSubmitAssessment?: (item: MyInterviewItem) => void
   onViewAssessment?: (item: MyInterviewItem) => void
+  onAssignTakeHome?: (item: MyInterviewItem) => void
   onRequestReschedule?: (item: MyInterviewItem) => void
   onResetFilters?: () => void
   hasActiveFilters?: boolean
@@ -72,6 +73,7 @@ export function MyInterviewsTable({
   onAcceptInvitation,
   onSubmitAssessment,
   onViewAssessment,
+  onAssignTakeHome,
   onRequestReschedule,
   onResetFilters,
   hasActiveFilters = false,
@@ -204,6 +206,35 @@ export function MyInterviewsTable({
               const isDeclined = item.status === "declined"
               const isCompleted = item.status === "completed"
               const isCancelled = item.status === "cancelled"
+
+              let takeHomeRestriction: string | undefined
+              if (!item.canAssignTakeHome) {
+                if (!item.candidateConfirmed) {
+                  takeHomeRestriction = "Waiting for candidate confirmation"
+                } else {
+                  takeHomeRestriction = "Requires an active selection stage"
+                }
+              }
+
+              const takeHomeAction = onAssignTakeHome && (
+                <DropdownMenuItem
+                  disabled={!item.canAssignTakeHome}
+                  onClick={() => onAssignTakeHome(item)}
+                  className="items-start gap-2 text-xs font-medium data-disabled:opacity-100"
+                >
+                  <FileText className="mt-0.5 size-3.5" aria-hidden />
+                  <span className="whitespace-normal">
+                    <span className={cn("block", takeHomeRestriction && "text-muted-foreground")}>
+                      {item.fileTakeHome ? "Edit Take-home" : "Assign Take-home"}
+                    </span>
+                    {takeHomeRestriction && (
+                      <span className="mt-0.5 block text-[11px] font-normal text-muted-foreground">
+                        {takeHomeRestriction}
+                      </span>
+                    )}
+                  </span>
+                </DropdownMenuItem>
+              )
 
               return (
                 <TableRow
@@ -494,7 +525,7 @@ export function MyInterviewsTable({
                       {isAccepted && (
                         <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/15 px-2.5 py-0.5 text-[11px] font-semibold text-emerald-800 dark:text-emerald-300">
                           <CheckCircle2 className="size-3 text-emerald-600" />
-                          Confirmed
+                          {item.candidateConfirmed ? "Confirmed" : "Awaiting Candidate"}
                         </span>
                       )}
 
@@ -568,7 +599,7 @@ export function MyInterviewsTable({
                           {item.assessment.recommendation}
                         </span>
                       </div>
-                    ) : isAccepted ? (
+                    ) : isAccepted && item.candidateConfirmed ? (
                       <span className="text-[11px] font-medium text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full dark:bg-amber-950/30 dark:text-amber-400">
                         Awaiting Score
                       </span>
@@ -623,7 +654,8 @@ export function MyInterviewsTable({
                             <MoreHorizontal className="size-4" aria-hidden />
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="center" className="w-52 rounded-xl p-1 shadow-lg bg-card">
-                            {!item.assessment && onSubmitAssessment && (
+                            {takeHomeAction}
+                            {item.candidateConfirmed && !item.assessment && onSubmitAssessment && (
                               <DropdownMenuItem
                                 onClick={() => onSubmitAssessment(item)}
                                 className="cursor-pointer gap-2 text-xs font-medium"
@@ -664,6 +696,7 @@ export function MyInterviewsTable({
                             <MoreHorizontal className="size-4" aria-hidden />
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="center" className="w-52 rounded-xl p-1 shadow-lg bg-card">
+                            {takeHomeAction}
                             {item.assessment && onViewAssessment && (
                               <DropdownMenuItem
                                 onClick={() => onViewAssessment(item)}

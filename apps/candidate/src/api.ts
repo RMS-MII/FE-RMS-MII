@@ -10,6 +10,7 @@ export interface Session {
   meetingUrl?: string
 
   endedSubmissionAt?: string
+  fileTakeHome?: string
   fileSubmission?: string
   isSubmitted: boolean
 

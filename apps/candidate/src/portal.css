@@ -332,14 +332,7 @@ h3 {
   color: var(--muted-foreground);
   margin-bottom: 24px;
 }
-.detail-grid {
-  display: grid;
-  grid-template-columns: 1fr 340px;
-  gap: 24px;
-  align-items: start;
-}
-.detail,
-.take-home {
+.detail {
   padding: 28px;
 }
 .facts > div {
@@ -368,43 +361,6 @@ h3 {
   flex-wrap: wrap;
   margin-top: 24px;
 }
-.action-form {
-  display: grid;
-  gap: 16px;
-  border-top: 1px solid var(--border);
-  padding-top: 20px;
-  margin-top: 20px;
-}
-.action-form label {
-  font-size: 12px;
-  font-weight: 550;
-  display: grid;
-  gap: 8px;
-}
-.action-form textarea {
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  padding: 10px;
-  width: 100%;
-}
-.task-icon {
-  color: var(--primary);
-  margin-bottom: 18px;
-}
-.take-home h2 {
-  margin-bottom: 10px;
-}
-.task-deadline {
-  font-size: 11px;
-  color: var(--muted-foreground);
-  margin: 22px 0;
-}
-.task-deadline strong {
-  display: block;
-  color: var(--foreground);
-  font-size: 13px;
-  margin-top: 6px;
-}
 .portal-footer {
   border-top: 1px solid var(--border);
   padding: 24px max(24px, calc((100vw - 1160px) / 2));
@@ -415,8 +371,7 @@ h3 {
   gap: 12px;
 }
 @media (max-width: 800px) {
-  .portal-grid,
-  .detail-grid {
+  .portal-grid {
     grid-template-columns: 1fr;
   }
   .portal-main {
@@ -447,8 +402,7 @@ h3 {
     flex-direction: column;
   }
   .timeline,
-  .detail,
-  .take-home {
+  .detail {
     padding: 20px;
   }
   .portal-main {
@@ -887,10 +841,6 @@ h1 {
   font-size: 10px;
   margin-top: auto;
 }
-.detail-grid {
-  grid-template-columns: minmax(0, 1fr) 330px;
-  gap: 22px;
-}
 .detail {
   padding: 0 24px 24px;
 }
@@ -900,24 +850,6 @@ h1 {
 }
 .facts > div:first-child {
   border-top: 0;
-}
-.take-home {
-  padding: 24px;
-}
-.take-home h2 {
-  font-size: 15px;
-}
-.task-icon {
-  background: var(--primary-50);
-  border-radius: 9px;
-  width: 40px;
-  height: 40px;
-  display: grid;
-  place-items: center;
-}
-.action-form input,
-.action-form textarea {
-  background: var(--card);
 }
 .back {
   margin-bottom: 20px;
@@ -962,9 +894,6 @@ h1 {
   }
   .dashboard-side {
     grid-template-columns: 1fr 1fr;
-  }
-  .detail-grid {
-    grid-template-columns: 1fr;
   }
 }
 @media (max-width: 800px) {
@@ -1042,9 +971,6 @@ h1 {
   .sidebar-bottom {
     padding-top: 28px;
   }
-  .take-home {
-    padding: 20px;
-  }
   .dashboard-columns {
     gap: 20px;
   }
@@ -1074,13 +1000,6 @@ h1 {
 }
 .session-list .section-heading .muted {
   margin-top: 6px;
-}
-.list-note {
-  padding: 16px 22px;
-  font-size: 12px;
-  color: var(--muted-foreground);
-  border-bottom: 1px solid var(--border);
-  line-height: 1.7;
 }
 .session-list-item {
   padding: 24px;
@@ -1148,35 +1067,5 @@ h1 {
   .session-list .section-heading {
     align-items: flex-start;
     flex-direction: column;
-  }
-}
-
-.reschedule-fields {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 20px;
-}
-.reschedule-time-field {
-  min-width: 0;
-  display: grid;
-  gap: 10px;
-  border: 0;
-  padding: 0;
-}
-.action-form .reschedule-reason {
-  border: 0;
-  border-radius: 16px;
-  background: var(--muted);
-  padding: 12px 16px;
-  resize: vertical;
-}
-.reschedule-actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 10px;
-}
-@media (max-width: 480px) {
-  .reschedule-fields {
-    grid-template-columns: 1fr;
   }
 }

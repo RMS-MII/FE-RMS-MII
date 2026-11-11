@@ -1,15 +1,23 @@
-import { CalendarDays, FileText, ArrowRight } from "lucide-react"
-import { date } from "../api"
+import { CalendarDays, FileText, ArrowRight, ArrowUpRight } from "lucide-react"
+import { Button, buttonVariants } from "@workspace/ui/components/button"
+import { date, safeUrl } from "../api"
 import type { Application } from "../api"
 import { prefix } from "../route"
 import { Status } from "./Status"
+import { SubmissionDialog } from "./SubmissionDialog"
 
 export function SessionList({
   application,
   assignments,
+  submissionId,
+  onSubmissionChange,
+  refresh,
 }: {
   application: Application
   assignments: boolean
+  submissionId: string
+  onSubmissionChange: (id: string) => void
+  refresh: () => Promise<void>
 }) {
   const sessions = application.stages
     .flatMap((stage) =>
@@ -25,6 +33,9 @@ export function SessionList({
       )
     )
   const Icon = assignments ? FileText : CalendarDays
+  const submission = assignments
+    ? sessions.find(({ session }) => session.id === submissionId)?.session
+    : undefined
 
   return (
     <section className="panel session-list">
@@ -38,12 +49,6 @@ export function SessionList({
           {sessions.length} {assignments ? "tugas" : "jadwal"}
         </span>
       </div>
-      {assignments && (
-        <p className="list-note">
-          Detail tugas dikirim melalui email interviewer. Siapkan tautan Google
-          Drive hasil pengerjaan untuk dikumpulkan.
-        </p>
-      )}
       {!sessions.length ? (
         <div className="empty">
           <Icon size={28} />
@@ -104,28 +109,52 @@ export function SessionList({
                 )}
               </dl>
               <div className="session-list-footer">
-                <span className="muted">
-                  {assignments
-                    ? "Tugas untuk sesi interview ini"
-                    : s.canConfirm
-                      ? "Menunggu konfirmasi kehadiran Anda"
-                      : "Lihat detail untuk informasi jadwal"}
-                </span>
-                <a
-                  className="primary-link"
-                  href={`${prefix}/sessions/${s.id}${assignments ? "/submission" : ""}`}
-                >
-                  {assignments
-                    ? s.isSubmitted
-                      ? "Lihat pengumpulan"
-                      : "Detail pengumpulan"
-                    : "Tinjau jadwal"}
-                  <ArrowRight size={15} />
-                </a>
+                {assignments ? (
+                  <div className="flex flex-wrap gap-2">
+                    {safeUrl(s.fileTakeHome) && (
+                      <a
+                        className={buttonVariants({ variant: "outline" })}
+                        href={safeUrl(s.fileTakeHome)}
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        Buka materi take-home <ArrowUpRight size={15} />
+                      </a>
+                    )}
+                    <Button
+                      id={`submission-${s.id}`}
+                      onClick={() => onSubmissionChange(s.id)}
+                    >
+                      Detail pengumpulan
+                    </Button>
+                  </div>
+                ) : (
+                  <>
+                    <span className="muted">
+                      {s.canConfirm
+                        ? "Menunggu konfirmasi kehadiran Anda"
+                        : "Lihat detail untuk informasi jadwal"}
+                    </span>
+                    <a
+                      className="primary-link"
+                      href={`${prefix}/sessions/${s.id}`}
+                    >
+                      Tinjau jadwal <ArrowRight size={15} />
+                    </a>
+                  </>
+                )}
               </div>
             </article>
           ))}
         </div>
+      )}
+      {submission && (
+        <SubmissionDialog
+          key={submission.id}
+          session={submission}
+          onClose={() => onSubmissionChange("")}
+          refresh={refresh}
+        />
       )}
     </section>
   )

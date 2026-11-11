@@ -3,7 +3,14 @@ import { ArrowLeft, FileText, RefreshCw } from "lucide-react"
 import { Button } from "@workspace/ui/components/button"
 import { request } from "./api"
 import type { Tasks } from "./api"
-import { route, candidateId, prefix, portalPage, pageTitle } from "./route"
+import {
+  candidateId,
+  interviewSessionId,
+  pageTitle,
+  portalPage,
+  prefix,
+  submissionSessionId,
+} from "./route"
 import { PortalShell } from "./components/PortalShell"
 import { ApplicationView } from "./components/ApplicationView"
 import { SessionList } from "./components/SessionList"
@@ -17,6 +24,7 @@ export function App() {
   const [loading, setLoading] = useState(Boolean(candidateId))
 
   const [selected, setSelected] = useState("")
+  const [submissionId, setSubmissionId] = useState(submissionSessionId)
 
   const controller = useRef<AbortController | null>(null)
 
@@ -72,20 +80,42 @@ export function App() {
   }, [refresh])
 
   const app =
-    data?.applications.find((a) => a.id === selected) || data?.applications[0]
+    data?.applications.find((a) => a.id === selected) ||
+    (portalPage === "assignments"
+      ? data?.applications.find((a) =>
+          a.stages.some((stage) =>
+            stage.sessions.some(
+              (s) => s.endedSubmissionAt && s.id === submissionSessionId
+            )
+          )
+        ) ||
+        data?.applications.find((a) =>
+          a.stages.some((stage) =>
+            stage.sessions.some((s) => s.endedSubmissionAt)
+          )
+        )
+      : undefined) ||
+    data?.applications[0]
 
   const session = data?.applications
     .flatMap((a) => a.stages.flatMap((s) => s.sessions))
-    .find((s) => s.id === route?.[2])
+    .find((s) => s.id === interviewSessionId)
 
   return (
-    <PortalShell data={data} selected={app?.id} onSelect={setSelected}>
+    <PortalShell
+      data={data}
+      selected={app?.id}
+      onSelect={(id) => {
+        setSelected(id)
+        setSubmissionId("")
+      }}
+    >
       <main className="portal-main">
         <div className="page-heading">
           <div>
             <p className="eyebrow">LAMARAN SAYA</p>
             <h1>
-              {route?.[2]
+              {interviewSessionId
                 ? "Detail interview"
                 : portalPage !== "overview"
                   ? pageTitle
@@ -94,7 +124,7 @@ export function App() {
                     : "Perjalanan karier Anda"}
             </h1>
             <p className="muted">
-              {route?.[2]
+              {interviewSessionId
                 ? "Tinjau jadwal dan persiapkan langkah berikutnya."
                 : portalPage === "interviews"
                   ? "Lihat jadwal dan kelola kehadiran interview Anda."
@@ -131,12 +161,12 @@ export function App() {
 
             {loading && !data && (
               <div className="panel empty" role="status">
-                Memuat informasi rekrutmenâ€¦
+                Memuat informasi rekrutmen
               </div>
             )}
 
             {data &&
-              (route?.[2] ? (
+              (interviewSessionId ? (
                 session ? (
                   <>
                     <a className="back" href={prefix}>
@@ -162,8 +192,12 @@ export function App() {
                         <ApplicationView application={app} />
                       ) : (
                         <SessionList
+                          key={app.id}
                           application={app}
                           assignments={portalPage === "assignments"}
+                          submissionId={submissionId}
+                          onSubmissionChange={setSubmissionId}
+                          refresh={refresh}
                         />
                       )
                     ) : (

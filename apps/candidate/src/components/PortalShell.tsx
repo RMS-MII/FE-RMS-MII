@@ -12,7 +12,7 @@ import {
 } from "lucide-react"
 import { Button } from "@workspace/ui/components/button"
 import type { Tasks } from "../api"
-import { prefix, route, portalPage, pageTitle } from "../route"
+import { prefix, interviewSessionId, portalPage, pageTitle } from "../route"
 
 export function PortalShell({
   children,
@@ -44,9 +44,13 @@ export function PortalShell({
       <p className="nav-label">PORTAL KANDIDAT</p>
       <nav aria-label="Navigasi portal" className="portal-nav">
         <a
-          className={!route?.[2] && portalPage === "overview" ? "current" : ""}
+          className={
+            !interviewSessionId && portalPage === "overview" ? "current" : ""
+          }
           aria-current={
-            !route?.[2] && portalPage === "overview" ? "page" : undefined
+            !interviewSessionId && portalPage === "overview"
+              ? "page"
+              : undefined
           }
           href={prefix}
           onClick={() => dialog.current?.close()}
@@ -56,10 +60,12 @@ export function PortalShell({
         </a>
         <a
           className={
-            !route?.[2] && portalPage === "interviews" ? "current" : ""
+            !interviewSessionId && portalPage === "interviews" ? "current" : ""
           }
           aria-current={
-            !route?.[2] && portalPage === "interviews" ? "page" : undefined
+            !interviewSessionId && portalPage === "interviews"
+              ? "page"
+              : undefined
           }
           href={`${prefix}/interviews`}
           onClick={() => dialog.current?.close()}
@@ -69,10 +75,12 @@ export function PortalShell({
         </a>
         <a
           className={
-            !route?.[2] && portalPage === "assignments" ? "current" : ""
+            !interviewSessionId && portalPage === "assignments" ? "current" : ""
           }
           aria-current={
-            !route?.[2] && portalPage === "assignments" ? "page" : undefined
+            !interviewSessionId && portalPage === "assignments"
+              ? "page"
+              : undefined
           }
           href={`${prefix}/assignments`}
           onClick={() => dialog.current?.close()}
@@ -96,7 +104,7 @@ export function PortalShell({
                   onSelect(a.id)
                   dialog.current?.close()
                 }}
-                disabled={Boolean(route?.[2])}
+                disabled={Boolean(interviewSessionId)}
               >
                 <BriefcaseBusiness size={16} />
                 <span>
