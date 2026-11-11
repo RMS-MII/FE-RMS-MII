@@ -41,10 +41,14 @@ export function SubmissionDialog({
       await request(`${prefix}/sessions/${session.id}/submission`, {
         fileSubmission: link.trim(),
       })
-      setMessage("Tautan tugas berhasil disimpan.")
+      setMessage("Your submission link was saved.")
       await refresh()
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Pengumpulan tugas gagal.")
+      setError(
+        e instanceof Error
+          ? e.message
+          : "Could not save your submission. Try again."
+      )
     } finally {
       lock.current = false
       setBusy(false)
@@ -54,17 +58,17 @@ export function SubmissionDialog({
   return (
     <Dialog open onOpenChange={(open) => !open && !busy && onClose()}>
       <DialogContent
-        className="max-h-[90dvh] overflow-y-auto rounded-2xl p-6 sm:max-w-lg"
+        className="portal-dialog max-h-[90dvh] overflow-y-auto rounded-2xl p-6 sm:max-w-lg"
         showCloseButton={!busy}
         finalFocus={() => document.getElementById(`submission-${session.id}`)}
       >
         <DialogHeader>
-          <DialogTitle>Detail pengumpulan</DialogTitle>
+          <DialogTitle>Take-home submission</DialogTitle>
           <DialogDescription>{session.sessionName}</DialogDescription>
         </DialogHeader>
-        <div className="space-y-3 rounded-xl border bg-muted/40 p-4 text-sm">
+        <div className="space-y-3 rounded-xl border border-border bg-muted/40 p-4 text-sm">
           <dl>
-            <dt className="text-muted-foreground">Batas pengumpulan</dt>
+            <dt className="text-muted-foreground">Submission deadline</dt>
             <dd className="mt-1 font-medium">
               {date(session.endedSubmissionAt)}
             </dd>
@@ -76,11 +80,11 @@ export function SubmissionDialog({
               target="_blank"
               rel="noreferrer"
             >
-              Buka materi take-home <ArrowUpRight size={15} />
+              Open materials <ArrowUpRight size={15} />
             </a>
           ) : (
             <p className="text-muted-foreground">
-              Lihat email penugasan untuk materi dan instruksi.
+              See your assignment email for materials and instructions.
             </p>
           )}
           {submitted && (
@@ -91,7 +95,7 @@ export function SubmissionDialog({
                 target="_blank"
                 rel="noreferrer"
               >
-                Lihat tugas terkirim <ArrowUpRight size={15} />
+                View submitted work <ArrowUpRight size={15} />
               </a>
             </p>
           )}
@@ -103,7 +107,7 @@ export function SubmissionDialog({
           {session.canUploadSubmission ? (
             <div className="space-y-2">
               <label className="font-medium" htmlFor="submission-url">
-                Tautan Google Drive
+                Google Drive link
               </label>
               <Input
                 id="submission-url"
@@ -119,14 +123,12 @@ export function SubmissionDialog({
                 disabled={busy}
                 placeholder="https://drive.google.com/…"
               />
-              <p className="text-xs text-muted-foreground">
-                Pastikan interviewer dapat membuka tautan hasil tugas Anda.
+              <p className="text-sm text-muted-foreground">
+                Make sure your interviewer has permission to open this link.
               </p>
             </div>
           ) : (
-            <p className="text-muted-foreground">
-              Pengumpulan tugas sudah ditutup.
-            </p>
+            <p className="text-muted-foreground">Submissions are closed.</p>
           )}
           {error && (
             <p className="text-destructive" role="alert">
@@ -145,15 +147,15 @@ export function SubmissionDialog({
               onClick={onClose}
               disabled={busy}
             >
-              Tutup
+              Close
             </Button>
             {session.canUploadSubmission && (
               <Button type="submit" disabled={busy}>
                 {busy
-                  ? "Menyimpan…"
+                  ? "Saving…"
                   : session.isSubmitted
-                    ? "Perbarui tautan"
-                    : "Kirim tugas"}
+                    ? "Update submission"
+                    : "Submit work"}
               </Button>
             )}
           </DialogFooter>

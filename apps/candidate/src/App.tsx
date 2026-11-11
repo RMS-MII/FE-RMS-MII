@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react"
-import { ArrowLeft, FileText, RefreshCw } from "lucide-react"
+import { ArrowLeft, BriefcaseBusiness, FileText, RefreshCw } from "lucide-react"
 import { Button } from "@workspace/ui/components/button"
 import { request } from "./api"
 import type { Tasks } from "./api"
@@ -15,9 +15,11 @@ import { PortalShell } from "./components/PortalShell"
 import { ApplicationView } from "./components/ApplicationView"
 import { SessionList } from "./components/SessionList"
 import { SessionDetail } from "./components/SessionDetail"
+import { Status } from "./components/Status"
 
 export function App() {
-  const [data, setData] = useState<Tasks>()
+  const [result, setResult] = useState<{ data: Tasks; fetchedAt: number }>()
+  const data = result?.data
 
   const [error, setError] = useState("")
 
@@ -42,11 +44,16 @@ export function App() {
     setError("")
 
     try {
-      setData(await request<Tasks>(`${prefix}/tasks`, undefined, abort.signal))
+      const data = await request<Tasks>(
+        `${prefix}/tasks`,
+        undefined,
+        abort.signal
+      )
+      setResult({ data, fetchedAt: Date.now() })
     } catch (e) {
       if (!abort.signal.aborted)
         setError(
-          e instanceof Error ? e.message : "Tidak dapat terhubung ke server."
+          e instanceof Error ? e.message : "Could not connect. Try again."
         )
     } finally {
       if (!abort.signal.aborted) setLoading(false)
@@ -58,11 +65,11 @@ export function App() {
     controller.current = abort
     if (candidateId) {
       request<Tasks>(`${prefix}/tasks`, undefined, abort.signal)
-        .then(setData)
+        .then((data) => setResult({ data, fetchedAt: Date.now() }))
         .catch((e: unknown) => {
           if (!abort.signal.aborted)
             setError(
-              e instanceof Error ? e.message : "Tidak dapat memuat portal."
+              e instanceof Error ? e.message : "Could not load the portal."
             )
         })
         .finally(() => {
@@ -81,6 +88,13 @@ export function App() {
 
   const app =
     data?.applications.find((a) => a.id === selected) ||
+    (interviewSessionId
+      ? data?.applications.find((a) =>
+          a.stages.some((stage) =>
+            stage.sessions.some((s) => s.id === interviewSessionId)
+          )
+        )
+      : undefined) ||
     (portalPage === "assignments"
       ? data?.applications.find((a) =>
           a.stages.some((stage) =>
@@ -97,9 +111,10 @@ export function App() {
       : undefined) ||
     data?.applications[0]
 
-  const session = data?.applications
-    .flatMap((a) => a.stages.flatMap((s) => s.sessions))
+  const session = app?.stages
+    .flatMap((stage) => stage.sessions)
     .find((s) => s.id === interviewSessionId)
+  const overview = !interviewSessionId && portalPage === "overview"
 
   return (
     <PortalShell
@@ -110,36 +125,38 @@ export function App() {
         setSubmissionId("")
       }}
     >
-      <main className="portal-main">
+      <main className="portal-main" id="main-content" tabIndex={-1}>
         <div className="page-heading">
           <div>
-            <p className="eyebrow">LAMARAN SAYA</p>
-            <h1>
-              {interviewSessionId
-                ? "Detail interview"
-                : portalPage !== "overview"
-                  ? pageTitle
-                  : data
-                    ? `Halo, ${data.candidateName.split(" ")[0]}.`
-                    : "Perjalanan karier Anda"}
-            </h1>
-            <p className="muted">
-              {interviewSessionId
-                ? "Tinjau jadwal dan persiapkan langkah berikutnya."
-                : portalPage === "interviews"
-                  ? "Lihat jadwal dan kelola kehadiran interview Anda."
-                  : portalPage === "assignments"
-                    ? "Pantau batas pengumpulan dan kirim tautan hasil tugas Anda."
-                    : "Pantau proses seleksi dan kelola jadwal Anda di sini."}
-            </p>
+            {session && (
+              <a className="back" href={prefix}>
+                <ArrowLeft size={15} /> Back to overview
+              </a>
+            )}
+            <div className="heading-title">
+              <h1>
+                {session?.sessionName ??
+                  (overview && app ? app.batchName : pageTitle)}
+              </h1>
+              {overview && app && <Status value={app.status} />}
+              {session && <Status value={session.status} />}
+            </div>
+            {app && (
+              <p className="application-context">
+                <BriefcaseBusiness size={15} aria-hidden="true" />
+                <span>{overview ? app.departmentName : app.batchName}</span>
+                <span className="application-code">{app.codeApplication}</span>
+              </p>
+            )}
           </div>
           {candidateId && (
             <Button
+              className="refresh-button"
               variant="outline"
               disabled={loading}
               onClick={() => void refresh()}
             >
-              <RefreshCw size={15} /> Perbarui
+              <RefreshCw size={15} /> Refresh
             </Button>
           )}
         </div>
@@ -147,31 +164,28 @@ export function App() {
         {!candidateId ? (
           <div className="panel empty">
             <FileText />
-            <h2>Buka tautan undangan Anda</h2>
-            <p>Gunakan tautan portal yang dikirimkan tim HR melalui email.</p>
+            <h2>Open your invitation link</h2>
+            <p>Use the candidate portal link from your recruitment email.</p>
           </div>
         ) : (
           <>
             {error && (
               <div className="notice error" role="alert">
                 {error}{" "}
-                <button onClick={() => void refresh()}>Coba lagi</button>
+                <button onClick={() => void refresh()}>Try again</button>
               </div>
             )}
 
             {loading && !data && (
               <div className="panel empty" role="status">
-                Memuat informasi rekrutmen
+                Loading your application…
               </div>
             )}
 
-            {data &&
+            {result &&
               (interviewSessionId ? (
                 session ? (
                   <>
-                    <a className="back" href={prefix}>
-                      <ArrowLeft size={16} /> Semua lamaran
-                    </a>
                     <SessionDetail
                       key={session.id}
                       session={session}
@@ -180,8 +194,10 @@ export function App() {
                   </>
                 ) : (
                   <div className="panel empty">
-                    <h2>Jadwal tidak ditemukan</h2>
-                    <a href={prefix}>Kembali ke lamaran</a>
+                    <h2>Interview not found</h2>
+                    <a className="text-link" href={`${prefix}/interviews`}>
+                      Back to interviews
+                    </a>
                   </div>
                 )
               ) : (
@@ -189,7 +205,10 @@ export function App() {
                   <section>
                     {app ? (
                       portalPage === "overview" ? (
-                        <ApplicationView application={app} />
+                        <ApplicationView
+                          application={app}
+                          asOf={result.fetchedAt}
+                        />
                       ) : (
                         <SessionList
                           key={app.id}
@@ -202,10 +221,10 @@ export function App() {
                       )
                     ) : (
                       <div className="panel empty">
-                        <h2>Belum ada lamaran</h2>
+                        <h2>No applications yet</h2>
                         <p>
-                          Informasi seleksi akan tampil setelah didaftarkan oleh
-                          tim HR.
+                          Your application will appear when the recruitment team
+                          adds it.
                         </p>
                       </div>
                     )}
