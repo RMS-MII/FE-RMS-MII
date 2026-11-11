@@ -399,11 +399,6 @@ export function CandidatesTab({ recruitment }: CandidatesTabProps) {
                       <TableCell className="py-3.5 whitespace-nowrap">
                         <div className="flex flex-col items-start gap-1.5">
                           <StatusBadge tone={statusTone}>{statusLabel}</StatusBadge>
-                          {parsedStageIndex === null && displayStatus === "submitted" && (
-                            <span className="text-xs text-muted-foreground">
-                              Application: In Progress
-                            </span>
-                          )}
                         </div>
                       </TableCell>
 

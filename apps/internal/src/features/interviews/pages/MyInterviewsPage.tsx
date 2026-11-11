@@ -254,7 +254,7 @@ export function MyInterviewsPage() {
   }
 
   const handleConfirmAccept = async () => {
-    if (!sessionToAccept) return
+    if (!sessionToAccept?.isLead) return
     setActionError(null)
     try {
       await confirmSession(sessionToAccept.id).unwrap()
@@ -427,6 +427,7 @@ export function MyInterviewsPage() {
           hasActiveFilters={activeChips.length > 0}
           onResetFilters={handleResetFilters}
           onAcceptInvitation={(item) => {
+            if (!item.isLead) return
             setActionError(null)
             setSessionToAccept(item)
           }}
@@ -442,6 +443,7 @@ export function MyInterviewsPage() {
             setSessionToViewAssessment(item)
           }}
           onRequestReschedule={(item) => {
+            if (!item.isLead) return
             setActionError(null)
             setSessionToReschedule(item)
           }}

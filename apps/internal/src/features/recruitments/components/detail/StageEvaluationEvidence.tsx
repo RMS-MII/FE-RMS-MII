@@ -225,7 +225,7 @@ export function StageEvaluationEvidence({
                 </p>
               </div>
               {answers.length > 0 && (
-                <Button type="button" variant="outline" onClick={() => setAnswersOpen(true)}>
+                <Button type="button" variant="outline" onClick={() => setAnswersOpen(true)} className="rounded-full">
                   View answers
                 </Button>
               )}
@@ -412,8 +412,8 @@ export function StageEvaluationEvidence({
                 </li>
               ))}
             </ol>
-            <DialogFooter className="shrink-0 border-t border-border bg-card px-6 py-4">
-              <Button type="button" variant="outline" onClick={() => setAnswersOpen(false)}>
+            <DialogFooter className="border-t border-border bg-card px-9 pb-9">
+              <Button type="button" variant="outline" onClick={() => setAnswersOpen(false)} className="rounded-full">
                 Close
               </Button>
             </DialogFooter>

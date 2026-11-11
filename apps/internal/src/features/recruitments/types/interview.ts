@@ -92,6 +92,7 @@ export interface ScheduledInterviewerDto {
   departmentName: string
   status: SessionInterviewStatusValue
   statusName?: string
+  isLead: boolean
 }
 
 export interface AvailableInterviewerDto {
@@ -141,6 +142,7 @@ export interface ScheduleInterviewSessionRequest {
   location?: string | null
   meetingUrl?: string | null
   interviewerEmployeeIds: string[]
+  leadEmployeeId: string
 }
 
 export interface RescheduleRequestDto {
@@ -178,6 +180,7 @@ export interface InterviewerAssignmentItem {
   employeeId: string
   employeeName: string
   employeeEmail: string
+  isLead?: boolean
   role?: string
   status:
     | "assigned"

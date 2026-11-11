@@ -41,7 +41,12 @@ export interface CoInterviewerItem {
   email: string
   avatar?: string
   role?: string // e.g. "Frontend Architect", "Engineering Manager", "Lead HR"
-  status: "pending" | "accepted" | "declined"
+  status: "pending" | "accepted" | "completed" | "cancelled"
+  isLead: boolean
+}
+
+export interface InterviewPanelMemberItem extends CoInterviewerItem {
+  isCurrent: boolean
 }
 
 export interface RescheduleRequestItem {
@@ -110,9 +115,11 @@ export interface MyInterviewItem {
   interviewerEmployeeId?: string
   interviewerName: string
   interviewerEmail: string
+  isLead: boolean
   declineReason?: string | null
 
   // Co-interviewers assigned to this same interview session
+  panelInterviewers: InterviewPanelMemberItem[]
   coInterviewers?: CoInterviewerItem[]
 
   // Reschedule request if any (from RescheduleRequest table)
@@ -195,6 +202,15 @@ export interface InterviewerSessionDto {
   canAssignTakeHome?: boolean
   endedSubmissionAt: string | null
   fileSubmission: string | null
+  isLead: boolean
+  panelInterviewers: {
+    sessionInterviewId: string
+    fullName: string
+    email: string
+    jobTitle: string
+    status: SessionInterviewStatusValue
+    isLead: boolean
+  }[]
   isAssessmentSubmitted: boolean
   assessmentScore: number | null
   assessmentRecommendation: ApiAssessmentRecommendation | number | null
