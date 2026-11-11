@@ -9,44 +9,39 @@ import {
   PanelHeader,
   StatCard,
   StatusBadge,
+  type Tone,
 } from "@/shared/components"
 import { useBatchDashboard } from "../hooks"
-import { useGetCandidatesQuery } from "@/features/candidates/api/candidates-api"
-import { mapBatchStatusDto } from "@/features/candidates/hooks"
+import { useGetBatchesQuery } from "../api/recruitments-api"
+import { getRecruitmentStatusMeta } from "../types"
 
 interface ActiveTask {
-  candidateId: string
   batchId: string
   batchName: string
-  candidateName: string
-  status: string
+  statusLabel: string
+  statusTone: Tone
 }
 
 export function DashboardPage() {
   const navigate = useNavigate()
   const { data, isLoading, isError, refetch } = useBatchDashboard()
-  const { data: candidatesData } = useGetCandidatesQuery()
+  const {
+    data: batchesData,
+    isLoading: isBatchesLoading,
+    isError: isBatchesError,
+  } = useGetBatchesQuery({ page: 1, pageSize: 10, status: 2 })
 
   const activeTasks = useMemo<ActiveTask[]>(() => {
-    const tasks: ActiveTask[] = []
-
-    for (const item of candidatesData?.items ?? []) {
-      for (const batch of item.assignedBatches ?? []) {
-        const status = mapBatchStatusDto(batch.applicationStatus)
-        if (status === "In Progress") {
-          tasks.push({
-            candidateId: item.id,
-            batchId: batch.batchId,
-            batchName: batch.batchName,
-            candidateName: item.fullName,
-            status,
-          })
-        }
+    return (batchesData?.items ?? []).map((batch) => {
+      const statusMeta = getRecruitmentStatusMeta(batch.status)
+      return {
+        batchId: batch.id,
+        batchName: batch.name,
+        statusLabel: statusMeta.label,
+        statusTone: statusMeta.tone,
       }
-    }
-
-    return tasks
-  }, [candidatesData])
+    })
+  }, [batchesData])
 
   return (
     <div className="space-y-6 pb-12">
@@ -117,34 +112,44 @@ export function DashboardPage() {
           <Panel>
             <PanelHeader
               title="Active Tasks"
-              description="Candidates currently in an active recruitment batch."
+              description="Recruitment batches that are currently open."
             />
-            {activeTasks.length > 0 ? (
+            {isBatchesLoading ? (
+              <div className="px-5 py-12 text-center text-sm text-muted-foreground">
+                Loading active tasks...
+              </div>
+            ) : isBatchesError ? (
+              <div className="px-5 py-12 text-center text-sm text-muted-foreground">
+                Failed to load active tasks.
+              </div>
+            ) : activeTasks.length > 0 ? (
               <ul>
                 {activeTasks.map((task) => (
                   <li
-                    key={`${task.candidateId}-${task.batchId}`}
+                    key={task.batchId}
                     className="border-b border-border last:border-b-0"
                   >
                     <button
                       type="button"
                       onClick={() =>
                         navigate({
-                          to: "/candidates/$id",
-                          params: { id: task.candidateId },
+                          to: "/recruitments/$id",
+                          params: { id: task.batchId },
                         })
                       }
                       className="flex w-full items-center justify-between gap-3 px-5 py-4 text-left transition-colors hover:bg-muted/50"
                     >
                       <div className="min-w-0">
                         <p className="truncate text-sm font-medium text-foreground">
-                          {task.candidateName}
-                        </p>
-                        <p className="truncate text-xs text-muted-foreground">
                           {task.batchName}
                         </p>
+                        <p className="truncate text-xs text-muted-foreground">
+                          Open recruitment task
+                        </p>
                       </div>
-                      <StatusBadge tone="info">{task.status}</StatusBadge>
+                      <StatusBadge tone={task.statusTone}>
+                        {task.statusLabel}
+                      </StatusBadge>
                     </button>
                   </li>
                 ))}
