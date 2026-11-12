@@ -172,6 +172,7 @@ export function mapApplicationRecap(
   const candidate = dto.candidate
   return {
     id: dto.id,
+    isStandalone: dto.isStandalone,
     candidateId: dto.candidateId,
     recruitmentBatchId: dto.recruitmentBatchId,
     codeApplication: dto.codeApplication,

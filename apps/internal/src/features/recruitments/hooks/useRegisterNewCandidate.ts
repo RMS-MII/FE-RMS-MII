@@ -66,6 +66,9 @@ export function useRegisterNewCandidate({
     if (!email.trim() || !email.includes("@")) {
       newErrors.email = "A valid email address is required."
     }
+    if (!phone.trim()) {
+      newErrors.phone = "Phone number is required."
+    }
     if (!birthDate.trim()) {
       newErrors.birthDate = "Birth date is required."
     }
@@ -137,6 +140,7 @@ export function useRegisterNewCandidate({
 
       const newApplication: CandidateApplicationItem = {
         id: createdItem.id,
+        isStandalone: createdItem.isStandalone,
         candidateId: createdItem.candidateId,
         recruitmentBatchId: recruitment.id,
         codeApplication: createdItem.codeApplication,

@@ -35,6 +35,7 @@ import {
 } from "@/shared/components"
 import { getApiError } from "@/shared/api/api-error"
 import { safeFormatDate } from "@/shared/lib/format"
+import { parseUtcDateTime, safeFormatWibDateTime } from "@/shared/lib/utcDateTime"
 import { cn } from "@/shared/lib/utils"
 import { formatStageCategory } from "../../utils"
 import type {
@@ -45,10 +46,9 @@ import type {
   StageEmployeeStatus,
 } from "../../types"
 import { AssignInterviewersDialog } from "./AssignInterviewersDialog"
-import { useGetBatchApplicationsQuery } from "../../api/applications-api"
 import { useStagesTab } from "../../hooks/useStagesTab"
 import { CheckCircle2, CirclePlay, Pencil, UserPlus, X } from "lucide-react"
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { isRecruitmentClosed } from "../../utils/recruitmentUtils"
 
 export interface StagesTabProps {
@@ -162,12 +162,16 @@ export function StagesTab({
     const lifecycleStatus = normalizeLifecycleStatus(stage.lifecycleStatus)
     return lifecycleStatus === "active" || lifecycleStatus === "completed"
   })
-
-  const { currentData: eligibleCandidates } = useGetBatchApplicationsQuery(
-    { id: recruitment.id, status: 1, pageSize: 1 },
-    { skip: hasStartedLifecycle || configuredStages.length === 0 }
-  )
-  const canStartFirstStage = Boolean(eligibleCandidates?.totalItems)
+  const deadline = recruitment.applicationDeadlineAt
+  const cutoff = deadline ? parseUtcDateTime(deadline).getTime() : 0
+  const [now, setNow] = useState(Date.now)
+  const applicationsOpen = cutoff > now
+  useEffect(() => {
+    if (!applicationsOpen || hasStartedLifecycle) return
+    const delay = Math.min(Math.max(0, cutoff - Date.now()), 2_147_483_647)
+    const timer = window.setTimeout(() => setNow(Date.now()), delay)
+    return () => window.clearTimeout(timer)
+  }, [applicationsOpen, cutoff, hasStartedLifecycle, now])
 
   const handleConfirmTransition = async () => {
     if (!pendingTransition || isClosed) return
@@ -269,6 +273,11 @@ export function StagesTab({
             }
           />
 
+          {!isClosed && !hasStartedLifecycle && applicationsOpen && (
+            <p role="status" className="border-b border-border bg-primary-50 px-5 py-3 text-sm text-foreground">
+              Public applications close {safeFormatWibDateTime(deadline)}. You can activate the first stage after that.
+            </p>
+          )}
           {transitionError && (
             <div
               role="alert"
@@ -362,8 +371,8 @@ export function StagesTab({
                         ? "complete"
                         : null
 
-                  const needsCandidates = transitionAction === "activate" &&
-                    !hasStartedLifecycle && !canStartFirstStage
+                  const waitingForDeadline = transitionAction === "activate" &&
+                    !hasStartedLifecycle && applicationsOpen
                   const isInterviewStage =
                     stage.type === "interview" ||
                     stage.stageCategory === "Interview" ||
@@ -524,9 +533,9 @@ export function StagesTab({
                             size="sm"
                             variant={transitionAction === "complete" ? "default" : "outline"}
                             className="rounded-full"
-                            disabled={isTransitioning || needsCandidates}
-                            title={needsCandidates
-                              ? "Register at least one eligible candidate before starting the first stage."
+                            disabled={isTransitioning || waitingForDeadline}
+                            title={waitingForDeadline
+                              ? `Applications close ${safeFormatWibDateTime(deadline)}.`
                               : undefined}
                             onClick={() => {
                               setTransitionError(null)

@@ -1,6 +1,7 @@
 import { Skeleton } from "@workspace/ui/components/skeleton"
 import { Panel } from "@/shared/components"
 import { formatDate, formatNumber } from "@/shared/lib/format"
+import { safeFormatWibDateTime } from "@/shared/lib/utcDateTime"
 import { useGetBatchApplicationsQuery } from "../../api/applications-api"
 import { useGetEmployeesQuery } from "../../api/employees-api"
 import type { Recruitment } from "../../types"
@@ -41,6 +42,7 @@ export function SummaryTab({ recruitment }: SummaryTabProps) {
     ],
     ["Position", recruitment.name],
     ["Department", recruitment.departmentName || "—"],
+    ["Application Deadline", safeFormatWibDateTime(recruitment.applicationDeadlineAt, "Not set")],
     [
       "Period",
       recruitment.startDate && recruitment.endDate

@@ -5,6 +5,7 @@ Aplikasi mandiri yang mengikuti shared UI aplikasi internal. Akses langsung lewa
 ## Menjalankan
 
 Dari root FE: `pnpm dev:candidate` (port 5175). Build: `pnpm build:candidate`.
+Buka `http://localhost:5175/jobs` untuk melihat lowongan dan mengirim lamaran.
 Buka `/portal/{candidateId}` menggunakan ID kandidat dari database. Aplikasi tidak menyertakan data demo saat dijalankan normal.
 
 Jalankan `pnpm dev:exam` (port 5174) agar tautan exam lokal dapat dibuka.

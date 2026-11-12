@@ -376,6 +376,11 @@ export function CandidatesTab({ recruitment }: CandidatesTabProps) {
                         <span className="rounded bg-muted/50 px-2 py-0.5 font-mono text-xs font-medium text-muted-foreground">
                           {app.codeApplication}
                         </span>
+                        {app.isStandalone && (
+                          <span className="ml-2 rounded-full bg-primary-50 px-2 py-0.5 text-xs font-medium text-primary">
+                            Standalone
+                          </span>
+                        )}
                       </TableCell>
 
                       {/* Stage Name (BatchStage.StageName) */}
