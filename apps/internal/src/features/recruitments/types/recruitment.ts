@@ -114,7 +114,7 @@ export function getRecruitmentStatusMeta(status: any): RecruitmentStatusMeta {
 
   const str = String(val ?? "").toLowerCase()
   if (str === "draft" || str === "1") {
-    return { label: "Draft", tone: "neutral" }
+    return { label: "Draft", tone: "warning" }
   }
   if (str === "open" || str === "running" || str === "2") {
     return { label: "Open", tone: "success" }

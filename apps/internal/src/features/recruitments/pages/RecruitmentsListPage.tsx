@@ -316,7 +316,8 @@ export function RecruitmentsListPage() {
                   return (
                     <TableRow
                       key={recruitment.id}
-                      className="border-b border-border transition-colors hover:bg-muted/40"
+                      className="cursor-pointer border-b border-border transition-colors hover:bg-muted/40"
+                      onClick={() => handleViewDetail(recruitment.id)}
                     >
                       <TableCell className="pl-5 whitespace-nowrap">
                         <span className="font-mono text-sm font-medium text-muted-foreground">
@@ -328,7 +329,10 @@ export function RecruitmentsListPage() {
                         <div className="flex flex-col">
                           <button
                             type="button"
-                            onClick={() => handleViewDetail(recruitment.id)}
+                            onClick={(event) => {
+                              event.stopPropagation()
+                              handleViewDetail(recruitment.id)
+                            }}
                             className="text-left text-sm font-semibold text-foreground transition-colors hover:text-primary hover:underline cursor-pointer"
                           >
                             {recruitment.name}
@@ -360,7 +364,10 @@ export function RecruitmentsListPage() {
                         </StatusBadge>
                       </TableCell>
 
-                      <TableCell className="pr-5 text-right whitespace-nowrap">
+                      <TableCell
+                        className="pr-5 text-right whitespace-nowrap"
+                        onClick={(event) => event.stopPropagation()}
+                      >
                         <DropdownMenu>
                           <DropdownMenuTrigger
                             render={
