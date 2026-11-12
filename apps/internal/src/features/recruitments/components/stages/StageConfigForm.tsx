@@ -9,7 +9,7 @@ import {
 } from "@workspace/ui/components/select"
 import { DateTimeRangePicker } from "@/shared/components"
 import type { StageTypeDto } from "../../types"
-import { formatStageCategory, stageCategoryToLegacyType } from "../../utils"
+import { formatStageCategory, mapStageTypeToCategory } from "../../utils"
 import type { EditableStage } from "./types"
 
 export interface StageConfigFormProps {
@@ -26,10 +26,13 @@ export function StageConfigForm({
   stageTypes,
   onFieldChange,
 }: StageConfigFormProps) {
+  const requiresPassingScore =
+    mapStageTypeToCategory(stage.stageTypeId, stageTypes, stage.type) === "test"
+
   const handleStageTypeChange = (stageTypeId: string) => {
     const selectedType = stageTypes.find((item) => item.id === stageTypeId)
     onFieldChange("stageTypeId", stageTypeId)
-    onFieldChange("type", stageCategoryToLegacyType(selectedType?.stageCategory))
+    onFieldChange("type", mapStageTypeToCategory(stageTypeId, stageTypes))
 
     if (
       selectedType &&
@@ -92,7 +95,7 @@ export function StageConfigForm({
 
       <div className="space-y-1.5">
         <label htmlFor={`${stage.tempId}-score`} className="text-xs font-semibold text-foreground">
-          Passing Score (%) {stage.type === "test" ? (
+          Passing Score (%) {requiresPassingScore ? (
             <span className="text-destructive">*</span>
           ) : (
             <span className="font-normal text-muted-foreground">(Optional)</span>
@@ -104,7 +107,7 @@ export function StageConfigForm({
           min={0}
           max={100}
           step="0.01"
-          required={stage.type === "test"}
+          required={requiresPassingScore}
           value={stage.passingScore ?? ""}
           onChange={(event) =>
             onFieldChange("passingScore", event.target.value === "" ? null : Number(event.target.value))

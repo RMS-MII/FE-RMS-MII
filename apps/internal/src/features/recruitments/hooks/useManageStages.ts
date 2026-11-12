@@ -14,6 +14,7 @@ import type {
 } from "../types"
 import type { EditableStage } from "../components/stages"
 import {
+  mapStageTypeToCategory,
   reorderArray,
   stageCategoryToLegacyType,
 } from "../utils"
@@ -252,7 +253,8 @@ export function useManageStages({ id }: UseManageStagesProps) {
       }
       stageNames.add(name.toLowerCase())
 
-      if (s.type === "test" && s.passingScore == null) {
+      const stageCategory = mapStageTypeToCategory(s.stageTypeId, stageTypes, s.type)
+      if (stageCategory === "test" && s.passingScore == null) {
         setErrorMessage(`Test stage "${name}" requires a passing score.`)
         setSelectedTempId(s.tempId)
         return
