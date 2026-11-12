@@ -20,6 +20,7 @@ import { Route as AuthCandidatesIdRouteImport } from './routes/_auth/candidates/
 import { Route as AuthInterviewsIndexRouteImport } from './routes/_auth/interviews/index'
 import { Route as AuthRecruitmentsIndexRouteImport } from './routes/_auth/recruitments/index'
 import { Route as AuthInterviewsSchedulesIndexRouteImport } from './routes/_auth/interviews/schedules/index'
+import { Route as AuthInterviewsSchedulesSessionInterviewIdRouteImport } from './routes/_auth/interviews/schedules/$sessionInterviewId'
 import { Route as AuthInterviewsStagesIndexRouteImport } from './routes/_auth/interviews/stages/index'
 import { Route as AuthRecruitmentsIdIndexRouteImport } from './routes/_auth/recruitments/$id/index'
 import { Route as AuthRecruitmentsIdStagesRouteImport } from './routes/_auth/recruitments/$id/stages'
@@ -80,6 +81,12 @@ const AuthInterviewsSchedulesIndexRoute =
     path: '/interviews/schedules/',
     getParentRoute: () => AuthRoute,
   } as any)
+const AuthInterviewsSchedulesSessionInterviewIdRoute =
+  AuthInterviewsSchedulesSessionInterviewIdRouteImport.update({
+    id: '/interviews/schedules/$sessionInterviewId',
+    path: '/interviews/schedules/$sessionInterviewId',
+    getParentRoute: () => AuthRoute,
+  } as any)
 const AuthInterviewsStagesIndexRoute =
   AuthInterviewsStagesIndexRouteImport.update({
     id: '/interviews/stages/',
@@ -114,6 +121,7 @@ export interface FileRoutesByFullPath {
   '/candidates/': typeof AuthCandidatesIndexRoute
   '/interviews/': typeof AuthInterviewsIndexRoute
   '/recruitments/': typeof AuthRecruitmentsIndexRoute
+  '/interviews/schedules/$sessionInterviewId': typeof AuthInterviewsSchedulesSessionInterviewIdRoute
   '/recruitments/$id/stages': typeof AuthRecruitmentsIdStagesRoute
   '/interviews/schedules/': typeof AuthInterviewsSchedulesIndexRoute
   '/interviews/stages/': typeof AuthInterviewsStagesIndexRoute
@@ -130,6 +138,7 @@ export interface FileRoutesByTo {
   '/candidates': typeof AuthCandidatesIndexRoute
   '/interviews': typeof AuthInterviewsIndexRoute
   '/recruitments': typeof AuthRecruitmentsIndexRoute
+  '/interviews/schedules/$sessionInterviewId': typeof AuthInterviewsSchedulesSessionInterviewIdRoute
   '/recruitments/$id/stages': typeof AuthRecruitmentsIdStagesRoute
   '/interviews/schedules': typeof AuthInterviewsSchedulesIndexRoute
   '/interviews/stages': typeof AuthInterviewsStagesIndexRoute
@@ -148,6 +157,7 @@ export interface FileRoutesById {
   '/_auth/candidates/': typeof AuthCandidatesIndexRoute
   '/_auth/interviews/': typeof AuthInterviewsIndexRoute
   '/_auth/recruitments/': typeof AuthRecruitmentsIndexRoute
+  '/_auth/interviews/schedules/$sessionInterviewId': typeof AuthInterviewsSchedulesSessionInterviewIdRoute
   '/_auth/recruitments/$id/stages': typeof AuthRecruitmentsIdStagesRoute
   '/_auth/interviews/schedules/': typeof AuthInterviewsSchedulesIndexRoute
   '/_auth/interviews/stages/': typeof AuthInterviewsStagesIndexRoute
@@ -166,6 +176,7 @@ export interface FileRouteTypes {
     | '/candidates/'
     | '/interviews/'
     | '/recruitments/'
+    | '/interviews/schedules/$sessionInterviewId'
     | '/recruitments/$id/stages'
     | '/interviews/schedules/'
     | '/interviews/stages/'
@@ -182,6 +193,7 @@ export interface FileRouteTypes {
     | '/candidates'
     | '/interviews'
     | '/recruitments'
+    | '/interviews/schedules/$sessionInterviewId'
     | '/recruitments/$id/stages'
     | '/interviews/schedules'
     | '/interviews/stages'
@@ -199,6 +211,7 @@ export interface FileRouteTypes {
     | '/_auth/candidates/'
     | '/_auth/interviews/'
     | '/_auth/recruitments/'
+    | '/_auth/interviews/schedules/$sessionInterviewId'
     | '/_auth/recruitments/$id/stages'
     | '/_auth/interviews/schedules/'
     | '/_auth/interviews/stages/'
@@ -290,6 +303,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthInterviewsSchedulesIndexRouteImport
       parentRoute: typeof AuthRoute
     }
+    '/_auth/interviews/schedules/$sessionInterviewId': {
+      id: '/_auth/interviews/schedules/$sessionInterviewId'
+      path: '/interviews/schedules/$sessionInterviewId'
+      fullPath: '/interviews/schedules/$sessionInterviewId'
+      preLoaderRoute: typeof AuthInterviewsSchedulesSessionInterviewIdRouteImport
+      parentRoute: typeof AuthRoute
+    }
     '/_auth/interviews/stages/': {
       id: '/_auth/interviews/stages/'
       path: '/interviews/stages'
@@ -330,6 +350,7 @@ interface AuthRouteChildren {
   AuthCandidatesIndexRoute: typeof AuthCandidatesIndexRoute
   AuthInterviewsIndexRoute: typeof AuthInterviewsIndexRoute
   AuthRecruitmentsIndexRoute: typeof AuthRecruitmentsIndexRoute
+  AuthInterviewsSchedulesSessionInterviewIdRoute: typeof AuthInterviewsSchedulesSessionInterviewIdRoute
   AuthRecruitmentsIdStagesRoute: typeof AuthRecruitmentsIdStagesRoute
   AuthInterviewsSchedulesIndexRoute: typeof AuthInterviewsSchedulesIndexRoute
   AuthInterviewsStagesIndexRoute: typeof AuthInterviewsStagesIndexRoute
@@ -346,6 +367,8 @@ const AuthRouteChildren: AuthRouteChildren = {
   AuthCandidatesIndexRoute: AuthCandidatesIndexRoute,
   AuthInterviewsIndexRoute: AuthInterviewsIndexRoute,
   AuthRecruitmentsIndexRoute: AuthRecruitmentsIndexRoute,
+  AuthInterviewsSchedulesSessionInterviewIdRoute:
+    AuthInterviewsSchedulesSessionInterviewIdRoute,
   AuthRecruitmentsIdStagesRoute: AuthRecruitmentsIdStagesRoute,
   AuthInterviewsSchedulesIndexRoute: AuthInterviewsSchedulesIndexRoute,
   AuthInterviewsStagesIndexRoute: AuthInterviewsStagesIndexRoute,
