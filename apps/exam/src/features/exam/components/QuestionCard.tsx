@@ -55,7 +55,7 @@ export function QuestionCard({
       <CardContent className="px-5 py-6 sm:px-6 sm:py-7">
         <h2
           id={`question-${question.id}`}
-          className="font-heading text-lg leading-relaxed font-semibold tracking-tight text-foreground sm:text-xl"
+          className="scroll-mt-24 font-heading text-lg leading-relaxed font-semibold tracking-tight text-foreground sm:text-xl"
         >
           {question.questionText}
         </h2>

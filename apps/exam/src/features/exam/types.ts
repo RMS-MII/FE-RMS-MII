@@ -63,4 +63,22 @@ export interface SubmitTestResult {
   serverTimeUtc: string
 }
 
+export interface SubmitAnswerResult {
+  applicationStageId: string
+  batchStageId: string
+  stageName: string
+  submittedAnswerCount: number
+  serverTimeUtc: string
+}
+
+export interface FinishTestResult {
+  applicationStageId: string
+  batchStageId: string
+  stageName: string
+  status: string | number
+  completedAt: string | null
+  totalScore: number | null
+  serverTimeUtc: string
+}
+
 export type ExamAnswers = Record<string, string[]>

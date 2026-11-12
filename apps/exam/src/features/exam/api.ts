@@ -1,6 +1,9 @@
 import type {
   CandidateTest,
+  FinishTestResult,
   StartTestResult,
+  SubmitAnswerResult,
+  SubmitTestAnswer,
   SubmitTestCommand,
   SubmitTestResult,
 } from "./types"
@@ -123,5 +126,42 @@ export function submitCandidateTest(
       body: JSON.stringify(command),
     },
     signal
+  )
+}
+
+export function submitCandidateTestAnswer(
+  params: {
+    candidateId: string
+    stageId: string
+    answers: SubmitTestAnswer[]
+  },
+  signal?: AbortSignal
+) {
+  return request<SubmitAnswerResult>(
+    `/portal/${encodeURIComponent(params.candidateId)}/stages/${encodeURIComponent(params.stageId)}/test/answers`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        answers: params.answers,
+      }),
+      signal,
+    }
+  )
+}
+
+export function finishCandidateTest(
+  candidateId: string,
+  stageId: string,
+  signal?: AbortSignal
+) {
+  return request<FinishTestResult>(
+    `/portal/${encodeURIComponent(candidateId)}/stages/${encodeURIComponent(stageId)}/test/finish`,
+    {
+      method: "POST",
+      signal,
+    }
   )
 }

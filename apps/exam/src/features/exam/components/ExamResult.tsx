@@ -2,18 +2,16 @@ import { CheckCircle2, Clock3, FileCheck2 } from "lucide-react"
 import { Badge } from "@workspace/ui/components/badge"
 import { Card, CardContent } from "@workspace/ui/components/card"
 import { Brand } from "./Brand"
-import type { SubmitTestResult } from "../types"
+import type { FinishTestResult } from "../types"
 import { formatDateTime } from "../utils"
 
 interface ExamResultProps {
-  result: SubmitTestResult
+  result: FinishTestResult
   candidateName: string
 }
 
 export function ExamResult({ result, candidateName }: ExamResultProps) {
-  const submittedAt = formatDateTime(
-    result.completedAt ?? result.serverTimeUtc
-  )
+  const submittedAt = formatDateTime(result.completedAt ?? result.serverTimeUtc)
 
   return (
     <div className="relative flex min-h-svh flex-col overflow-hidden bg-background">
@@ -79,6 +77,12 @@ export function ExamResult({ result, candidateName }: ExamResultProps) {
                   {submittedAt}
                 </span>
               </div>
+              {/* <div className="flex items-start justify-between gap-4">
+                <span className="text-xs text-muted-foreground">Skor</span>
+                <span className="text-right text-xs font-semibold text-foreground tabular-nums">
+                  {result.totalScore != null ? result.totalScore : "—"}
+                </span>
+              </div> */}
             </div>
 
             <p className="mt-6 text-[11px] leading-relaxed text-muted-foreground">

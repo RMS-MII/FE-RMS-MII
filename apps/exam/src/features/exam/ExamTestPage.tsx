@@ -1,8 +1,13 @@
 import { useCallback, useEffect, useState } from "react"
-import { ApiError, startCandidateTest, submitCandidateTest } from "./api"
+import {
+  ApiError,
+  finishCandidateTest,
+  startCandidateTest,
+  submitCandidateTestAnswer,
+} from "./api"
 import { useCandidateTest, useExamTimer } from "./hooks"
 import { clearExamDraft, saveExamDraft, type ExamDraft } from "./storage"
-import type { CandidateTest, ExamAnswers, SubmitTestResult } from "./types"
+import type { CandidateTest, ExamAnswers, FinishTestResult } from "./types"
 import {
   formatDateTime,
   getMissingRequiredQuestions,
@@ -74,11 +79,14 @@ function getStartErrorMessage(error: unknown): string {
   if (error instanceof ApiError) {
     if (error.status === 422) {
       return (
-        error.detail ?? "Tes tidak dapat dimulai saat ini. Segera hubungi tim rekrutmen."
+        error.detail ??
+        "Tes tidak dapat dimulai saat ini. Segera hubungi tim rekrutmen."
       )
     }
 
-    return error.detail ?? error.title ?? "Gagal memulai tes. Silakan coba lagi."
+    return (
+      error.detail ?? error.title ?? "Gagal memulai tes. Silakan coba lagi."
+    )
   }
 
   return "Tidak dapat terhubung ke server. Periksa koneksi internet Anda lalu coba lagi."
@@ -105,7 +113,9 @@ function getSubmissionErrorMessage(error: unknown): string {
     }
 
     return (
-      error.detail ?? error.title ?? "Gagal mengirim jawaban. Silakan coba lagi."
+      error.detail ??
+      error.title ??
+      "Gagal mengirim jawaban. Silakan coba lagi."
     )
   }
 
@@ -116,21 +126,26 @@ function ExamRunner({ test, initialDraft, receivedAt }: ExamRunnerProps) {
   const [phase, setPhase] = useState<ExamPhase>(() =>
     test.attemptStartedAt ? "exam" : "intro"
   )
-  const [sessionStartedAt, setSessionStartedAt] = useState<number | null>(() => {
-    const serverAttemptStartedAt = test.attemptStartedAt
-      ? parseServerDate(test.attemptStartedAt)
-      : null
+  const [sessionStartedAt, setSessionStartedAt] = useState<number | null>(
+    () => {
+      const serverAttemptStartedAt = test.attemptStartedAt
+        ? parseServerDate(test.attemptStartedAt)
+        : null
 
-    if (serverAttemptStartedAt !== null && !Number.isNaN(serverAttemptStartedAt)) {
-      return serverAttemptStartedAt
+      if (
+        serverAttemptStartedAt !== null &&
+        !Number.isNaN(serverAttemptStartedAt)
+      ) {
+        return serverAttemptStartedAt
+      }
+
+      if (initialDraft?.started) {
+        return initialDraft.sessionStartedAt ?? Date.now()
+      }
+
+      return null
     }
-
-    if (initialDraft?.started) {
-      return initialDraft.sessionStartedAt ?? Date.now()
-    }
-
-    return null
-  })
+  )
   const [answers, setAnswers] = useState<ExamAnswers>(
     () => initialDraft?.answers ?? {}
   )
@@ -144,7 +159,7 @@ function ExamRunner({ test, initialDraft, receivedAt }: ExamRunnerProps) {
       Math.max(0, test.questions.length - 1)
     )
   })
-  const [result, setResult] = useState<SubmitTestResult | null>(null)
+  const [result, setResult] = useState<FinishTestResult | null>(null)
   const [submitting, setSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState<string | null>(null)
   const [submitDialogOpen, setSubmitDialogOpen] = useState(false)
@@ -177,14 +192,21 @@ function ExamRunner({ test, initialDraft, receivedAt }: ExamRunnerProps) {
           }))
           .filter((answer) => answer.selectedOptionIds.length > 0)
 
-        const response = await submitCandidateTest({
+        // Submit jawaban baru (strict: server akan menolak bila melewati batas
+        // waktu) lalu lanjut finalisasi skor via finish endpoint.
+        await submitCandidateTestAnswer({
           candidateId: test.candidateId,
           stageId: test.applicationStageId,
           answers: payloadAnswers,
         })
 
         clearExamDraft(test.candidateId, test.applicationStageId)
-        setResult(response)
+        const finishResponse = await finishCandidateTest(
+          test.candidateId,
+          test.applicationStageId
+        )
+
+        setResult(finishResponse)
         setPhase("result")
         setSubmitDialogOpen(false)
         window.scrollTo({ top: 0 })

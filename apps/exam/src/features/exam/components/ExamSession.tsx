@@ -1,12 +1,10 @@
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
+import { Clock3, LayoutGrid, Send } from "lucide-react"
 import {
-  ChevronLeft,
-  ChevronRight,
-  Clock3,
-  LayoutGrid,
-  Send,
-} from "lucide-react"
-import { Alert, AlertDescription, AlertTitle } from "@workspace/ui/components/alert"
+  Alert,
+  AlertDescription,
+  AlertTitle,
+} from "@workspace/ui/components/alert"
 import { Badge } from "@workspace/ui/components/badge"
 import { Button } from "@workspace/ui/components/button"
 import {
@@ -99,7 +97,6 @@ export function ExamSession({
   onSubmitClick,
 }: ExamSessionProps) {
   const [navigatorOpen, setNavigatorOpen] = useState(false)
-  const question = test.questions[currentIndex]
   const total = test.questions.length
   const answeredCount = getAnsweredCount(test.questions, answers)
   const unansweredCount = total - answeredCount
@@ -107,23 +104,38 @@ export function ExamSession({
   const missingRequired = getMissingRequiredQuestions(test.questions, answers)
   const locked = submitting || timeUp
 
-  useEffect(() => {
-    window.scrollTo({ top: 0, behavior: "smooth" })
-  }, [currentIndex])
-
-  if (!question) {
-    return null
-  }
-
   const goToQuestion = (index: number) => {
     setNavigatorOpen(false)
     onIndexChange(index)
+
+    const question = test.questions[index]
+    if (!question) {
+      return
+    }
+
+    document
+      .getElementById(`question-${question.id}`)
+      ?.scrollIntoView({ behavior: "smooth", block: "start" })
   }
 
   const openSubmitFromNavigator = () => {
     setNavigatorOpen(false)
     onSubmitClick()
   }
+
+  const initialIndexRef = useRef(currentIndex)
+  useEffect(() => {
+    const question = test.questions[initialIndexRef.current]
+
+    if (!question) {
+      return
+    }
+
+    document
+      .getElementById(`question-${question.id}`)
+      ?.scrollIntoView({ behavior: "auto", block: "start" })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   return (
     <div className="min-h-svh bg-background">
@@ -185,45 +197,25 @@ export function ExamSession({
             </Alert>
           ) : null}
 
-          <QuestionCard
-            question={question}
-            index={currentIndex}
-            total={total}
-            selectedOptionIds={answers[question.id] ?? []}
-            disabled={locked}
-            onSelect={(optionId) => onSelect(question.id, optionId)}
-          />
-
-          <div className="flex items-center justify-between gap-3">
-            <Button
-              variant="outline"
-              size="lg"
-              className="h-10"
-              onClick={() => onIndexChange(currentIndex - 1)}
-              disabled={currentIndex === 0 || locked}
-            >
-              <ChevronLeft className="size-4" />
-              Sebelumnya
-            </Button>
-
-            <span className="text-xs font-medium text-muted-foreground sm:hidden">
-              {currentIndex + 1} / {total}
-            </span>
-
-            <Button
-              size="lg"
-              className="h-10"
-              onClick={() => onIndexChange(currentIndex + 1)}
-              disabled={currentIndex >= total - 1 || locked}
-            >
-              Berikutnya
-              <ChevronRight className="size-4" />
-            </Button>
-          </div>
+          <ol className="space-y-4">
+            {test.questions.map((question, index) => (
+              <li key={question.id}>
+                <QuestionCard
+                  question={question}
+                  index={index}
+                  total={total}
+                  selectedOptionIds={answers[question.id] ?? []}
+                  disabled={locked}
+                  onSelect={(optionId) => onSelect(question.id, optionId)}
+                />
+              </li>
+            ))}
+          </ol>
 
           <div className="grid grid-cols-2 gap-2 lg:hidden">
             <Button
               variant="outline"
+              size="lg"
               className="h-10"
               onClick={() => setNavigatorOpen(true)}
               disabled={locked}
@@ -232,6 +224,7 @@ export function ExamSession({
               Daftar Soal
             </Button>
             <Button
+              size="lg"
               className="h-10"
               onClick={onSubmitClick}
               disabled={locked}
@@ -324,6 +317,7 @@ export function ExamSession({
             <Button
               variant="outline"
               onClick={() => setNavigatorOpen(false)}
+              disabled={submitting}
             >
               Tutup
             </Button>
