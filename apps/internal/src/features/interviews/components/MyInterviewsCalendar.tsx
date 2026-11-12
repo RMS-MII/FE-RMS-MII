@@ -18,6 +18,7 @@ interface MyInterviewsCalendarProps {
   onMonthChange: (month: string) => void
   onSelectDate: (date: string) => void
   onSelectInterview: (interview: MyInterviewItem) => void
+  onOpenDetail: (interview: MyInterviewItem) => void
   onAccept: (interview: MyInterviewItem) => void
   onRequestReschedule: (interview: MyInterviewItem) => void
   onAssignTakeHome: (interview: MyInterviewItem) => void
@@ -54,7 +55,7 @@ function statusDetails(item: MyInterviewItem) {
 
 export function MyInterviewsCalendar({
   month, days, today, selectedDate, interviewsByDay, dayInterviews, selectedInterview,
-  onMonthChange, onSelectDate, onSelectInterview, onAccept, onRequestReschedule,
+  onMonthChange, onSelectDate, onSelectInterview, onOpenDetail, onAccept, onRequestReschedule,
   onAssignTakeHome, onSubmitAssessment, onViewAssessment, isLoading, isFetching,
   isError, error, onRetry, hasActiveFilters, onResetFilters,
 }: MyInterviewsCalendarProps) {
@@ -129,7 +130,7 @@ export function MyInterviewsCalendar({
                         <button
                           key={item.id}
                           type="button"
-                          onClick={(event) => { event.stopPropagation(); onSelectInterview(item) }}
+                          onClick={(event) => { event.stopPropagation(); onOpenDetail(item) }}
                           title={`${formatWibTime(item.scheduledStart)} ${item.candidateName} — ${item.sessionName}`}
                           className={cn(
                             "block w-full truncate rounded-md px-1.5 py-1 text-left text-[11px] font-medium leading-tight transition-shadow hover:ring-1 hover:ring-primary/50",
@@ -191,6 +192,7 @@ export function MyInterviewsCalendar({
                   <StatusBadge tone={selectedStatus.tone}>{selectedStatus.label}</StatusBadge>
                   <h3 className="text-lg font-semibold text-foreground">{selectedInterview.candidateName}</h3>
                   <p className="break-all text-xs text-muted-foreground">{selectedInterview.candidateEmail}</p>
+                  <Button type="button" variant="outline" size="sm" className="mt-1 rounded-full" onClick={() => onOpenDetail(selectedInterview)}>View full detail</Button>
                 </div>
 
                 <div className="space-y-3 border-t border-border pt-4 text-sm">

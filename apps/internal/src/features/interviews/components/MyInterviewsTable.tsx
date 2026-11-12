@@ -47,6 +47,7 @@ export type InterviewSortKey =
 
 export interface MyInterviewsTableProps {
   interviews: MyInterviewItem[]
+  onOpenDetail?: (item: MyInterviewItem) => void
   sortKey: InterviewSortKey
   sortDirection: "asc" | "desc"
   onSort: (key: string) => void
@@ -66,6 +67,7 @@ export interface MyInterviewsTableProps {
 
 export function MyInterviewsTable({
   interviews,
+  onOpenDetail,
   sortKey,
   sortDirection,
   onSort,
@@ -234,15 +236,16 @@ export function MyInterviewsTable({
               return (
                 <TableRow
                   key={item.id}
-                  className="border-b border-border transition-colors hover:bg-muted/40"
+                  className={cn("border-b border-border transition-colors hover:bg-muted/40", onOpenDetail && "cursor-pointer")}
+                  onClick={() => onOpenDetail?.(item)}
                 >
                   {/* Candidate Profile */}
                   <TableCell className="pl-5 py-3.5">
                     <div className="flex items-center gap-3">
                       <div className="min-w-0">
-                        <span className="font-semibold text-sm text-foreground truncate block">
+                        <button type="button" onClick={(event) => { event.stopPropagation(); onOpenDetail?.(item) }} className="block truncate text-left text-sm font-semibold text-foreground hover:text-primary hover:underline">
                           {item.candidateName}
-                        </span>
+                        </button>
                         <div className="flex items-center gap-1.5 text-xs text-muted-foreground mt-0.5">
                           <span className="truncate max-w-40">
                             {item.candidateEmail}
@@ -287,7 +290,7 @@ export function MyInterviewsTable({
                   </TableCell>
 
                   {/* Mode & Logistics */}
-                  <TableCell className="py-3.5 text-xs">
+                  <TableCell className="py-3.5 text-xs" onClick={(event) => event.stopPropagation()}>
                     <div className="flex flex-col gap-1">
                       {item.isOnline ? (
                         <div className="space-y-1">
@@ -369,7 +372,7 @@ export function MyInterviewsTable({
                   </TableCell>
 
                   {/* Attendance Status */}
-                  <TableCell className="py-3.5 text-center whitespace-nowrap">
+                  <TableCell className="py-3.5 text-center whitespace-nowrap" onClick={(event) => event.stopPropagation()}>
                     <div className="flex flex-col items-center gap-1">
                       {isPending && (
                         <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/15 px-2.5 py-0.5 text-[11px] font-semibold text-amber-800 dark:text-amber-300">
@@ -513,7 +516,7 @@ export function MyInterviewsTable({
                   </TableCell>
 
                   {/* Action Buttons: Centered */}
-                  <TableCell className="pr-5 py-3.5 text-center whitespace-nowrap">
+                  <TableCell className="pr-5 py-3.5 text-center whitespace-nowrap" onClick={(event) => event.stopPropagation()}>
                     {/* Attendance confirmation */}
                     {isPending && item.isLead && (
                       <div className="flex items-center justify-center gap-1.5">

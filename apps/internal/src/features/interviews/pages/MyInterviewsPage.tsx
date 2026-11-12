@@ -1,4 +1,5 @@
 import * as React from "react"
+import { useNavigate } from "@tanstack/react-router"
 import { CalendarDays, List } from "lucide-react"
 import { Button } from "@workspace/ui/components/button"
 import {
@@ -59,6 +60,13 @@ const modeItems = [
 ]
 
 export function MyInterviewsPage() {
+  const navigate = useNavigate()
+  const openDetail = (item: MyInterviewItem) => {
+    void navigate({
+      to: "/interviews/schedules/$sessionInterviewId",
+      params: { sessionInterviewId: item.id },
+    })
+  }
   const [view, setView] = React.useState<"calendar" | "list">("calendar")
   const [month, setMonth] = React.useState(() => getWibDateKey(new Date()).slice(0, 7))
   const calendarDays = React.useMemo(() => getMonthDays(month), [month])
@@ -449,6 +457,7 @@ export function MyInterviewsPage() {
             onMonthChange={calendar.changeMonth}
             onSelectDate={calendar.selectDate}
             onSelectInterview={calendar.selectInterview}
+            onOpenDetail={openDetail}
             onAccept={(item) => { if (item.isLead) { setActionError(null); setSessionToAccept(item) } }}
             onRequestReschedule={(item) => { if (item.isLead) { setActionError(null); setSessionToReschedule(item) } }}
             onAssignTakeHome={(item) => { setTakeHomeNotice(null); setSessionToAssign(item) }}
@@ -465,6 +474,7 @@ export function MyInterviewsPage() {
         ) : (
         <MyInterviewsTable
           interviews={paginatedInterviews}
+          onOpenDetail={openDetail}
           isLoading={isLoading && !sessionDtos}
           isFetching={isFetching && Boolean(sessionDtos)}
           isError={isError && !sessionDtos}

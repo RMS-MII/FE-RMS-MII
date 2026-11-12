@@ -4,6 +4,7 @@ import type {
   AssignTakeHomePayload,
   ConfirmInterviewResponseDto,
   InterviewerSessionDto,
+  InterviewerSessionDetailDto,
   SubmitInterviewAssessmentDto,
   GetInterviewerInvitationsParams,
   InterviewerInvitationDto,
@@ -27,6 +28,7 @@ export const interviewerApi = baseApi.injectEndpoints({
       invalidatesTags: (result) => result
         ? [
             { type: "Interview", id: "INTERVIEWER_SESSIONS" },
+            { type: "Interview", id: "SESSION_DETAIL" },
             { type: "Interview", id: "INTERVIEWER_DASHBOARD" },
             { type: "Candidate", id: "APPLICATION_DETAILS" },
           ]
@@ -40,6 +42,7 @@ export const interviewerApi = baseApi.injectEndpoints({
       invalidatesTags: (result) => result
         ? [
             { type: "Interview", id: "INTERVIEWER_SESSIONS" },
+            { type: "Interview", id: "SESSION_DETAIL" },
             { type: "Interview", id: "INTERVIEWER_DASHBOARD" },
             { type: "Interview", id: "RESCHEDULE_LIST" },
             { type: "Candidate", id: "APPLICATION_DETAILS" },
@@ -72,6 +75,10 @@ export const interviewerApi = baseApi.injectEndpoints({
       }),
       providesTags: [{ type: "Interview", id: "INTERVIEWER_SESSIONS" }],
     }),
+    getInterviewerSessionDetail: builder.query<InterviewerSessionDetailDto, string>({
+      query: (sessionInterviewId) => `/interviewer/sessions/${sessionInterviewId}`,
+      providesTags: [{ type: "Interview", id: "SESSION_DETAIL" }],
+    }),
     confirmInterviewerSession: builder.mutation<
       ConfirmInterviewResponseDto,
       string
@@ -84,6 +91,7 @@ export const interviewerApi = baseApi.injectEndpoints({
         result
           ? [
               { type: "Interview", id: "INTERVIEWER_SESSIONS" },
+              { type: "Interview", id: "SESSION_DETAIL" },
               { type: "Interview", id: "INTERVIEWER_DASHBOARD" },
             ]
           : [],
@@ -108,6 +116,7 @@ export const interviewerApi = baseApi.injectEndpoints({
         result
           ? [
               { type: "Interview", id: "INTERVIEWER_SESSIONS" },
+              { type: "Interview", id: "SESSION_DETAIL" },
               { type: "Interview", id: "INTERVIEWER_DASHBOARD" },
               { type: "Candidate", id: "APPLICATION_DETAILS" },
               { type: "Candidate", id: "LIST" },
@@ -149,6 +158,7 @@ export const interviewerApi = baseApi.injectEndpoints({
 
 export const {
   useGetInterviewerSessionsQuery,
+  useGetInterviewerSessionDetailQuery,
   useAssignTakeHomeMutation,
   useRequestInterviewerRescheduleMutation,
   useConfirmInterviewerSessionMutation,
