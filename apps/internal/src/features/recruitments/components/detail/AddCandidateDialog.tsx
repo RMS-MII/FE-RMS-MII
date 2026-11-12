@@ -12,7 +12,7 @@ import type { Recruitment, CandidateApplicationItem } from "../../types"
 import { Users, UserPlus, AlertCircle } from "lucide-react"
 import { AddFromTalentPoolTab } from "./AddFromTalentPoolTab"
 import { RegisterNewCandidateTab } from "./RegisterNewCandidateTab"
-import { getRecruitmentAddRestriction } from "../../utils/recruitmentUtils"
+import { getRecruitmentAddRestriction, hasStartedBulkSelection } from "../../utils/recruitmentUtils"
 
 export interface AddCandidateDialogProps {
   recruitment: Recruitment
@@ -71,6 +71,11 @@ export function AddCandidateDialog({
               {addRestriction}
             </p>
           </div>
+        )}
+        {!addRestriction && hasStartedBulkSelection(recruitment) && (
+          <p className="mx-6 mt-4 rounded-xl bg-primary-50 px-4 py-3 text-sm">
+            New applications are marked Standalone. Start their stages from each candidate’s application details.
+          </p>
         )}
 
         <div className="px-6 pt-5">

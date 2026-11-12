@@ -190,6 +190,7 @@ export function useCandidatesTab({ recruitment }: UseCandidatesTabProps) {
 
       return {
         id: item.id,
+        isStandalone: item.isStandalone,
         candidateId: item.candidateId,
         recruitmentBatchId: item.recruitmentBatchId,
         codeApplication: item.codeApplication,

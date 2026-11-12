@@ -1,3 +1,5 @@
+import type { CandidateWithBatchesDto } from "@/features/candidates/types"
+
 // =====================================================================
 // Domain types for Interviewer Role (SessionInterview & InterviewAssessment)
 // Matches Document/ERD.sql
@@ -15,16 +17,10 @@ export type MyInterviewStatus =
 export type InterviewMode = "online" | "onsite"
 
 export type AssessmentRecommendation =
-  | "Strongly Recommend"
-  | "Recommend"
-  | "Consider"
-  | "Not Recommend"
+  "Strongly Recommend" | "Recommend" | "Consider" | "Not Recommend"
 
 export type ApiAssessmentRecommendation =
-  | "StronglyRecommend"
-  | "Recommend"
-  | "Consider"
-  | "NotRecommend"
+  "StronglyRecommend" | "Recommend" | "Consider" | "NotRecommend"
 
 export interface InterviewAssessmentItem {
   id?: string // Not provided by the interviewer sessions GET response.
@@ -172,12 +168,7 @@ export type InterviewerSessionStatusValue =
   | 5
 
 export type SessionInterviewStatusValue =
-  | "InProgress"
-  | "Completed"
-  | "Cancelled"
-  | 1
-  | 2
-  | 3
+  "InProgress" | "Completed" | "Cancelled" | 1 | 2 | 3
 
 export interface InterviewerSessionDto {
   sessionInterviewId: string
@@ -215,6 +206,13 @@ export interface InterviewerSessionDto {
   assessmentScore: number | null
   assessmentRecommendation: ApiAssessmentRecommendation | number | null
   assessmentRecommendationName?: string | null
+}
+
+export interface InterviewerSessionDetailDto {
+  session: InterviewerSessionDto
+  candidate: Omit<CandidateWithBatchesDto, "assignedBatches">
+  assessmentNotes: string | null
+  canAssess: boolean
 }
 
 export interface ConfirmInterviewResponseDto {

@@ -20,11 +20,11 @@ import {
 } from "@workspace/ui/components/select"
 import {
   DatePicker,
-  TimePicker,
   CancelButton,
   SaveButton,
   SearchCombobox,
 } from "@/shared/components"
+import { InterviewTimeRangePicker } from "./InterviewTimeRangePicker"
 import { formatWibDate, formatWibTime } from "@/shared/lib/utcDateTime"
 import { Video, MapPin, Check, User, AlertTriangle } from "lucide-react"
 import { cn } from "@/shared/lib/utils"
@@ -53,11 +53,11 @@ export function ScheduleInterviewDialog({
     availableInterviewers, isInterviewersLoading, isInterviewersError,
     interviewersError, refetchInterviewers, unscheduledCandidates, candidateComboboxOptions,
     sessionName, setSessionName, scheduledDate, setScheduledDate,
-    startTime, endTime, setEndTime, mode, setMode,
+    startTime, endTime, mode, setMode,
     meetingUrl, setMeetingUrl, location, setLocation,
     selectedInterviewerIds, leadEmployeeId,
     errors, setErrors, handleToggleInterviewer, handleSelectLead,
-    handleStartTimeChange, handleSubmit,
+    handleStartTimeChange, handleEndTimeChange, handleSubmit,
   } = useScheduleInterviewForm({
     open, onOpenChange, recruitment, onSchedule, existingSessions, sessionToReschedule,
   })
@@ -279,56 +279,23 @@ export function ScheduleInterviewDialog({
                 )}
               </div>
 
-              {/* Time Slots: Start & End Time */}
-              <div className="grid grid-cols-2 gap-3">
-                {/* Start Time */}
-                <div className="space-y-1.5">
-                  <Label
-                    htmlFor="interview-start-time"
-                    className="px-1 text-sm font-medium"
-                  >
-                    Start Time (WIB) <span className="text-destructive">*</span>
-                  </Label>
-                  <TimePicker
-                    id="interview-start-time"
-                    value={startTime}
-                    onChange={handleStartTimeChange}
-                    aria-invalid={!!errors.startTime}
-                    placeholder="10:00"
-                  />
-                  {errors.startTime && (
-                    <p className="px-1 text-xs text-destructive">
-                      {errors.startTime}
-                    </p>
-                  )}
-                </div>
-
-                {/* End Time */}
-                <div className="space-y-1.5">
-                  <Label
-                    htmlFor="interview-end-time"
-                    className="px-1 text-sm font-medium"
-                  >
-                    End Time (WIB) <span className="text-destructive">*</span>
-                  </Label>
-                  <TimePicker
-                    id="interview-end-time"
-                    value={endTime}
-                    minTime={startTime}
-                    onChange={(val) => {
-                      setEndTime(val)
-                      if (errors.endTime)
-                        setErrors((prev) => ({ ...prev, endTime: "" }))
-                    }}
-                    aria-invalid={!!errors.endTime}
-                    placeholder="11:00"
-                  />
-                  {errors.endTime && (
-                    <p className="px-1 text-xs text-destructive">
-                      {errors.endTime}
-                    </p>
-                  )}
-                </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="interview-time-range" className="px-1 text-sm font-medium">
+                  Interview Time (WIB) <span className="text-destructive">*</span>
+                </Label>
+                <InterviewTimeRangePicker
+                  id="interview-time-range"
+                  startTime={startTime}
+                  endTime={endTime}
+                  onStartChange={handleStartTimeChange}
+                  onEndChange={handleEndTimeChange}
+                  invalid={Boolean(errors.startTime || errors.endTime)}
+                />
+                {(errors.startTime || errors.endTime) && (
+                  <p className="px-1 text-xs text-destructive">
+                    {errors.startTime || errors.endTime}
+                  </p>
+                )}
               </div>
             </div>
 

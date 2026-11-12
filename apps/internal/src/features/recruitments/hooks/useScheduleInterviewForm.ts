@@ -62,7 +62,8 @@ export function useScheduleInterviewForm({
       ).filter(
         (stage) => stage.applicationStageId &&
           stage.isStarted &&
-          ["active", "1"].includes(String(stage.lifecycleStatus).toLowerCase()) &&
+          (applicationDetail?.isStandalone ||
+            ["active", "1"].includes(String(stage.lifecycleStatus).toLowerCase())) &&
           mapApplicationStageStatus(stage.status) === "in_progress"
       ),
     [applicationDetail]
@@ -255,6 +256,12 @@ export function useScheduleInterviewForm({
     }
   }
 
+  const handleEndTimeChange = (value: string) => {
+    setEndTime(value)
+    if (errors.endTime)
+      setErrors((previous) => ({ ...previous, endTime: "" }))
+  }
+
   const handleSelectLead = (employeeId: string) => {
     setLeadEmployeeId(employeeId)
     if (errors.leadInterviewer)
@@ -354,10 +361,10 @@ export function useScheduleInterviewForm({
     availableInterviewers, isInterviewersLoading, isInterviewersError,
     interviewersError, refetchInterviewers, unscheduledCandidates, candidateComboboxOptions,
     sessionName, setSessionName, scheduledDate, setScheduledDate,
-    startTime, endTime, setEndTime, mode, setMode,
+    startTime, endTime, mode, setMode,
     meetingUrl, setMeetingUrl, location, setLocation,
     selectedInterviewerIds, leadEmployeeId,
     errors, setErrors, handleToggleInterviewer, handleSelectLead,
-    handleStartTimeChange, handleSubmit,
+    handleStartTimeChange, handleEndTimeChange, handleSubmit,
   }
 }

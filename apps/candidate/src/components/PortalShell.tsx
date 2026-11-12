@@ -13,6 +13,7 @@ import {
 import { Button } from "@workspace/ui/components/button"
 import type { Tasks } from "../api"
 import { prefix, interviewSessionId, portalPage, pageTitle } from "../route"
+import { PortalBrand } from "./PortalBrand"
 
 export function PortalShell({
   children,
@@ -28,19 +29,7 @@ export function PortalShell({
   const dialog = useRef<HTMLDialogElement>(null)
   const navigation = (
     <>
-      <a className="brand" href={prefix}>
-        <svg
-          viewBox="0 0 28 28"
-          className="portal-brand-mark"
-          aria-hidden="true"
-        >
-          <path
-            d="M3 23V5h4.2L14 14.2 20.8 5H25v18h-4.4V12.4L14 21.2l-6.6-8.8V23z"
-            fill="var(--primary)"
-          />
-        </svg>
-        <span>Metrodata</span>
-      </a>
+      <PortalBrand href={prefix} />
       <p className="nav-label">Candidate portal</p>
       <nav aria-label="Portal navigation" className="portal-nav">
         <a

@@ -80,11 +80,11 @@ export function getActiveRecruitmentInterviewStages(recruitment: Recruitment): P
 /** Map StageTypeId to legacy stage category string using supplied stageTypes list */
 export function mapStageTypeToCategory(
   stageTypeId: string,
-  stageTypes?: StageTypeDto[]
+  stageTypes?: StageTypeDto[],
+  fallback: LegacyStageType = "screening"
 ): LegacyStageType {
-  if (!stageTypes || stageTypes.length === 0) return "screening"
-  const selectedType = stageTypes.find((st) => st.id === stageTypeId)
-  return stageCategoryToLegacyType(selectedType?.stageCategory)
+  const category = stageTypes?.find((stageType) => stageType.id === stageTypeId)?.stageCategory
+  return category == null ? fallback : stageCategoryToLegacyType(category)
 }
 
 /** Link stages into ERD-compliant sequential chain (NextStageId, NULL on last stage) */

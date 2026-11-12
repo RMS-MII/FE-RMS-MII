@@ -258,6 +258,7 @@ export function useAddFromTalentPool({
 
           return {
             id: apiItem.id,
+            isStandalone: apiItem.isStandalone,
             candidateId: apiItem.candidateId,
             recruitmentBatchId: recruitment.id,
             codeApplication,

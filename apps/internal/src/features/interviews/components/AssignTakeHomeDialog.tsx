@@ -8,7 +8,6 @@ import {
   DialogTitle,
 } from "@workspace/ui/components/dialog"
 import { Input } from "@workspace/ui/components/input"
-import { Textarea } from "@workspace/ui/components/textarea"
 import { Label } from "@workspace/ui/components/label"
 import {
   CancelButton,
@@ -23,6 +22,7 @@ import {
   wibToUtcISOString,
 } from "@/shared/lib/utcDateTime"
 import type { AssignTakeHomePayload, MyInterviewItem } from "../types"
+import { createTakeHomePayload } from "../utils/takeHomePayload"
 
 export function AssignTakeHomeDialog({
   session,
@@ -44,8 +44,6 @@ export function AssignTakeHomeDialog({
       ? formatWibTime(session.endedSubmissionAt)
       : "23:59"
   )
-  const [taskTitle, setTaskTitle] = useState("")
-  const [instructions, setInstructions] = useState("")
   const [error, setError] = useState("")
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -62,12 +60,10 @@ export function AssignTakeHomeDialog({
       return
     }
     try {
-      await onAssign(session.sessionId, {
-        fileTakeHome: fileTakeHome.trim(),
-        endedSubmissionAt,
-        taskTitle: taskTitle.trim(),
-        instructions: instructions.trim(),
-      })
+      await onAssign(
+        session.sessionId,
+        createTakeHomePayload(session, fileTakeHome, endedSubmissionAt)
+      )
     } catch (err) {
       setError(
         getApiError(err, "Unable to save the take-home assignment.").message
@@ -95,18 +91,6 @@ export function AssignTakeHomeDialog({
           className="space-y-4"
           onSubmit={(event) => void handleSubmit(event)}
         >
-          <div className="space-y-2">
-            <Label htmlFor="take-home-title">Task title</Label>
-            <Input
-              id="take-home-title"
-              value={taskTitle}
-              onChange={(e) => setTaskTitle(e.target.value)}
-              required
-              maxLength={150}
-              disabled={busy}
-              placeholder="Technical assignment"
-            />
-          </div>
           <div className="space-y-2">
             <Label htmlFor="take-home-link">Assignment link</Label>
             <Input
@@ -143,20 +127,6 @@ export function AssignTakeHomeDialog({
                 disabled={busy}
               />
             </div>
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="take-home-instructions">
-              Instructions for the email
-            </Label>
-            <Textarea
-              id="take-home-instructions"
-              value={instructions}
-              onChange={(e) => setInstructions(e.target.value)}
-              required
-              maxLength={4000}
-              disabled={busy}
-              rows={3}
-            />
           </div>
           {session.fileSubmission &&
             /^https?:\/\//i.test(session.fileSubmission) && (

@@ -69,6 +69,21 @@ export async function request<T>(
   })
 
   if (!response.ok) {
+    if (path.startsWith("/portal/jobs/") && response.status < 500) {
+      const problem = (await response.json().catch(() => null)) as {
+        detail?: string
+        errors?: Record<string, string[]>
+      } | null
+      const validationMessage = Object.values(problem?.errors ?? {})
+        .flat()
+        .join(" ")
+      throw new Error(
+        problem?.detail ||
+          validationMessage ||
+          "Could not submit your application. Try again."
+      )
+    }
+
     if (response.status === 404 || response.status === 403) {
       throw new Error(
         "This link is unavailable. Check your recruitment email for the latest link."
@@ -145,7 +160,8 @@ export const labels: Record<string, string> = {
 
 export function examUrl(candidateId: string, stageId: string) {
   const template =
-  import.meta.env.DEV && "http://localhost:5174/portal/{candidateId}/stages/{stageId}/test"
+    import.meta.env.DEV &&
+    "http://localhost:5174/portal/{candidateId}/stages/{stageId}/test"
 
   return template
     ? safeUrl(
