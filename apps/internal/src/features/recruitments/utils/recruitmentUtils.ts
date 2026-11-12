@@ -5,13 +5,18 @@ export function isRecruitmentClosed(recruitment: Recruitment): boolean {
   return ["closed", "completed", "3"].includes(String(recruitment.status).toLowerCase())
 }
 
-export function canSetLegacyApplicationDeadline(recruitment: Recruitment): boolean {
+export function canEditApplicationDeadline(recruitment: Recruitment): boolean {
   return ["open", "running", "2"].includes(String(recruitment.status).toLowerCase()) &&
-    !recruitment.applicationDeadlineAt &&
     !!recruitment.batchStages?.length &&
     recruitment.batchStages.every((stage) =>
       ["inactive", "0"].includes(String(stage.lifecycleStatus).toLowerCase())
     )
+}
+
+export function hasStartedBulkSelection(recruitment: Recruitment): boolean {
+  return recruitment.batchStages?.some((stage) =>
+    ["active", "completed", "1", "2"].includes(String(stage.lifecycleStatus).toLowerCase())
+  ) ?? false
 }
 
 export function getRecruitmentCloseRestriction(recruitment: Recruitment): string | null {

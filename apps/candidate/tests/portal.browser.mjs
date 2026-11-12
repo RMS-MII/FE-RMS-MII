@@ -412,7 +412,7 @@ try {
     description: "Build recruitment tools.",
     applicationDeadlineAt: "2027-01-31T00:00:00Z",
   }
-  const legacyJob = { ...job, id: "legacy", name: "Legacy opening", applicationDeadlineAt: null }
+  const legacyJob = { ...job, id: "legacy", name: "Legacy opening", department: "Operations", applicationDeadlineAt: null }
   let application
   await page.route("**/api/portal/jobs**", async (route) => {
     const request = route.request()
@@ -421,27 +421,54 @@ try {
     application = request.postDataJSON()
     return route.fulfill({ status: 201 })
   })
+  const positions = page.getByRole("region", { name: "Available positions" })
+  const position = (name) => page.getByRole("region", { name, exact: true })
+  const viewPosition = (name) =>
+    positions.getByRole("button", { name: `View position: ${name}`, exact: true })
+  const applyButton = page.getByRole("button", { name: "Apply for this position" })
+  await page.setViewportSize({ width: 1440, height: 1000 })
   await page.goto(base)
-  await page.getByRole("heading", { name: job.name }).waitFor()
-  await page.getByText("Apply by 31 Jan 2027, 07:00 WIB").waitFor()
-  await page.getByText("Open for applications", { exact: true }).waitFor()
+  await position(job.name).getByText("Apply by 31 Jan 2027, 07:00 WIB").waitFor()
+  await viewPosition(legacyJob.name).click()
+  await position(legacyJob.name).getByText("Open for applications", { exact: true }).waitFor()
+  await viewPosition(job.name).waitFor()
+  assert.equal(await page.getByLabel("Full Name").count(), 0)
   await page.goto(`${base}/jobs`)
-  await page.getByRole("article").filter({ hasText: job.name })
-    .getByRole("button", { name: "View position" }).click()
-  await page.getByRole("heading", { name: "Job description" }).waitFor()
-  assert.equal(await page.getByText(job.description, { exact: true }).count(), 1)
+  await page.getByRole("searchbox", { name: "Search positions" }).fill("missing title")
+  await page.getByText("No positions match your search.").waitFor()
+  await page.getByRole("button", { name: "Clear filters" }).click()
+  await page.getByLabel("Department", { exact: true }).selectOption("Engineering")
+  await viewPosition(legacyJob.name).waitFor({ state: "hidden" })
+  await position(job.name).getByRole("heading", { name: "Job description" }).waitFor()
+  await applyButton.click()
+  await page.getByRole("button", { name: "Back to position", exact: true }).click()
+  assert.equal(await page.getByLabel("Department", { exact: true }).inputValue(), "Engineering")
+
+  await page.setViewportSize({ width: 390, height: 844 })
+  await page.goto(`${base}/jobs`)
+  await viewPosition(job.name).waitFor()
+  await applyButton.waitFor({ state: "hidden" })
+  const searchPositions = page.getByRole("searchbox", { name: "Search positions" })
+  await searchPositions.fill("Frontend")
+  await viewPosition(job.name).click()
+  await positions.waitFor({ state: "hidden" })
+  await position(job.name).getByText(job.description, { exact: true }).waitFor()
+  await page.getByRole("button", { name: "Back to positions", exact: true }).click()
+  assert.equal(await searchPositions.inputValue(), "Frontend")
+  await viewPosition(job.name).click()
+  await applyButton.click()
   await page.getByLabel("Gender").selectOption("2")
   for (const [label, value] of [
-    ["Full name", "Test Applicant"],
-    ["Email", "applicant@example.test"],
-    ["Phone number", "08123456789"],
-    ["Date of birth", "2000-03-08"],
-    ["Highest education", "Bachelor"],
-    ["Institution", "Test University"],
-    ["GPA (0–4)", "3.5"],
+    ["Full Name", "Test Applicant"],
+    ["Email Address", "applicant@example.test"],
+    ["Phone Number", "08123456789"],
+    ["Birth Date", "2000-03-08"],
+    ["Education Degree & Major", "Bachelor"],
+    ["University / Campus", "Test University"],
+    ["GPA", "3.5"],
     ["Address", "Jakarta"],
   ]) {
-    await page.getByLabel(label, { exact: true }).fill(value)
+    await page.getByLabel(new RegExp(`^${label}\\s*\\*?$`)).fill(value)
   }
   await page.getByRole("button", { name: "Submit application" }).click()
   await page.getByText("Application received", { exact: true }).waitFor()

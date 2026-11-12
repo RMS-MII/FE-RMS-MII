@@ -66,6 +66,9 @@ export function useRegisterNewCandidate({
     if (!email.trim() || !email.includes("@")) {
       newErrors.email = "A valid email address is required."
     }
+    if (!phone.trim()) {
+      newErrors.phone = "Phone number is required."
+    }
     if (!birthDate.trim()) {
       newErrors.birthDate = "Birth date is required."
     }

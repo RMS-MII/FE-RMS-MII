@@ -20,7 +20,7 @@ import {
 } from "@/shared/components"
 import { formatPeriod } from "@/shared/lib/format"
 import { parseUtcDateTime, wibToUtcISOString } from "@/shared/lib/utcDateTime"
-import { canSetLegacyApplicationDeadline } from "../utils/recruitmentUtils"
+import { canEditApplicationDeadline } from "../utils/recruitmentUtils"
 import {
   useGetBatchByIdQuery,
   useUpdateBatchStatusMutation,
@@ -71,13 +71,13 @@ export function OpenRecruitmentDialog({
 
   const statusMeta = batch ? getRecruitmentStatusMeta(batch.status) : null
   const isDraft = statusMeta?.label === "Draft"
-  const settingLegacyDeadline = canSetLegacyApplicationDeadline(
-    batch ?? recruitment
-  )
-  const stageCount = batch?.batchStages?.length ?? 0
+  const editingDeadline = canEditApplicationDeadline(batch ?? recruitment)
+  const enabledStages =
+    batch?.batchStages?.filter((stage) => stage.isActive) ?? []
+  const stageCount = enabledStages.length
   const canOpen = Boolean(
     batch &&
-    (isDraft || settingLegacyDeadline) &&
+    (isDraft || editingDeadline) &&
     stageCount > 0 &&
     !isFetching &&
     !isError
@@ -107,6 +107,17 @@ export function OpenRecruitmentDialog({
       )
       return
     }
+    if (
+      enabledStages.some(
+        (stage) =>
+          stage.endDate && cutoff >= parseUtcDateTime(stage.endDate).getTime()
+      )
+    ) {
+      setSubmitError(
+        "The application deadline must be before every enabled stage ends."
+      )
+      return
+    }
     setSubmitError(null)
     try {
       const updatedBatch = await updateStatus({
@@ -131,8 +142,10 @@ export function OpenRecruitmentDialog({
       >
         <DialogHeader className="border-b border-border p-6 pb-4">
           <DialogTitle>
-            {settingLegacyDeadline
-              ? "Set Application Deadline"
+            {editingDeadline
+              ? recruitment.applicationDeadlineAt
+                ? "Edit Application Deadline"
+                : "Set Application Deadline"
               : "Open Recruitment"}
           </DialogTitle>
           <DialogDescription>
@@ -195,7 +208,7 @@ export function OpenRecruitmentDialog({
                 </div>
               </dl>
 
-              {!isDraft && !settingLegacyDeadline ? (
+              {!isDraft && !editingDeadline ? (
                 <p
                   role="status"
                   className="rounded-xl bg-muted px-4 py-3 text-xs text-muted-foreground"
@@ -208,8 +221,8 @@ export function OpenRecruitmentDialog({
                   <div className="flex items-start gap-2">
                     <AlertCircle className="size-4 shrink-0" aria-hidden />
                     <p>
-                      Configure at least one selection stage before opening this
-                      recruitment.
+                      Configure at least one enabled selection stage before
+                      opening this recruitment.
                     </p>
                   </div>
                   <Button
@@ -294,7 +307,7 @@ export function OpenRecruitmentDialog({
             loadingText="Saving…"
             icon={<CirclePlay className="size-4" aria-hidden />}
           >
-            {settingLegacyDeadline ? "Save Deadline" : "Open Recruitment"}
+            {editingDeadline ? "Save Deadline" : "Open Recruitment"}
           </SaveButton>
         </DialogFooter>
       </DialogContent>

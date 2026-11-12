@@ -7,7 +7,7 @@ import { StatusBadge, BackButton } from "@/shared/components"
 import { formatDate } from "@/shared/lib/format"
 import { OpenRecruitmentDialog } from "../OpenRecruitmentDialog"
 import { CloseRecruitmentDialog } from "../CloseRecruitmentDialog"
-import { canSetLegacyApplicationDeadline, getRecruitmentCloseRestriction } from "../../utils/recruitmentUtils"
+import { canEditApplicationDeadline, getRecruitmentCloseRestriction } from "../../utils/recruitmentUtils"
 
 export interface RecruitmentDetailHeaderProps {
   recruitment: Recruitment
@@ -50,10 +50,10 @@ export function RecruitmentDetailHeader({
           Open Recruitment
         </Button>
       )}
-      {canSetLegacyApplicationDeadline(recruitment) && (
+      {canEditApplicationDeadline(recruitment) && (
         <Button type="button" variant="outline" className="rounded-full"
           onClick={() => setIsOpenDialogOpen(true)}>
-          Set Application Deadline
+          {recruitment.applicationDeadlineAt ? "Edit Application Deadline" : "Set Application Deadline"}
         </Button>
       )}
       {statusMeta.label === "Open" && (

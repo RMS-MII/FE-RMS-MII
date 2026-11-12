@@ -46,7 +46,6 @@ import type {
   StageEmployeeStatus,
 } from "../../types"
 import { AssignInterviewersDialog } from "./AssignInterviewersDialog"
-import { useGetBatchApplicationsQuery } from "../../api/applications-api"
 import { useStagesTab } from "../../hooks/useStagesTab"
 import { CheckCircle2, CirclePlay, Pencil, UserPlus, X } from "lucide-react"
 import { useEffect, useState } from "react"
@@ -174,12 +173,6 @@ export function StagesTab({
     return () => window.clearTimeout(timer)
   }, [applicationsOpen, cutoff, hasStartedLifecycle, now])
 
-  const { currentData: eligibleCandidates } = useGetBatchApplicationsQuery(
-    { id: recruitment.id, status: 1, pageSize: 1 },
-    { skip: hasStartedLifecycle || configuredStages.length === 0 }
-  )
-  const canStartFirstStage = Boolean(eligibleCandidates?.totalItems)
-
   const handleConfirmTransition = async () => {
     if (!pendingTransition || isClosed) return
     setTransitionError(null)
@@ -280,6 +273,11 @@ export function StagesTab({
             }
           />
 
+          {!isClosed && !hasStartedLifecycle && applicationsOpen && (
+            <p role="status" className="border-b border-border bg-primary-50 px-5 py-3 text-sm text-foreground">
+              Public applications close {safeFormatWibDateTime(deadline)}. You can activate the first stage after that.
+            </p>
+          )}
           {transitionError && (
             <div
               role="alert"
@@ -373,8 +371,6 @@ export function StagesTab({
                         ? "complete"
                         : null
 
-                  const needsCandidates = transitionAction === "activate" &&
-                    !hasStartedLifecycle && !canStartFirstStage
                   const waitingForDeadline = transitionAction === "activate" &&
                     !hasStartedLifecycle && applicationsOpen
                   const isInterviewStage =
@@ -537,11 +533,9 @@ export function StagesTab({
                             size="sm"
                             variant={transitionAction === "complete" ? "default" : "outline"}
                             className="rounded-full"
-                            disabled={isTransitioning || needsCandidates || Boolean(waitingForDeadline)}
+                            disabled={isTransitioning || waitingForDeadline}
                             title={waitingForDeadline
                               ? `Applications close ${safeFormatWibDateTime(deadline)}.`
-                              : needsCandidates
-                              ? "Register at least one eligible candidate before starting the first stage."
                               : undefined}
                             onClick={() => {
                               setTransitionError(null)

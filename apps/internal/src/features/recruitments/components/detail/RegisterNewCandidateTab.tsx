@@ -118,15 +118,22 @@ export function RegisterNewCandidateTab({
             {/* Phone Number */}
             <div className="space-y-1.5">
               <Label htmlFor="cand-phone" className="text-sm font-medium px-1">
-                Phone Number
+                  Phone Number <span className="text-destructive">*</span>
               </Label>
               <Input
                 id="cand-phone"
                 value={phone}
-                onChange={(e) => setPhone(e.target.value)}
+                onChange={(e) => {
+                  setPhone(e.target.value)
+                  if (errors.phone) setErrors((prev) => ({ ...prev, phone: "" }))
+                }}
+                aria-invalid={!!errors.phone}
                 placeholder="e.g. +62 812-3456-7890"
                 className="h-10 rounded-full border-0 bg-muted px-4 text-sm text-foreground placeholder:text-muted-foreground transition-all duration-150 outline-none focus-visible:bg-card focus-visible:ring-2 focus-visible:ring-primary shadow-none"
               />
+              {errors.phone && (
+                <p className="px-1 text-xs text-destructive">{errors.phone}</p>
+              )}
             </div>
 
             {/* Gender & Birth Date Grid */}
