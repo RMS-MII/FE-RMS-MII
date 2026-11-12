@@ -10,8 +10,9 @@ import {
 import { Button } from "@workspace/ui/components/button"
 import { Textarea } from "@workspace/ui/components/textarea"
 import { Label } from "@workspace/ui/components/label"
-import { CancelButton, DatePicker, TimePicker } from "@/shared/components"
-import { formatWibDate, formatWibTime, getWibDateKey, parseUtcDateTime, wibToUtcISOString } from "@/shared/lib/utcDateTime"
+import { CancelButton, DateTimeRangePicker } from "@/shared/components"
+import type { DateTimeRangeValue } from "@/shared/components"
+import { formatWibDate, formatWibTime, getWibDateKey, parseUtcDateTime, wibDateTimeInputToUtcISOString } from "@/shared/lib/utcDateTime"
 import { CalendarClock } from "lucide-react"
 import type { MyInterviewItem } from "../types"
 
@@ -36,9 +37,7 @@ export function RequestRescheduleDialog({
   onSubmitRequest,
   isSubmitting = false,
 }: RequestRescheduleDialogProps) {
-  const [proposedDate, setProposedDate] = useState("")
-  const [proposedStartTime, setProposedStartTime] = useState("10:00")
-  const [proposedEndTime, setProposedEndTime] = useState("11:00")
+  const [proposedRange, setProposedRange] = useState<DateTimeRangeValue>({ start: "", end: "" })
   const [reason, setReason] = useState("")
   const [error, setError] = useState("")
 
@@ -50,15 +49,17 @@ export function RequestRescheduleDialog({
         const d = parseUtcDateTime(session.scheduledStart)
         const nextDay = new Date(d)
         nextDay.setUTCDate(nextDay.getUTCDate() + 1)
+        const nextEndDay = new Date(parseUtcDateTime(session.scheduledEnd))
+        nextEndDay.setUTCDate(nextEndDay.getUTCDate() + 1)
         // This effect intentionally initializes the dialog draft from the selected session.
         // eslint-disable-next-line react-hooks/set-state-in-effect
-        setProposedDate(getWibDateKey(nextDay))
-        setProposedStartTime(formatWibTime(d))
-        setProposedEndTime(formatWibTime(session.scheduledEnd))
+        const proposedDate = getWibDateKey(nextDay)
+        setProposedRange({
+          start: `${proposedDate}T${formatWibTime(d)}`,
+          end: `${getWibDateKey(nextEndDay)}T${formatWibTime(session.scheduledEnd)}`,
+        })
       } catch {
-        setProposedDate("")
-        setProposedStartTime("10:00")
-        setProposedEndTime("11:00")
+        setProposedRange({ start: "", end: "" })
       }
       setReason("")
       setError("")
@@ -77,16 +78,8 @@ export function RequestRescheduleDialog({
   }
 
   const handleSubmit = async () => {
-    if (!proposedDate) {
-      setError("Please select a proposed date.")
-      return
-    }
-    if (!proposedStartTime || !proposedEndTime) {
-      setError("Please set both proposed start and end times.")
-      return
-    }
-    if (proposedStartTime >= proposedEndTime) {
-      setError("End time must be after start time.")
+    if (!proposedRange.start || !proposedRange.end) {
+      setError("Please select the proposed start and end date/time.")
       return
     }
     if (!reason.trim()) {
@@ -98,8 +91,8 @@ export function RequestRescheduleDialog({
       return
     }
 
-    const proposedStart = new Date(wibToUtcISOString(proposedDate, proposedStartTime))
-    const proposedEnd = new Date(wibToUtcISOString(proposedDate, proposedEndTime))
+    const proposedStart = new Date(wibDateTimeInputToUtcISOString(proposedRange.start))
+    const proposedEnd = new Date(wibDateTimeInputToUtcISOString(proposedRange.end))
     if (proposedStart <= new Date()) {
       setError("Proposed schedule must be in the future.")
       return
@@ -166,61 +159,21 @@ export function RequestRescheduleDialog({
             </div>
           </div>
 
-          {/* Schedule Comparison / Proposed Schedule Picker */}
-          <div className="space-y-3">
-            <Label className="text-sm font-medium px-1 flex items-center gap-1.5 text-foreground">
-              Proposed New Schedule
+          <div className="space-y-1.5">
+            <Label htmlFor="proposed-schedule-range" className="text-sm font-medium px-1">
+              Proposed New Schedule (WIB) <span className="text-destructive">*</span>
             </Label>
-
-            {/* Proposed Date */}
-            <div className="space-y-1.5">
-              <span className="text-xs text-muted-foreground font-medium px-1">
-                Proposed Date <span className="text-destructive">*</span>
-              </span>
-              <DatePicker
-                id="proposed-date"
-                value={proposedDate}
-                onChange={(val) => {
-                  setProposedDate(val)
-                  if (error) setError("")
-                }}
-                placeholder="Select new date..."
-              />
-            </div>
-
-            {/* Proposed Time Range */}
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1.5">
-                <span className="text-xs text-muted-foreground font-medium px-1">
-                  Start Time (WIB) <span className="text-destructive">*</span>
-                </span>
-                <TimePicker
-                  id="proposed-start-time"
-                  value={proposedStartTime}
-                  onChange={(val) => {
-                    setProposedStartTime(val)
-                    if (error) setError("")
-                  }}
-                  placeholder="hh:mm"
-                />
-              </div>
-
-              <div className="space-y-1.5">
-                <span className="text-xs text-muted-foreground font-medium px-1">
-                  End Time (WIB) <span className="text-destructive">*</span>
-                </span>
-                <TimePicker
-                  id="proposed-end-time"
-                  value={proposedEndTime}
-                  onChange={(val) => {
-                    setProposedEndTime(val)
-                    if (error) setError("")
-                  }}
-                  minTime={proposedStartTime || undefined}
-                  placeholder="hh:mm"
-                />
-              </div>
-            </div>
+            <DateTimeRangePicker
+              id="proposed-schedule-range"
+              value={proposedRange}
+              onChange={(range) => {
+                setProposedRange(range)
+                if (error) setError("")
+              }}
+              placeholder="Select proposed date and time range"
+              disabled={isSubmitting}
+              invalid={Boolean(error && (!proposedRange.start || !proposedRange.end))}
+            />
           </div>
 
           {/* Reason Input */}
