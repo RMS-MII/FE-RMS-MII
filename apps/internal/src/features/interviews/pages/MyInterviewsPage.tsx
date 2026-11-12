@@ -1,4 +1,6 @@
 import * as React from "react"
+import { CalendarDays, List } from "lucide-react"
+import { Button } from "@workspace/ui/components/button"
 import {
   PageHeader,
   Panel,
@@ -17,6 +19,7 @@ import {
 } from "@workspace/ui/components/select"
 import type { AssignTakeHomePayload, MyInterviewItem, SubmitAssessmentPayload } from "../types"
 import { getApiError } from "@/shared/api/api-error"
+import { getWibDateKey, wibDayBoundToUtcISOString } from "@/shared/lib/utcDateTime"
 import {
   useAssignTakeHomeMutation,
   useConfirmInterviewerSessionMutation,
@@ -36,6 +39,8 @@ import {
   RequestRescheduleDialog,
   AssignTakeHomeDialog,
 } from "../components"
+import { MyInterviewsCalendar } from "../components/MyInterviewsCalendar"
+import { getMonthDays, useMyInterviewsCalendar } from "../hooks/useMyInterviewsCalendar"
 
 const statusItems = [
   { label: "All Status", value: "all" },
@@ -54,6 +59,13 @@ const modeItems = [
 ]
 
 export function MyInterviewsPage() {
+  const [view, setView] = React.useState<"calendar" | "list">("calendar")
+  const [month, setMonth] = React.useState(() => getWibDateKey(new Date()).slice(0, 7))
+  const calendarDays = React.useMemo(() => getMonthDays(month), [month])
+  const sessionQuery = React.useMemo(() => view === "calendar" ? {
+    from: wibDayBoundToUtcISOString(calendarDays[0]),
+    to: wibDayBoundToUtcISOString(calendarDays[calendarDays.length - 1], true),
+  } : undefined, [calendarDays, view])
   const {
     currentData: sessionDtos,
     isLoading,
@@ -61,7 +73,7 @@ export function MyInterviewsPage() {
     isError,
     error,
     refetch,
-  } = useGetInterviewerSessionsQuery(undefined, { refetchOnMountOrArgChange: true })
+  } = useGetInterviewerSessionsQuery(sessionQuery, { refetchOnMountOrArgChange: true })
   React.useEffect(() => {
     const refresh = () => void refetch()
     window.addEventListener("focus", refresh)
@@ -114,14 +126,15 @@ export function MyInterviewsPage() {
 
   // Dynamic batch filter items from data
   const batchItems = React.useMemo(() => {
-    const batches = Array.from(
-      new Set(interviews.map((i) => i.recruitmentName))
-    )
+    const batches = Array.from(new Set([
+      ...interviews.map((i) => i.recruitmentName),
+      ...(batchFilter !== "all" ? [batchFilter] : []),
+    ]))
     return [
       { label: "All Batches", value: "all" },
       ...batches.filter(Boolean).map((name) => ({ label: name, value: name })),
     ]
-  }, [interviews])
+  }, [interviews, batchFilter])
 
   // Filtered interviews list
   const filteredInterviews = React.useMemo(() => {
@@ -188,6 +201,8 @@ export function MyInterviewsPage() {
       return sortDirection === "asc" ? comparison : -comparison
     })
   }, [interviews, search, statusFilter, modeFilter, batchFilter, sortKey, sortDirection])
+
+  const calendar = useMyInterviewsCalendar(filteredInterviews, month, setMonth)
 
   // Pagination slice
   const totalItems = filteredInterviews.length
@@ -394,6 +409,14 @@ export function MyInterviewsPage() {
               </SelectContent>
             </Select>
           </div>
+          <div className="flex shrink-0 items-center rounded-full bg-muted p-1" role="group" aria-label="Interview view">
+            <Button type="button" size="sm" variant="ghost" onClick={() => setView("calendar")} aria-pressed={view === "calendar"} className={view === "calendar" ? "h-8 rounded-full bg-card px-3 text-xs shadow-sm hover:bg-card" : "h-8 rounded-full px-3 text-xs text-muted-foreground"}>
+              <CalendarDays className="mr-1.5 size-3.5" />Calendar
+            </Button>
+            <Button type="button" size="sm" variant="ghost" onClick={() => setView("list")} aria-pressed={view === "list"} className={view === "list" ? "h-8 rounded-full bg-card px-3 text-xs shadow-sm hover:bg-card" : "h-8 rounded-full px-3 text-xs text-muted-foreground"}>
+              <List className="mr-1.5 size-3.5" />List
+            </Button>
+          </div>
         </div>
 
         {/* Removable Active Filter Chips */}
@@ -414,6 +437,32 @@ export function MyInterviewsPage() {
         {takeHomeNotice && (
           <p className="border-b border-border px-5 py-3 text-sm" role="status">{takeHomeNotice}</p>
         )}
+        {view === "calendar" ? (
+          <MyInterviewsCalendar
+            month={month}
+            days={calendar.days}
+            today={calendar.today}
+            selectedDate={calendar.activeDate}
+            interviewsByDay={calendar.interviewsByDay}
+            dayInterviews={calendar.dayInterviews}
+            selectedInterview={calendar.selectedInterview}
+            onMonthChange={calendar.changeMonth}
+            onSelectDate={calendar.selectDate}
+            onSelectInterview={calendar.selectInterview}
+            onAccept={(item) => { if (item.isLead) { setActionError(null); setSessionToAccept(item) } }}
+            onRequestReschedule={(item) => { if (item.isLead) { setActionError(null); setSessionToReschedule(item) } }}
+            onAssignTakeHome={(item) => { setTakeHomeNotice(null); setSessionToAssign(item) }}
+            onSubmitAssessment={(item) => { setActionError(null); setSessionToAssess(item) }}
+            onViewAssessment={setSessionToViewAssessment}
+            isLoading={isLoading && !sessionDtos}
+            isFetching={isFetching && Boolean(sessionDtos)}
+            isError={isError && !sessionDtos}
+            error={error}
+            onRetry={() => void refetch()}
+            hasActiveFilters={activeChips.length > 0}
+            onResetFilters={handleResetFilters}
+          />
+        ) : (
         <MyInterviewsTable
           interviews={paginatedInterviews}
           isLoading={isLoading && !sessionDtos}
@@ -448,9 +497,10 @@ export function MyInterviewsPage() {
             setSessionToReschedule(item)
           }}
         />
+        )}
 
         {/* 4. Pagination directly at bottom of Panel */}
-        {!isLoading && !isError && totalItems > 0 && (
+        {view === "list" && !isLoading && !isError && totalItems > 0 && (
           <DataTablePagination className="border-t border-border px-5 py-4"
             page={safePage}
             pageSize={pageSize}
