@@ -420,7 +420,6 @@ function ExamRunner({ test, initialDraft, receivedAt }: ExamRunnerProps) {
         test={test}
         answers={answers}
         currentIndex={currentIndex}
-        remainingMs={timer.remainingMs}
         timeUp={timeUp}
         submitting={submitting}
         onSelect={handleSelect}

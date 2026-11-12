@@ -17,13 +17,8 @@ import {
 } from "@workspace/ui/components/dialog"
 import { Separator } from "@workspace/ui/components/separator"
 import { Spinner } from "@workspace/ui/components/spinner"
-import { cn } from "@workspace/ui/lib/utils"
 import type { CandidateTest, ExamAnswers } from "../types"
-import {
-  formatCountdown,
-  getAnsweredCount,
-  getMissingRequiredQuestions,
-} from "../utils"
+import { getAnsweredCount, getMissingRequiredQuestions } from "../utils"
 import { Brand } from "./Brand"
 import { QuestionCard } from "./QuestionCard"
 import { QuestionNavigator } from "./QuestionNavigator"
@@ -32,7 +27,6 @@ interface ExamSessionProps {
   test: CandidateTest
   answers: ExamAnswers
   currentIndex: number
-  remainingMs: number | null
   timeUp: boolean
   submitting: boolean
   onSelect: (questionId: string, optionId: string) => void
@@ -51,45 +45,10 @@ function ProgressLine({ percent }: { percent: number }) {
   )
 }
 
-function TimerChip({
-  remainingMs,
-  timeUp,
-}: {
-  remainingMs: number | null
-  timeUp: boolean
-}) {
-  const critical = remainingMs !== null && remainingMs <= 5 * 60 * 1_000
-  const label =
-    remainingMs === null ? "Tanpa batas" : formatCountdown(remainingMs)
-
-  return (
-    <div
-      role="timer"
-      aria-label={timeUp ? "Waktu habis" : `Sisa waktu ${label}`}
-      className={cn(
-        "flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-semibold tabular-nums sm:text-sm",
-        timeUp || critical
-          ? "border-destructive/25 bg-destructive/10 text-destructive"
-          : "border-border bg-card text-foreground"
-      )}
-    >
-      <Clock3 className="size-3.5 shrink-0 sm:size-4" />
-      <span className="hidden font-normal text-muted-foreground sm:inline">
-        Sisa waktu
-      </span>
-      <span>{timeUp ? "Waktu habis" : label}</span>
-      {critical && !timeUp ? (
-        <span className="size-1.5 animate-pulse rounded-full bg-destructive" />
-      ) : null}
-    </div>
-  )
-}
-
 export function ExamSession({
   test,
   answers,
   currentIndex,
-  remainingMs,
   timeUp,
   submitting,
   onSelect,
@@ -164,7 +123,6 @@ export function ExamSession({
               <span className="mr-1 size-1.5 animate-pulse rounded-full bg-emerald-500" />
               Sedang mengerjakan
             </Badge>
-            <TimerChip remainingMs={remainingMs} timeUp={timeUp} />
           </div>
         </div>
 
