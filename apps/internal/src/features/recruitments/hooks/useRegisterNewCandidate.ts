@@ -137,6 +137,7 @@ export function useRegisterNewCandidate({
 
       const newApplication: CandidateApplicationItem = {
         id: createdItem.id,
+        isStandalone: createdItem.isStandalone,
         candidateId: createdItem.candidateId,
         recruitmentBatchId: recruitment.id,
         codeApplication: createdItem.codeApplication,

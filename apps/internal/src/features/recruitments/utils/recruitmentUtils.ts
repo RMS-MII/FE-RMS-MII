@@ -1,8 +1,17 @@
 import type { Recruitment } from "../types"
-import { getActiveRecruitmentInterviewStages } from "./stageUtils"
+import { getRecruitmentInterviewStages } from "./stageUtils"
 
 export function isRecruitmentClosed(recruitment: Recruitment): boolean {
   return ["closed", "completed", "3"].includes(String(recruitment.status).toLowerCase())
+}
+
+export function canSetLegacyApplicationDeadline(recruitment: Recruitment): boolean {
+  return ["open", "running", "2"].includes(String(recruitment.status).toLowerCase()) &&
+    !recruitment.applicationDeadlineAt &&
+    !!recruitment.batchStages?.length &&
+    recruitment.batchStages.every((stage) =>
+      ["inactive", "0"].includes(String(stage.lifecycleStatus).toLowerCase())
+    )
 }
 
 export function getRecruitmentCloseRestriction(recruitment: Recruitment): string | null {
@@ -30,14 +39,8 @@ export function getRecruitmentAddRestriction(
     return `This recruitment batch must be Open before ${actionLabel}.`
   }
 
-  if (action === "candidate" && stages.some((stage) =>
-    ["active", "completed", "1", "2"].includes(String(stage.lifecycleStatus).toLowerCase())
-  )) {
-    return "Candidates cannot be added after the batch selection has started."
-  }
-
-  if (action === "interview" && getActiveRecruitmentInterviewStages(recruitment).length === 0) {
-    return "Activate an interview stage before scheduling interviews."
+  if (action === "interview" && getRecruitmentInterviewStages(recruitment).length === 0) {
+    return "Configure an interview stage before scheduling interviews."
   }
 
   return null

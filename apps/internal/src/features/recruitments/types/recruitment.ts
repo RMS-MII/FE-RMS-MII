@@ -38,6 +38,7 @@ export interface CreateBatchRequest {
 
 export interface UpdateBatchStatusRequest {
   status: BatchStatus
+  applicationDeadlineAt?: string
 }
 
 /**
@@ -53,6 +54,7 @@ export interface Recruitment {
   description: string
   startDate?: string
   endDate?: string
+  applicationDeadlineAt?: string | null
   status: RecruitmentStatus
   createdBy?: string
   createdAt?: string

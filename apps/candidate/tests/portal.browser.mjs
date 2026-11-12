@@ -401,13 +401,54 @@ try {
   await page.getByRole("heading", { name: "No interviews yet" }).waitFor()
   await page.goto(`${base}/portal/${candidate}/assignments`)
   await page.getByRole("heading", { name: "No take-home tasks yet" }).waitFor()
-  await page.goto(base)
+  await page.goto(`${base}/portal/invalid`)
   await page
     .getByRole("heading", { name: "Open your invitation link" })
     .waitFor()
+  const job = {
+    id: "33333333-3333-3333-3333-333333333333",
+    name: "Frontend Engineer",
+    department: "Engineering",
+    description: "Build recruitment tools.",
+    applicationDeadlineAt: "2027-01-31T00:00:00Z",
+  }
+  const legacyJob = { ...job, id: "legacy", name: "Legacy opening", applicationDeadlineAt: null }
+  let application
+  await page.route("**/api/portal/jobs**", async (route) => {
+    const request = route.request()
+    if (request.method() === "GET") return route.fulfill({ json: [job, legacyJob] })
+    assert.ok(request.url().endsWith(`/jobs/${job.id}/applications`))
+    application = request.postDataJSON()
+    return route.fulfill({ status: 201 })
+  })
+  await page.goto(base)
+  await page.getByRole("heading", { name: job.name }).waitFor()
+  await page.getByText("Apply by 31 Jan 2027, 07:00 WIB").waitFor()
+  await page.getByText("Open for applications", { exact: true }).waitFor()
+  await page.goto(`${base}/jobs`)
+  await page.getByRole("article").filter({ hasText: job.name })
+    .getByRole("button", { name: "View position" }).click()
+  await page.getByRole("heading", { name: "Job description" }).waitFor()
+  assert.equal(await page.getByText(job.description, { exact: true }).count(), 1)
+  await page.getByLabel("Gender").selectOption("2")
+  for (const [label, value] of [
+    ["Full name", "Test Applicant"],
+    ["Email", "applicant@example.test"],
+    ["Phone number", "08123456789"],
+    ["Date of birth", "2000-03-08"],
+    ["Highest education", "Bachelor"],
+    ["Institution", "Test University"],
+    ["GPA (0–4)", "3.5"],
+    ["Address", "Jakarta"],
+  ]) {
+    await page.getByLabel(label, { exact: true }).fill(value)
+  }
+  await page.getByRole("button", { name: "Submit application" }).click()
+  await page.getByText("Application received", { exact: true }).waitFor()
+  assert.equal(application.fullName, "Test Applicant")
   assert.deepEqual(errors, [])
   console.log(
-    "Browser checks passed: overview, confirmation, submission, reschedule, mobile, invalid link; no exam calls."
+    "Browser checks passed: public jobs and application, overview, confirmation, submission, reschedule, mobile, invalid link; no exam calls."
   )
 } finally {
   await browser.close()

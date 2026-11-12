@@ -12,11 +12,15 @@ import {
 import { Button } from "@workspace/ui/components/button"
 import {
   CancelButton,
+  DatePicker,
   ErrorState,
   SaveButton,
   StatusBadge,
+  TimePicker,
 } from "@/shared/components"
 import { formatPeriod } from "@/shared/lib/format"
+import { parseUtcDateTime, wibToUtcISOString } from "@/shared/lib/utcDateTime"
+import { canSetLegacyApplicationDeadline } from "../utils/recruitmentUtils"
 import {
   useGetBatchByIdQuery,
   useUpdateBatchStatusMutation,
@@ -51,6 +55,8 @@ export function OpenRecruitmentDialog({
 }: OpenRecruitmentDialogProps) {
   const navigate = useNavigate()
   const [submitError, setSubmitError] = useState<string | null>(null)
+  const [deadlineDate, setDeadlineDate] = useState("")
+  const [deadlineTime, setDeadlineTime] = useState("23:59")
   const {
     currentData: batch,
     isFetching,
@@ -65,24 +71,51 @@ export function OpenRecruitmentDialog({
 
   const statusMeta = batch ? getRecruitmentStatusMeta(batch.status) : null
   const isDraft = statusMeta?.label === "Draft"
+  const settingLegacyDeadline = canSetLegacyApplicationDeadline(
+    batch ?? recruitment
+  )
   const stageCount = batch?.batchStages?.length ?? 0
   const canOpen = Boolean(
-    batch && isDraft && stageCount > 0 && !isFetching && !isError
+    batch &&
+    (isDraft || settingLegacyDeadline) &&
+    stageCount > 0 &&
+    !isFetching &&
+    !isError
   )
 
   const handleOpenChange = (nextOpen: boolean) => {
-    if (!isSubmitting) onOpenChange(nextOpen)
+    if (isSubmitting) return
+    if (!nextOpen) {
+      setDeadlineDate("")
+      setDeadlineTime("23:59")
+      setSubmitError(null)
+    }
+    onOpenChange(nextOpen)
   }
 
   const handleOpenRecruitment = async () => {
-    if (!canOpen || isSubmitting) return
+    if (!batch || !canOpen || isSubmitting || !deadlineDate || !deadlineTime)
+      return
+    const applicationDeadlineAt = wibToUtcISOString(deadlineDate, deadlineTime)
+    const cutoff = Date.parse(applicationDeadlineAt)
+    if (
+      cutoff <= Date.now() ||
+      (batch.endDate && cutoff > parseUtcDateTime(batch.endDate).getTime())
+    ) {
+      setSubmitError(
+        "The application deadline must be in the future and on or before the batch end."
+      )
+      return
+    }
     setSubmitError(null)
     try {
       const updatedBatch = await updateStatus({
         id: recruitment.id,
-        body: { status: "Open" },
+        body: { status: "Open", applicationDeadlineAt },
       }).unwrap()
       onSuccess(updatedBatch)
+      setDeadlineDate("")
+      setDeadlineTime("23:59")
       onOpenChange(false)
     } catch (error) {
       setSubmitError(getOpenErrorMessage(error))
@@ -93,14 +126,17 @@ export function OpenRecruitmentDialog({
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent
-        className="gap-0 overflow-hidden rounded-2xl p-0 sm:max-w-md"
+        className="max-h-[90dvh] gap-0 overflow-y-auto rounded-2xl p-0 sm:max-w-md"
         showCloseButton={!isSubmitting}
       >
         <DialogHeader className="border-b border-border p-6 pb-4">
-          <DialogTitle>Open Recruitment</DialogTitle>
+          <DialogTitle>
+            {settingLegacyDeadline
+              ? "Set Application Deadline"
+              : "Open Recruitment"}
+          </DialogTitle>
           <DialogDescription>
-            Review this batch and its selection stages before opening
-            recruitment.
+            Choose when the job portal stops accepting applications.
           </DialogDescription>
         </DialogHeader>
 
@@ -159,13 +195,13 @@ export function OpenRecruitmentDialog({
                 </div>
               </dl>
 
-              {!isDraft ? (
+              {!isDraft && !settingLegacyDeadline ? (
                 <p
                   role="status"
                   className="rounded-xl bg-muted px-4 py-3 text-xs text-muted-foreground"
                 >
-                  Only Draft recruitments can be opened. This batch is currently{" "}
-                  {statusMeta.label}.
+                  The application deadline can only be set before bulk selection
+                  starts.
                 </p>
               ) : stageCount === 0 ? (
                 <div className="space-y-3 rounded-xl border border-amber-200 bg-amber-50 p-4 text-xs text-amber-800">
@@ -194,10 +230,44 @@ export function OpenRecruitmentDialog({
                   </Button>
                 </div>
               ) : (
-                <p className="rounded-xl bg-muted px-4 py-3 text-xs text-muted-foreground">
-                  Once opened, you can add candidates and schedule interviews
-                  for configured interview stages.
-                </p>
+                <div className="space-y-2">
+                  <h3 className="text-sm font-semibold">
+                    Application Deadline (WIB)
+                  </h3>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1">
+                      <label
+                        htmlFor="deadline-date"
+                        className="text-xs font-medium"
+                      >
+                        Date
+                      </label>
+                      <DatePicker
+                        id="deadline-date"
+                        value={deadlineDate}
+                        onChange={setDeadlineDate}
+                        disabled={isSubmitting}
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label
+                        htmlFor="deadline-time"
+                        className="text-xs font-medium"
+                      >
+                        Time
+                      </label>
+                      <TimePicker
+                        id="deadline-time"
+                        value={deadlineTime}
+                        onChange={setDeadlineTime}
+                        disabled={isSubmitting}
+                      />
+                    </div>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Bulk selection can start once this deadline is reached.
+                  </p>
+                </div>
               )}
             </>
           )}
@@ -219,12 +289,12 @@ export function OpenRecruitmentDialog({
           />
           <SaveButton
             onClick={handleOpenRecruitment}
-            disabled={!canOpen}
+            disabled={!canOpen || !deadlineDate || !deadlineTime}
             isLoading={isSubmitting}
-            loadingText="Opening..."
+            loadingText="Saving…"
             icon={<CirclePlay className="size-4" aria-hidden />}
           >
-            Open Recruitment
+            {settingLegacyDeadline ? "Save Deadline" : "Open Recruitment"}
           </SaveButton>
         </DialogFooter>
       </DialogContent>

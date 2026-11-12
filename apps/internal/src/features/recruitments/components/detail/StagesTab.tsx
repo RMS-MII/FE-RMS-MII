@@ -35,6 +35,7 @@ import {
 } from "@/shared/components"
 import { getApiError } from "@/shared/api/api-error"
 import { safeFormatDate } from "@/shared/lib/format"
+import { parseUtcDateTime, safeFormatWibDateTime } from "@/shared/lib/utcDateTime"
 import { cn } from "@/shared/lib/utils"
 import { formatStageCategory } from "../../utils"
 import type {
@@ -48,7 +49,7 @@ import { AssignInterviewersDialog } from "./AssignInterviewersDialog"
 import { useGetBatchApplicationsQuery } from "../../api/applications-api"
 import { useStagesTab } from "../../hooks/useStagesTab"
 import { CheckCircle2, CirclePlay, Pencil, UserPlus, X } from "lucide-react"
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { isRecruitmentClosed } from "../../utils/recruitmentUtils"
 
 export interface StagesTabProps {
@@ -162,6 +163,16 @@ export function StagesTab({
     const lifecycleStatus = normalizeLifecycleStatus(stage.lifecycleStatus)
     return lifecycleStatus === "active" || lifecycleStatus === "completed"
   })
+  const deadline = recruitment.applicationDeadlineAt
+  const cutoff = deadline ? parseUtcDateTime(deadline).getTime() : 0
+  const [now, setNow] = useState(Date.now)
+  const applicationsOpen = cutoff > now
+  useEffect(() => {
+    if (!applicationsOpen || hasStartedLifecycle) return
+    const delay = Math.min(Math.max(0, cutoff - Date.now()), 2_147_483_647)
+    const timer = window.setTimeout(() => setNow(Date.now()), delay)
+    return () => window.clearTimeout(timer)
+  }, [applicationsOpen, cutoff, hasStartedLifecycle, now])
 
   const { currentData: eligibleCandidates } = useGetBatchApplicationsQuery(
     { id: recruitment.id, status: 1, pageSize: 1 },
@@ -364,6 +375,8 @@ export function StagesTab({
 
                   const needsCandidates = transitionAction === "activate" &&
                     !hasStartedLifecycle && !canStartFirstStage
+                  const waitingForDeadline = transitionAction === "activate" &&
+                    !hasStartedLifecycle && applicationsOpen
                   const isInterviewStage =
                     stage.type === "interview" ||
                     stage.stageCategory === "Interview" ||
@@ -524,8 +537,10 @@ export function StagesTab({
                             size="sm"
                             variant={transitionAction === "complete" ? "default" : "outline"}
                             className="rounded-full"
-                            disabled={isTransitioning || needsCandidates}
-                            title={needsCandidates
+                            disabled={isTransitioning || needsCandidates || Boolean(waitingForDeadline)}
+                            title={waitingForDeadline
+                              ? `Applications close ${safeFormatWibDateTime(deadline)}.`
+                              : needsCandidates
                               ? "Register at least one eligible candidate before starting the first stage."
                               : undefined}
                             onClick={() => {

@@ -17,6 +17,7 @@ import { StageTimelineProgress } from "../components/detail/StageTimelineProgres
 import { StageEvaluationEvidence } from "../components/detail/StageEvaluationEvidence"
 import { StageDecisionFooter } from "../components/detail/StageDecisionFooter"
 import { OfferingLetterSection } from "../components/detail/OfferingLetterSection"
+import { StandaloneApplicationActions } from "../components/detail/StandaloneApplicationActions"
 import type { EvaluateStageCommand } from "../types/application"
 
 export interface CandidateApplicationDetailPageProps {
@@ -48,7 +49,7 @@ function ApplicationDetailContent({
   const [selectedStageId, setSelectedStageId] = useState<string | null>(null)
 
   const stages = application?.applicationStages ?? []
-  const usesBatchLifecycle = stages.some((stage) =>
+  const usesBatchLifecycle = !application?.isStandalone && stages.some((stage) =>
     !["inactive", "0"].includes(String(stage.lifecycleStatus ?? "Inactive").toLowerCase())
   )
   const lifecycleStageIndex = stages.findIndex((stage) =>
@@ -191,6 +192,9 @@ function ApplicationDetailContent({
               )}
             </div>
             <OfferingLetterSection application={application} readOnly={isClosed} />
+            {application.isStandalone && (
+              <StandaloneApplicationActions application={application} readOnly={isClosed} />
+            )}
             <div
               className={
                 stages.length > 0

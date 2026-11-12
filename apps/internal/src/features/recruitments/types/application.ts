@@ -37,6 +37,7 @@ export interface CandidateDto {
 
 export interface BatchApplicationListItemDto {
   id: string
+  isStandalone?: boolean
   candidateId: string
   recruitmentBatchId: string
   codeApplication: string
@@ -239,6 +240,7 @@ export interface CandidateApplicationDetailItem extends CandidateApplicationItem
 /** Rich view model joining BatchApplications, Candidates, and ApplicationStages */
 export interface CandidateApplicationItem {
   id: string // BatchApplication.Id
+  isStandalone?: boolean
   candidateId: string
   recruitmentBatchId: string
   codeApplication: string // e.g. "APP-2026-001"
