@@ -146,7 +146,7 @@ export function CreateRecruitmentDialog({
               rows={3}
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              className="min-h-20 rounded-2xl border-0 bg-muted px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground transition-all duration-150 outline-none focus-visible:bg-card focus-visible:ring-2 focus-visible:ring-primary shadow-none resize-y"
+              className="min-h-20 max-h-36 overflow-auto rounded-2xl border-0 bg-muted px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground transition-all duration-150 outline-none focus-visible:bg-card focus-visible:ring-2 focus-visible:ring-primary shadow-none resize-y"
             />
           </div>
 
