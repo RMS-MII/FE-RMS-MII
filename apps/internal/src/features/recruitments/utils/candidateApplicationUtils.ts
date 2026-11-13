@@ -83,6 +83,12 @@ export function getRecruitmentCandidateApplications(
       // Populate test evaluation if stage is a test
       if (stg.type === "test" && sIdx <= c.stageIndex) {
         const scoreVal = stageScore ?? 80
+        const discTotals = [
+          { trait: "Dominance", totalMost: 3, totalLeast: 0 },
+          { trait: "Influence", totalMost: 2, totalLeast: 1 },
+          { trait: "Steadiness", totalMost: 0, totalLeast: 3 },
+          { trait: "Conscientiousness", totalMost: 2, totalLeast: 2 },
+        ]
         testEvaluation = {
           totalQuestions: 50,
           attemptedQuestions: 48,
@@ -90,6 +96,12 @@ export function getRecruitmentCandidateApplications(
           score: scoreVal,
           durationMinutes: 45,
           submittedAt: completedAt || startedAt || undefined,
+          discSummaries: discTotals.map(({ trait, totalMost, totalLeast }) => ({
+            trait,
+            totalMost,
+            totalLeast,
+            difference: totalMost - totalLeast,
+          })),
         }
       }
 

@@ -8,12 +8,20 @@ import {
   XCircle,
 } from "lucide-react"
 import { Button } from "@workspace/ui/components/button"
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@workspace/ui/components/dialog"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@workspace/ui/components/dialog"
 import { EmptyState, StatusBadge } from "@/shared/components"
 import type { Tone } from "@/shared/components"
 import { cn } from "@/shared/lib/utils"
 import { safeFormatDate } from "@/shared/lib/format"
 import type { CandidateApplicationItem } from "../../types"
+import { DiscRadarChart } from "./DiscRadarChart"
 
 export interface StageEvaluationEvidenceProps {
   application: CandidateApplicationItem
@@ -57,6 +65,9 @@ export function StageEvaluationEvidence({
   }
 
   const isTest = stage.stageType === "test"
+  const isPsychotest = (stage.stageTypeName ?? "")
+    .toLowerCase()
+    .includes("psikotes")
   const isInterview = stage.stageType === "interview"
   const isScreening = stage.stageType === "screening"
   const passing =
@@ -76,6 +87,7 @@ export function StageEvaluationEvidence({
   const attemptedQuestions = stage.testEvaluation?.attemptedQuestions
   const totalQuestions = stage.testEvaluation?.totalQuestions
   const answers = stage.testEvaluation?.answers
+  const discSummaries = stage.testEvaluation?.discSummaries ?? []
   const questionSummary =
     answers != null
       ? `${answers.length} recorded`
@@ -214,10 +226,30 @@ export function StageEvaluationEvidence({
             </div>
           </div>
 
+          {isPsychotest && (
+            <section className="space-y-3 rounded-xl border border-border p-4">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <h5 className="text-sm font-semibold text-foreground">DISC</h5>
+                <span className="text-[11px] text-muted-foreground">
+                  Most / Least / Difference
+                </span>
+              </div>
+              {discSummaries.length > 0 ? (
+                <DiscRadarChart summaries={discSummaries} />
+              ) : (
+                <p className="rounded-xl bg-muted/40 px-4 py-6 text-center text-xs text-muted-foreground">
+                  Data grafik DISC belum tersedia.
+                </p>
+              )}
+            </section>
+          )}
+
           {answers != null && (
             <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border p-4">
               <div className="space-y-1">
-                <h5 className="text-sm font-semibold text-foreground">Test answers</h5>
+                <h5 className="text-sm font-semibold text-foreground">
+                  Test answers
+                </h5>
                 <p className="text-xs text-muted-foreground">
                   {answers.length > 0
                     ? `${answers.length} recorded answers are available.`
@@ -225,7 +257,12 @@ export function StageEvaluationEvidence({
                 </p>
               </div>
               {answers.length > 0 && (
-                <Button type="button" variant="outline" onClick={() => setAnswersOpen(true)} className="rounded-full">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setAnswersOpen(true)}
+                  className="rounded-full"
+                >
                   View answers
                 </Button>
               )}
@@ -393,16 +430,18 @@ export function StageEvaluationEvidence({
                 Test answers · {stage.stageName}
               </DialogTitle>
               <DialogDescription>
-                {answers.length} recorded answers. The total question count is not available.
+                {answers.length} recorded answers. The total question count is
+                not available.
               </DialogDescription>
             </DialogHeader>
             <ol className="min-h-0 divide-y divide-border overflow-y-auto px-6">
               {answers.map((answer, index) => (
                 <li key={answer.id} className="space-y-2 py-4">
-                  <p className="text-sm font-medium word-break-words whitespace-pre-wrap text-foreground">
-                    {index + 1}. {answer.questionText || "Question text not available"}
+                  <p className="word-break-words text-sm font-medium whitespace-pre-wrap text-foreground">
+                    {index + 1}.{" "}
+                    {answer.questionText || "Question text not available"}
                   </p>
-                  <p className="text-sm leading-relaxed word-break-words whitespace-pre-wrap text-muted-foreground">
+                  <p className="word-break-words text-sm leading-relaxed whitespace-pre-wrap text-muted-foreground">
                     <span className="font-medium">Answer: </span>
                     {answer.questionOptionText || "Answer text not available"}
                   </p>
@@ -413,7 +452,12 @@ export function StageEvaluationEvidence({
               ))}
             </ol>
             <DialogFooter className="border-t border-border bg-card px-9 pb-9">
-              <Button type="button" variant="outline" onClick={() => setAnswersOpen(false)} className="rounded-full">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setAnswersOpen(false)}
+                className="rounded-full"
+              >
                 Close
               </Button>
             </DialogFooter>

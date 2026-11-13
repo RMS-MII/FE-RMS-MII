@@ -1,5 +1,11 @@
 import { useEffect, useRef, useState } from "react"
-import { Clock3, LayoutGrid, Send } from "lucide-react"
+import {
+  ChevronLeft,
+  ChevronRight,
+  Clock3,
+  LayoutGrid,
+  Send,
+} from "lucide-react"
 import {
   Alert,
   AlertDescription,
@@ -17,8 +23,13 @@ import {
 } from "@workspace/ui/components/dialog"
 import { Separator } from "@workspace/ui/components/separator"
 import { Spinner } from "@workspace/ui/components/spinner"
+import { cn } from "@workspace/ui/lib/utils"
 import type { CandidateTest, ExamAnswers } from "../types"
-import { getAnsweredCount, getMissingRequiredQuestions } from "../utils"
+import {
+  formatCountdown,
+  getAnsweredCount,
+  getMissingRequiredQuestions,
+} from "../utils"
 import { Brand } from "./Brand"
 import { QuestionCard } from "./QuestionCard"
 import { QuestionNavigator } from "./QuestionNavigator"
@@ -27,6 +38,7 @@ interface ExamSessionProps {
   test: CandidateTest
   answers: ExamAnswers
   currentIndex: number
+  remainingMs: number | null
   timeUp: boolean
   submitting: boolean
   onSelect: (questionId: string, optionId: string) => void
@@ -45,10 +57,45 @@ function ProgressLine({ percent }: { percent: number }) {
   )
 }
 
+function TimerChip({
+  remainingMs,
+  timeUp,
+}: {
+  remainingMs: number | null
+  timeUp: boolean
+}) {
+  const critical = remainingMs !== null && remainingMs <= 5 * 60 * 1_000
+  const label =
+    remainingMs === null ? "Tanpa batas" : formatCountdown(remainingMs)
+
+  return (
+    <div
+      role="timer"
+      aria-label={timeUp ? "Waktu habis" : `Sisa waktu ${label}`}
+      className={cn(
+        "flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-semibold tabular-nums sm:text-sm",
+        timeUp || critical
+          ? "border-destructive/25 bg-destructive/10 text-destructive"
+          : "border-border bg-card text-foreground"
+      )}
+    >
+      <Clock3 className="size-3.5 shrink-0 sm:size-4" />
+      <span className="hidden font-normal text-muted-foreground sm:inline">
+        Sisa waktu
+      </span>
+      <span>{timeUp ? "Waktu habis" : label}</span>
+      {critical && !timeUp ? (
+        <span className="size-1.5 animate-pulse rounded-full bg-destructive" />
+      ) : null}
+    </div>
+  )
+}
+
 export function ExamSession({
   test,
   answers,
   currentIndex,
+  remainingMs,
   timeUp,
   submitting,
   onSelect,
@@ -63,18 +110,27 @@ export function ExamSession({
   const missingRequired = getMissingRequiredQuestions(test.questions, answers)
   const locked = submitting || timeUp
 
+  const stageTypeName = (test.stageTypeName ?? "").toLowerCase()
+  const isPsychotest =
+    stageTypeName.includes("psikotes")
+  const useScroll = isPsychotest
+  const showTimer = !useScroll
+
   const goToQuestion = (index: number) => {
     setNavigatorOpen(false)
     onIndexChange(index)
 
-    const question = test.questions[index]
-    if (!question) {
-      return
-    }
+    if (useScroll) {
+      const question = test.questions[index]
 
-    document
-      .getElementById(`question-${question.id}`)
-      ?.scrollIntoView({ behavior: "smooth", block: "start" })
+      if (!question) {
+        return
+      }
+
+      document
+        .getElementById(`question-${question.id}`)
+        ?.scrollIntoView({ behavior: "smooth", block: "start" })
+    }
   }
 
   const openSubmitFromNavigator = () => {
@@ -90,11 +146,20 @@ export function ExamSession({
       return
     }
 
-    document
-      .getElementById(`question-${question.id}`)
-      ?.scrollIntoView({ behavior: "auto", block: "start" })
+    if (useScroll) {
+      document
+        .getElementById(`question-${question.id}`)
+        ?.scrollIntoView({ behavior: "auto", block: "start" })
+    }
+
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  const question = test.questions[currentIndex]
+
+  if (!question) {
+    return null
+  }
 
   return (
     <div className="min-h-svh bg-background">
@@ -123,6 +188,9 @@ export function ExamSession({
               <span className="mr-1 size-1.5 animate-pulse rounded-full bg-emerald-500" />
               Sedang mengerjakan
             </Badge>
+            {showTimer ? (
+              <TimerChip remainingMs={remainingMs} timeUp={timeUp} />
+            ) : null}
           </div>
         </div>
 
@@ -155,20 +223,60 @@ export function ExamSession({
             </Alert>
           ) : null}
 
-          <ol className="space-y-4">
-            {test.questions.map((question, index) => (
-              <li key={question.id}>
-                <QuestionCard
-                  question={question}
-                  index={index}
-                  total={total}
-                  selectedOptionIds={answers[question.id] ?? []}
-                  disabled={locked}
-                  onSelect={(optionId) => onSelect(question.id, optionId)}
-                />
-              </li>
-            ))}
-          </ol>
+          {useScroll ? (
+            <ol className="space-y-4">
+              {test.questions.map((item, index) => (
+                <li key={item.id}>
+                  <QuestionCard
+                    question={item}
+                    index={index}
+                    total={total}
+                    selectedOptionIds={answers[item.id] ?? []}
+                    disabled={locked}
+                    onSelect={(optionId) => onSelect(item.id, optionId)}
+                  />
+                </li>
+              ))}
+            </ol>
+          ) : (
+            <>
+              <QuestionCard
+                question={question}
+                index={currentIndex}
+                total={total}
+                selectedOptionIds={answers[question.id] ?? []}
+                disabled={locked}
+                onSelect={(optionId) => onSelect(question.id, optionId)}
+              />
+
+              <div className="flex items-center justify-between gap-3">
+                <Button
+                  variant="outline"
+                  size="lg"
+                  className="h-10"
+                  onClick={() => onIndexChange(currentIndex - 1)}
+                  disabled={currentIndex === 0 || locked}
+                >
+                  <ChevronLeft className="size-4" />
+                  Sebelumnya
+                </Button>
+
+                <span className="text-xs font-medium text-muted-foreground sm:hidden">
+                  {currentIndex + 1} / {total}
+                </span>
+
+                <Button
+                  size="lg"
+                  className="h-10"
+                  onClick={() => onIndexChange(currentIndex + 1)}
+                  disabled={currentIndex >= total - 1 || locked}
+                >
+                  Berikutnya
+                  <ChevronRight className="size-4" />
+                </Button>
+              </div>
+            </>
+          )}
 
           <div className="grid grid-cols-2 gap-2 lg:hidden">
             <Button

@@ -145,6 +145,7 @@ function mapStage(
             score: stage.totalScore,
             durationMinutes: parseTimeSpanMinutes(stage.durationTest),
             answers: stage.testAnswers,
+            discSummaries: stage.discSummaries ?? [],
           }
         : undefined,
     interviewAssessments: mapAssessments(stage),

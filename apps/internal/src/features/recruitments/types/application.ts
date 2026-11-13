@@ -188,6 +188,15 @@ export interface StageTestEvaluationItem {
   durationMinutes: number | null
   answers?: CandidateAnswerRecapDto[]
   submittedAt?: string
+  /** Rekap skor DISC per trait untuk tes psikotest. */
+  discSummaries?: DiscSummaryItem[]
+}
+
+export interface DiscSummaryItem {
+  trait: string
+  totalMost: number
+  totalLeast: number
+  difference: number
 }
 
 export interface CandidateApplicationStageItem {

@@ -71,6 +71,13 @@ export interface CandidateAnswerRecapDto {
   updatedAt: string | null
 }
 
+export interface DiscSummaryRecapDto {
+  trait: string
+  totalMost: number
+  totalLeast: number
+  difference: number
+}
+
 export interface ApplicationStageRecapDto {
   applicationStageId: string | null
   batchStageId: string
@@ -98,6 +105,7 @@ export interface ApplicationStageRecapDto {
   interviewers: StageInterviewerRecapDto[]
   interviewSessions: InterviewSessionRecapDto[]
   testAnswers: CandidateAnswerRecapDto[]
+  discSummaries: DiscSummaryRecapDto[]
 }
 
 export interface ApplicationRecapSummaryDto {
