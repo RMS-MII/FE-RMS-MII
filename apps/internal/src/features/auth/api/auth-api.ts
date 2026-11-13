@@ -1,5 +1,6 @@
 import { baseApi } from "@/shared/api/base-api"
 import type {
+  ChangePasswordRequest,
   CurrentUserDto,
   ForgotPasswordRequest,
   ForgotPasswordResponse,
@@ -32,6 +33,13 @@ export const authApi = baseApi.injectEndpoints({
         body,
       }),
     }),
+    changePassword: builder.mutation<void, ChangePasswordRequest>({
+      query: (body) => ({
+        url: "/auth/change-password",
+        method: "POST",
+        body,
+      }),
+    }),
     getMe: builder.query<CurrentUserDto, void>({
       query: () => "/auth/me",
       providesTags: ["Auth"],
@@ -43,6 +51,7 @@ export const {
   useLoginMutation,
   useForgotPasswordMutation,
   useResetPasswordMutation,
+  useChangePasswordMutation,
   useGetMeQuery,
   useLazyGetMeQuery,
 } = authApi

@@ -14,6 +14,7 @@ import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as AuthIndexRouteImport } from './routes/_auth/index'
+import { Route as AuthChangePasswordRouteImport } from './routes/_auth/change-password'
 import { Route as AuthDashboardRouteImport } from './routes/_auth/dashboard'
 import { Route as AuthEmailLogsRouteImport } from './routes/_auth/email-logs'
 import { Route as AuthUsersRouteImport } from './routes/_auth/users'
@@ -50,6 +51,11 @@ const ResetPasswordRoute = ResetPasswordRouteImport.update({
 const AuthIndexRoute = AuthIndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => AuthRoute,
+} as any)
+const AuthChangePasswordRoute = AuthChangePasswordRouteImport.update({
+  id: '/change-password',
+  path: '/change-password',
   getParentRoute: () => AuthRoute,
 } as any)
 const AuthDashboardRoute = AuthDashboardRouteImport.update({
@@ -128,6 +134,7 @@ export interface FileRoutesByFullPath {
   '/forgot-password': typeof ForgotPasswordRoute
   '/login': typeof LoginRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/change-password': typeof AuthChangePasswordRoute
   '/dashboard': typeof AuthDashboardRoute
   '/email-logs': typeof AuthEmailLogsRoute
   '/users': typeof AuthUsersRoute
@@ -146,6 +153,7 @@ export interface FileRoutesByTo {
   '/forgot-password': typeof ForgotPasswordRoute
   '/login': typeof LoginRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/change-password': typeof AuthChangePasswordRoute
   '/dashboard': typeof AuthDashboardRoute
   '/email-logs': typeof AuthEmailLogsRoute
   '/users': typeof AuthUsersRoute
@@ -167,6 +175,7 @@ export interface FileRoutesById {
   '/forgot-password': typeof ForgotPasswordRoute
   '/login': typeof LoginRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/_auth/change-password': typeof AuthChangePasswordRoute
   '/_auth/dashboard': typeof AuthDashboardRoute
   '/_auth/email-logs': typeof AuthEmailLogsRoute
   '/_auth/users': typeof AuthUsersRoute
@@ -189,6 +198,7 @@ export interface FileRouteTypes {
     | '/forgot-password'
     | '/login'
     | '/reset-password'
+    | '/change-password'
     | '/dashboard'
     | '/email-logs'
     | '/users'
@@ -207,6 +217,7 @@ export interface FileRouteTypes {
     | '/forgot-password'
     | '/login'
     | '/reset-password'
+    | '/change-password'
     | '/dashboard'
     | '/email-logs'
     | '/users'
@@ -227,6 +238,7 @@ export interface FileRouteTypes {
     | '/forgot-password'
     | '/login'
     | '/reset-password'
+    | '/_auth/change-password'
     | '/_auth/dashboard'
     | '/_auth/email-logs'
     | '/_auth/users'
@@ -285,6 +297,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof AuthIndexRouteImport
+      parentRoute: typeof AuthRoute
+    }
+    '/_auth/change-password': {
+      id: '/_auth/change-password'
+      path: '/change-password'
+      fullPath: '/change-password'
+      preLoaderRoute: typeof AuthChangePasswordRouteImport
       parentRoute: typeof AuthRoute
     }
     '/_auth/dashboard': {
@@ -382,6 +401,7 @@ declare module '@tanstack/react-router' {
 }
 
 interface AuthRouteChildren {
+  AuthChangePasswordRoute: typeof AuthChangePasswordRoute
   AuthDashboardRoute: typeof AuthDashboardRoute
   AuthEmailLogsRoute: typeof AuthEmailLogsRoute
   AuthUsersRoute: typeof AuthUsersRoute
@@ -399,6 +419,7 @@ interface AuthRouteChildren {
 }
 
 const AuthRouteChildren: AuthRouteChildren = {
+  AuthChangePasswordRoute: AuthChangePasswordRoute,
   AuthDashboardRoute: AuthDashboardRoute,
   AuthEmailLogsRoute: AuthEmailLogsRoute,
   AuthUsersRoute: AuthUsersRoute,

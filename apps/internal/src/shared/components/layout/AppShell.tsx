@@ -12,6 +12,7 @@ import {
   Users,
   Mail,
   CalendarCheck,
+  KeyRound,
 } from "lucide-react"
 import { Link } from "@tanstack/react-router"
 import { cn } from "@/shared/lib/utils"
@@ -380,6 +381,14 @@ function UserCard({
         </div>
 
         <DropdownMenuSeparator className="my-1.5 bg-border/60" />
+
+        <DropdownMenuItem
+          render={<Link to="/change-password" />}
+          className="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-sm"
+        >
+          <KeyRound className="size-4" aria-hidden />
+          <span>Change Password</span>
+        </DropdownMenuItem>
 
         <DropdownMenuItem
           onClick={onLogout}
