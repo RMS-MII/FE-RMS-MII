@@ -5,6 +5,7 @@ import { defineConfig } from "vite"
 
 // https://vite.dev/config/
 export default defineConfig({
+  publicDir: resolve(import.meta.dirname, "../../public"),
   plugins: [react(), tailwindcss()],
   resolve: {
     alias: {

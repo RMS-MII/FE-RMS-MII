@@ -281,4 +281,5 @@ export interface StageInvitationItem {
   note: string | null
 }
 
+export * from "./dashboard"
 export * from "./invitations"

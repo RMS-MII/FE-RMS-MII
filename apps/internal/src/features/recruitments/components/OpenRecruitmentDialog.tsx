@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { useNavigate } from "@tanstack/react-router"
 import { AlertCircle, CirclePlay, Loader2, Settings2 } from "lucide-react"
 import {
@@ -10,16 +10,21 @@ import {
   DialogTitle,
 } from "@workspace/ui/components/dialog"
 import { Button } from "@workspace/ui/components/button"
+import { Input } from "@workspace/ui/components/input"
 import {
   CancelButton,
   DatePicker,
   ErrorState,
   SaveButton,
   StatusBadge,
-  TimePicker,
 } from "@/shared/components"
 import { formatPeriod } from "@/shared/lib/format"
-import { parseUtcDateTime, wibToUtcISOString } from "@/shared/lib/utcDateTime"
+import {
+  formatWibTime,
+  getWibDateKey,
+  parseUtcDateTime,
+  wibToUtcISOString,
+} from "@/shared/lib/utcDateTime"
 import { canEditApplicationDeadline } from "../utils/recruitmentUtils"
 import {
   useGetBatchByIdQuery,
@@ -68,6 +73,20 @@ export function OpenRecruitmentDialog({
   })
   const [updateStatus, { isLoading: isSubmitting }] =
     useUpdateBatchStatusMutation()
+
+  useEffect(() => {
+    if (!open || isFetching || !batch) return
+    setDeadlineDate(
+      batch.applicationDeadlineAt
+        ? getWibDateKey(batch.applicationDeadlineAt)
+        : ""
+    )
+    setDeadlineTime(
+      batch.applicationDeadlineAt
+        ? formatWibTime(batch.applicationDeadlineAt)
+        : "23:59"
+    )
+  }, [open, isFetching, batch])
 
   const statusMeta = batch ? getRecruitmentStatusMeta(batch.status) : null
   const isDraft = statusMeta?.label === "Draft"
@@ -143,7 +162,7 @@ export function OpenRecruitmentDialog({
         <DialogHeader className="border-b border-border p-6 pb-4">
           <DialogTitle>
             {editingDeadline
-              ? recruitment.applicationDeadlineAt
+              ? batch?.applicationDeadlineAt
                 ? "Edit Application Deadline"
                 : "Set Application Deadline"
               : "Open Recruitment"}
@@ -269,11 +288,13 @@ export function OpenRecruitmentDialog({
                       >
                         Time
                       </label>
-                      <TimePicker
+                      <Input
                         id="deadline-time"
+                        type="time"
                         value={deadlineTime}
-                        onChange={setDeadlineTime}
+                        onChange={(event) => setDeadlineTime(event.target.value)}
                         disabled={isSubmitting}
+                        className="font-mono tabular-nums"
                       />
                     </div>
                   </div>

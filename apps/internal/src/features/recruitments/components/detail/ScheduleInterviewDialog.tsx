@@ -24,7 +24,7 @@ import {
   SaveButton,
   SearchCombobox,
 } from "@/shared/components"
-import { InterviewTimeRangePicker } from "./InterviewTimeRangePicker"
+import { TimeRangePicker } from "@/shared/components"
 import { formatWibDate, formatWibTime } from "@/shared/lib/utcDateTime"
 import { Video, MapPin, Check, User, AlertTriangle } from "lucide-react"
 import { cn } from "@/shared/lib/utils"
@@ -283,7 +283,7 @@ export function ScheduleInterviewDialog({
                 <Label htmlFor="interview-time-range" className="px-1 text-sm font-medium">
                   Interview Time (WIB) <span className="text-destructive">*</span>
                 </Label>
-                <InterviewTimeRangePicker
+                <TimeRangePicker
                   id="interview-time-range"
                   startTime={startTime}
                   endTime={endTime}

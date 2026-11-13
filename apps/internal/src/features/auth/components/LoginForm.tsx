@@ -1,5 +1,5 @@
 import { useState } from "react"
-import { useNavigate } from "@tanstack/react-router"
+import { Link, useNavigate } from "@tanstack/react-router"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
@@ -87,7 +87,7 @@ export function LoginForm({ onSuccess }: LoginFormProps) {
         errorObj?.data?.message ||
         errorObj?.data?.title ||
         (errorObj?.status === "FETCH_ERROR"
-          ? "Unable to connect to the authentication server (http://localhost:5160). Please make sure backend is running."
+          ? "Unable to connect to the authentication server. Please make sure backend is running."
           : "Invalid username or password. Please verify your credentials.")
 
       setApiError(message)
@@ -146,16 +146,12 @@ export function LoginForm({ onSuccess }: LoginFormProps) {
           >
             Password
           </Label>
-          <a
-            href="#forgot-password"
-            onClick={(e) => {
-              e.preventDefault()
-              alert("Please contact the Metrodata IT Helpdesk to reset your internal credentials.")
-            }}
+          <Link
+            to="/forgot-password"
             className="text-xs font-medium text-primary hover:underline"
           >
             Forgot password?
-          </a>
+          </Link>
         </div>
         <div className="relative">
           <Input
@@ -166,7 +162,7 @@ export function LoginForm({ onSuccess }: LoginFormProps) {
             {...register("password")}
             aria-invalid={!!errors.password}
             className={cn(
-              "h-11 rounded-full border-0 bg-muted pl-11 pr-11 text-sm text-foreground placeholder:text-muted-foreground transition-all duration-150 outline-none focus-visible:bg-card focus-visible:ring-2 focus-visible:ring-primary shadow-none",
+              "h-11 rounded-full border-0 bg-muted pl-11 pr-11 text-sm text-foreground placeholder:text-muted-foreground/80 transition-all duration-150 outline-none focus-visible:bg-card focus-visible:ring-2 focus-visible:ring-primary shadow-none",
               errors.password && "ring-2 ring-destructive"
             )}
           />

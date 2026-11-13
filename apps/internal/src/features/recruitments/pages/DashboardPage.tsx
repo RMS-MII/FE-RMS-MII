@@ -22,7 +22,7 @@ interface ActiveTask {
   statusTone: Tone
 }
 
-export function DashboardPage() {
+export function HrDashboardPage() {
   const navigate = useNavigate()
   const { data, isLoading, isError, refetch } = useBatchDashboard()
   const {
