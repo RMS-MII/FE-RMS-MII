@@ -55,6 +55,9 @@ function getCrumbsForPath(path: string): Crumb[] {
   if (path.startsWith("/users")) {
     return [{ label: "Dashboard", to: "/dashboard" }, { label: "Users" }]
   }
+  if (path.startsWith("/change-password")) {
+    return [{ label: "Dashboard", to: "/dashboard" }, { label: "Change Password" }]
+  }
   if (path.startsWith("/interviews/stages")) {
     return [
       { label: "Dashboard", to: "/dashboard" },

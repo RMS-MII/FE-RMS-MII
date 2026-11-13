@@ -8,7 +8,7 @@ import {
 import { Button } from "@workspace/ui/components/button"
 import { cn } from "@/shared/lib/utils"
 
-interface InterviewTimeRangePickerProps {
+interface TimeRangePickerProps {
   id: string
   startTime: string
   endTime: string
@@ -21,7 +21,7 @@ const DIAL_SIZE = 224
 const DIAL_CENTER = DIAL_SIZE / 2
 const DIAL_RADIUS = 88
 const CIRCUMFERENCE = 2 * Math.PI * DIAL_RADIUS
-const MINUTES_PER_DAY = 24 * 60
+const MINUTES_PER_DIAL = 12 * 60
 
 type DragState =
   | { kind: "create"; start: number }
@@ -40,21 +40,21 @@ function toTime(minutes: number) {
 }
 
 function pointOnDial(minutes: number, radius: number) {
-  const angle = (minutes / MINUTES_PER_DAY) * Math.PI * 2 - Math.PI / 2
+  const angle = ((minutes % MINUTES_PER_DIAL) / MINUTES_PER_DIAL) * Math.PI * 2 - Math.PI / 2
   return {
     x: DIAL_CENTER + Math.cos(angle) * radius,
     y: DIAL_CENTER + Math.sin(angle) * radius,
   }
 }
 
-export function InterviewTimeRangePicker({
+export function TimeRangePicker({
   id,
   startTime,
   endTime,
   onStartChange,
   onEndChange,
   invalid = false,
-}: InterviewTimeRangePickerProps) {
+}: TimeRangePickerProps) {
   const [open, setOpen] = useState(false)
   const [hoverZone, setHoverZone] = useState<DialZone>("create")
   const dragState = useRef<DragState | null>(null)
@@ -70,7 +70,7 @@ export function InterviewTimeRangePicker({
     const y = event.clientY - bounds.top - bounds.height / 2
     const clockwiseAngle = (Math.atan2(y, x) + Math.PI / 2 + Math.PI * 2) % (Math.PI * 2)
     return {
-      minutes: Math.min(1435, Math.round((clockwiseAngle / (Math.PI * 2)) * 288) * 5),
+      minutes: Math.min(715, Math.round((clockwiseAngle / (Math.PI * 2)) * 144) * 5),
       radius: Math.hypot(x, y),
     }
   }
@@ -88,8 +88,8 @@ export function InterviewTimeRangePicker({
       rangeLength > 0 &&
       position.radius >= DIAL_RADIUS - 16 &&
       position.radius <= DIAL_RADIUS + 16 &&
-      position.minutes >= start &&
-      position.minutes <= end
+      rangeLength <= MINUTES_PER_DIAL &&
+      ((position.minutes - start + MINUTES_PER_DIAL) % MINUTES_PER_DIAL) <= rangeLength
     ) return "move"
 
     return "create"
@@ -116,7 +116,7 @@ export function InterviewTimeRangePicker({
       return
     }
 
-    const nextStart = Math.min(position.minutes, 1430)
+    const nextStart = Math.min(Math.floor(start / MINUTES_PER_DIAL) * MINUTES_PER_DIAL + position.minutes, 1430)
     dragState.current = { kind: "create", start: nextStart }
     onStartChange(toTime(nextStart))
     onEndChange(toTime(Math.min(nextStart + 60, 1435)))
@@ -131,27 +131,38 @@ export function InterviewTimeRangePicker({
     }
 
     if (drag.kind === "start") {
-      if (drag.end >= 5)
-        onStartChange(toTime(Math.max(0, Math.min(position.minutes, drag.end - 5))))
+      if (drag.end >= 5) {
+        let candidate = Math.floor(start / MINUTES_PER_DIAL) * MINUTES_PER_DIAL + position.minutes
+        if (candidate - start > MINUTES_PER_DIAL / 2) candidate -= MINUTES_PER_DIAL
+        if (start - candidate > MINUTES_PER_DIAL / 2) candidate += MINUTES_PER_DIAL
+        onStartChange(toTime(Math.max(0, Math.min(candidate, drag.end - 5))))
+      }
       return
     }
     if (drag.kind === "end") {
-      if (drag.start <= 1430)
-        onEndChange(toTime(Math.min(1435, Math.max(position.minutes, drag.start + 5))))
+      if (drag.start <= 1430) {
+        let candidate = Math.floor(end / MINUTES_PER_DIAL) * MINUTES_PER_DIAL + position.minutes
+        if (candidate - end > MINUTES_PER_DIAL / 2) candidate -= MINUTES_PER_DIAL
+        if (end - candidate > MINUTES_PER_DIAL / 2) candidate += MINUTES_PER_DIAL
+        onEndChange(toTime(Math.min(1435, Math.max(candidate, drag.start + 5))))
+      }
       return
     }
 
     if (drag.kind === "move") {
       let delta = position.minutes - drag.pointerMinutes
-      if (delta > MINUTES_PER_DAY / 2) delta -= MINUTES_PER_DAY
-      if (delta < -MINUTES_PER_DAY / 2) delta += MINUTES_PER_DAY
+      if (delta > MINUTES_PER_DIAL / 2) delta -= MINUTES_PER_DIAL
+      if (delta < -MINUTES_PER_DIAL / 2) delta += MINUTES_PER_DIAL
       const nextStart = Math.max(0, Math.min(1435 - drag.duration, drag.start + delta))
       onStartChange(toTime(nextStart))
       onEndChange(toTime(nextStart + drag.duration))
       return
     }
 
-    onEndChange(toTime(Math.max(drag.start + 5, position.minutes)))
+    let candidate = Math.floor(drag.start / MINUTES_PER_DIAL) * MINUTES_PER_DIAL + position.minutes
+    if (candidate < drag.start && drag.start - candidate > MINUTES_PER_DIAL / 2)
+      candidate += MINUTES_PER_DIAL
+    onEndChange(toTime(Math.min(1435, Math.max(drag.start + 5, candidate))))
   }
 
   const stopDragging = () => {
@@ -199,8 +210,8 @@ export function InterviewTimeRangePicker({
               <circle cx="112" cy="112" r={DIAL_RADIUS} fill="none" stroke="currentColor" strokeWidth="10" className="text-border" />
               <circle
                 cx="112" cy="112" r={DIAL_RADIUS} fill="none" stroke="currentColor" strokeWidth="10"
-                strokeDasharray={`${(rangeLength / MINUTES_PER_DAY) * CIRCUMFERENCE} ${CIRCUMFERENCE}`}
-                strokeDashoffset={-(start / MINUTES_PER_DAY) * CIRCUMFERENCE}
+                strokeDasharray={`${(Math.min(rangeLength, MINUTES_PER_DIAL) / MINUTES_PER_DIAL) * CIRCUMFERENCE} ${CIRCUMFERENCE}`}
+                strokeDashoffset={-((start % MINUTES_PER_DIAL) / MINUTES_PER_DIAL) * CIRCUMFERENCE}
                 transform="rotate(-90 112 112)"
                 className="text-primary"
               />
@@ -209,8 +220,8 @@ export function InterviewTimeRangePicker({
               <circle data-time-handle="end" cx={endPoint.x} cy={endPoint.y} r="11" strokeWidth="2" className="cursor-pointer fill-background stroke-primary" />
               <text x={endPoint.x} y={endPoint.y} textAnchor="middle" dominantBaseline="central" className="pointer-events-none fill-primary text-[10px] font-bold">E</text>
             </svg>
-            {Array.from({ length: 8 }, (_, index) => {
-              const hour = index * 3
+            {Array.from({ length: 12 }, (_, index) => {
+              const hour = index === 0 ? 12 : index
               const point = pointOnDial(hour * 60, 62)
               return (
                 <span
@@ -218,13 +229,13 @@ export function InterviewTimeRangePicker({
                   className="pointer-events-none absolute -translate-x-1/2 -translate-y-1/2 font-mono text-xs tabular-nums text-muted-foreground"
                   style={{ left: point.x, top: point.y }}
                 >
-                  {String(hour).padStart(2, "0")}
+                  {hour}
                 </span>
               )
             })}
           </div>
 
-          <div className="min-w-28 flex-1 space-y-3" role="group" aria-label="Edit interview times">
+          <div className="min-w-28 flex-1 space-y-3" role="group" aria-label="Edit time range">
             <label className="block space-y-1.5 text-xs font-medium text-muted-foreground">
               <span className="flex items-center gap-1.5"><span className="size-2 rounded-full bg-primary" />Start</span>
               <input

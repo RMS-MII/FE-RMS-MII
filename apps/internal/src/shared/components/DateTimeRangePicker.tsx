@@ -23,6 +23,7 @@ export interface DateTimeRangePickerProps {
   disabled?: boolean
   invalid?: boolean
   className?: string
+  maxDateTime?: string
 }
 
 function parseLocalDateTime(value: string): Date | undefined {
@@ -68,19 +69,28 @@ export function DateTimeRangePicker({
   disabled = false,
   invalid = false,
   className,
+  maxDateTime,
 }: DateTimeRangePickerProps) {
   const startDate = parseLocalDateTime(value.start)
   const endDate = parseLocalDateTime(value.end)
+  const maxDate = maxDateTime ? parseLocalDateTime(maxDateTime) : undefined
+  const maxDateKey = maxDateTime?.slice(0, 10)
+  const maxTime = maxDateTime?.slice(11, 16)
+  const startOnMaxDate = startDate && maxDateKey === format(startDate, "yyyy-MM-dd")
+  const endOnMaxDate = endDate && maxDateKey === format(endDate, "yyyy-MM-dd")
   const selectedRange: DateRange | undefined = startDate
     ? { from: startDate, ...(endDate ? { to: endDate } : {}) }
     : undefined
   const startTime = getTime(value.start, "00:00")
   const endTime = getTime(value.end, "23:59")
 
+  const limitToMax = (dateTime: string) =>
+    maxDateTime && dateTime > maxDateTime ? maxDateTime : dateTime
+
   const handleRangeChange = (range: DateRange | undefined) => {
     onChange({
-      start: range?.from ? withTime(range.from, startTime) : "",
-      end: range?.to ? withTime(range.to, endTime) : "",
+      start: range?.from ? limitToMax(withTime(range.from, startTime)) : "",
+      end: range?.to ? limitToMax(withTime(range.to, endTime)) : "",
     })
   }
 
@@ -105,14 +115,14 @@ export function DateTimeRangePicker({
         side="bottom"
         sideOffset={6}
         container={typeof document !== "undefined" ? document.body : undefined}
-        className="w-auto max-w-[calc(100vw-1rem)] rounded-2xl border border-border bg-card p-3 shadow-float"
+        className="w-auto max-w-[calc(100vw-1rem)] rounded-2xl bg-card p-3 shadow-float"
       >
         <div className="flex flex-col gap-3 sm:flex-row sm:items-stretch">
           <Calendar
             mode="range"
             selected={selectedRange}
             onSelect={handleRangeChange}
-            disabled={{ before: startOfToday() }}
+            disabled={{ before: startOfToday(), ...(maxDate ? { after: maxDate } : {}) }}
             numberOfMonths={1}
             captionLayout="dropdown"
             defaultMonth={startDate}
@@ -130,9 +140,10 @@ export function DateTimeRangePicker({
                 type="time"
                 value={startTime}
                 disabled={!startDate || disabled}
+                max={startOnMaxDate ? maxTime : undefined}
                 onChange={(event) => {
                   if (!startDate || !event.target.value) return
-                  onChange({ ...value, start: withTime(startDate, event.target.value) })
+                  onChange({ ...value, start: limitToMax(withTime(startDate, event.target.value)) })
                 }}
                 className="h-10 rounded-xl border-border bg-background px-3 text-sm text-foreground"
               />
@@ -143,9 +154,10 @@ export function DateTimeRangePicker({
                 type="time"
                 value={endTime}
                 disabled={!endDate || disabled}
+                max={endOnMaxDate ? maxTime : undefined}
                 onChange={(event) => {
                   if (!endDate || !event.target.value) return
-                  onChange({ ...value, end: withTime(endDate, event.target.value) })
+                  onChange({ ...value, end: limitToMax(withTime(endDate, event.target.value)) })
                 }}
                 className="h-10 rounded-xl border-border bg-background px-3 text-sm text-foreground"
               />

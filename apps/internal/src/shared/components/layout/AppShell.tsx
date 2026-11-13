@@ -12,6 +12,7 @@ import {
   Users,
   Mail,
   CalendarCheck,
+  KeyRound,
 } from "lucide-react"
 import { Link } from "@tanstack/react-router"
 import { cn } from "@/shared/lib/utils"
@@ -142,17 +143,6 @@ const NAV: NavGroup[] = [
   },
 ]
 
-function Mark({ className }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 28 28" className={className} aria-hidden>
-      <path
-        d="M3 23V5h4.2L14 14.2 20.8 5H25v18h-4.4V12.4L14 21.2l-6.6-8.8V23z"
-        fill="var(--primary)"
-      />
-    </svg>
-  )
-}
-
 function Brand({ collapsed }: { collapsed?: boolean }) {
   return (
     <Link
@@ -163,7 +153,7 @@ function Brand({ collapsed }: { collapsed?: boolean }) {
         collapsed && "justify-center"
       )}
     >
-      <Mark className="size-8 shrink-0" />
+      <img src="/assets/mii.png" alt="" className="size-10 shrink-0 object-contain" />
       {!collapsed && (
         <span className="truncate text-lg font-semibold tracking-tight text-foreground">
           Metrodata
@@ -380,6 +370,14 @@ function UserCard({
         </div>
 
         <DropdownMenuSeparator className="my-1.5 bg-border/60" />
+
+        <DropdownMenuItem
+          render={<Link to="/change-password" />}
+          className="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-sm"
+        >
+          <KeyRound className="size-4" aria-hidden />
+          <span>Change Password</span>
+        </DropdownMenuItem>
 
         <DropdownMenuItem
           onClick={onLogout}

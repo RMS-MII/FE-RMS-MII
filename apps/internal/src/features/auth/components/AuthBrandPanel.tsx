@@ -17,9 +17,7 @@ export function AuthBrandPanel() {
       {/* Top Header: Brand Badge & Portal Identity */}
       <div className="relative z-10 flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <div className="flex size-10 items-center justify-center rounded-2xl bg-primary text-primary-foreground font-black text-lg shadow-lg">
-            M
-          </div>
+          <img src="/assets/mii.png" alt="" className="size-12 shrink-0 rounded-lg bg-white object-contain" />
           <div>
             <div className="flex items-center gap-2">
               <span className="font-bold tracking-tight text-base text-white">
