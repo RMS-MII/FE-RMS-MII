@@ -12,10 +12,15 @@ import type {
   RespondInvitationResponse,
   CreateRescheduleRequest,
   InterviewerRescheduleRequestDto,
+  InterviewerDashboardDto,
 } from "../types"
 
 export const interviewerApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
+    getInterviewerDashboard: builder.query<InterviewerDashboardDto, void>({
+      query: () => "/interviewer/dashboard",
+      providesTags: [{ type: "Interview", id: "INTERVIEWER_DASHBOARD" }],
+    }),
     assignTakeHome: builder.mutation<
       { emailSent: boolean; message: string },
       { sessionId: string; body: AssignTakeHomePayload }
@@ -157,6 +162,7 @@ export const interviewerApi = baseApi.injectEndpoints({
 })
 
 export const {
+  useGetInterviewerDashboardQuery,
   useGetInterviewerSessionsQuery,
   useGetInterviewerSessionDetailQuery,
   useAssignTakeHomeMutation,
