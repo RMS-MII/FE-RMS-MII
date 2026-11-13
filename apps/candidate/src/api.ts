@@ -27,6 +27,7 @@ export interface Stage {
   batchStageId: string
   stageName: string
   status: string
+  startedAt?: string
   endAt: string
   canTakeTest: boolean
   sessions: Session[]

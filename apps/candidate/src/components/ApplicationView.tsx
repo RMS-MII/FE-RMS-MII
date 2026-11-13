@@ -116,9 +116,16 @@ export function ApplicationView({
                       <h3>{stageName}</h3>
                       <Status value={stage?.status || "Upcoming"} />
                     </div>
+                    {active && stage?.startedAt && (
+                      <p className="stage-date muted">
+                        <CalendarDays size={14} aria-hidden="true" /> Stage starts{" "}
+                        {date(stage.startedAt)}
+                      </p>
+                    )}
                     {active && stage?.endAt && (
-                      <p className="stage-deadline muted">
-                        <Clock3 size={14} /> Stage deadline {date(stage.endAt)}
+                      <p className="stage-date muted">
+                        <Clock3 size={14} aria-hidden="true" /> Stage deadline{" "}
+                        {date(stage.endAt)}
                       </p>
                     )}
                   {stage?.sessions.map((session) => (

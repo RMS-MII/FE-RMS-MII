@@ -66,22 +66,14 @@ export function getTestDeadline(
   sessionStartedAt: number | null
 ): number | null {
   const durationMs = parseTimeSpanToMs(test.durationTest)
-  const hasDuration = durationMs !== null && durationMs > 0
+  const parsedEndAt = parseServerDate(test.endAt)
+  const endAt = Number.isNaN(parsedEndAt) ? null : parsedEndAt
 
-  if (hasDuration) {
-    // Durasi pengerjaan dihitung dari saat kandidat benar-benar memulai.
-    // Belum mulai -> countdown belum berjalan.
-    return sessionStartedAt === null ? null : sessionStartedAt + durationMs
-  }
+  if (durationMs === null || durationMs <= 0) return endAt
+  if (sessionStartedAt === null) return null
 
-  // Tanpa durasi khusus (mis. "00:00:00"): gunakan batas akhir akses.
-  const endAt = parseServerDate(test.endAt)
-
-  if (Number.isNaN(endAt)) {
-    return null
-  }
-
-  return endAt
+  const attemptDeadline = sessionStartedAt + durationMs
+  return endAt === null ? attemptDeadline : Math.min(attemptDeadline, endAt)
 }
 
 export function isMultipleChoice(questionType: string): boolean {
