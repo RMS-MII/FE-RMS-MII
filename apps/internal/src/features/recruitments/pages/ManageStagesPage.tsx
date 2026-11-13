@@ -12,6 +12,7 @@ export interface ManageStagesPageProps extends UseManageStagesProps {}
 export function ManageStagesPage({ id }: ManageStagesPageProps) {
   const {
     recruitment,
+    batchEndDateTime,
     isLoading,
     isError,
     refetch,
@@ -123,6 +124,7 @@ export function ManageStagesPage({ id }: ManageStagesPageProps) {
 
           <StageList
             stages={stages}
+            batchEndDateTime={batchEndDateTime}
             stageTypes={stageTypes}
             selectedId={selectedTempId}
             onSelect={setSelectedTempId}

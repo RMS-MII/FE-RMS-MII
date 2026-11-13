@@ -8,6 +8,7 @@ import {
 } from "lucide-react"
 import { Button } from "@workspace/ui/components/button"
 import { Input } from "@workspace/ui/components/input"
+import { RichText, plainTextFromRichText } from "@workspace/ui/components/rich-text"
 import { date, request } from "../api"
 import { PortalBrand } from "./PortalBrand"
 
@@ -38,9 +39,10 @@ export function JobsPage() {
   const visibleJobs = jobs?.filter(
     (job) =>
       (!department || job.department === department) &&
-      [job.name, job.department, job.description].some((value) =>
-        value?.toLowerCase().includes(term)
-      )
+      (!term ||
+        [job.name, job.department, plainTextFromRichText(job.description)].some((value) =>
+          value?.toLowerCase().includes(term)
+        ))
   )
   const openedJob = visibleJobs?.find((job) => job.id === selectedId)
   const previewJob = openedJob ?? visibleJobs?.[0]
@@ -215,7 +217,7 @@ export function JobsPage() {
                           <JobDetails job={job} />
                           {job.description && (
                             <p className="line-clamp-2 text-sm leading-relaxed wrap-break-word text-muted-foreground">
-                              {job.description}
+                              {plainTextFromRichText(job.description)}
                             </p>
                           )}
                         </article>
@@ -267,10 +269,10 @@ export function JobsPage() {
                       <h3 className="text-base font-semibold">
                         Job description
                       </h3>
-                      <p className="max-w-[68ch] text-sm leading-relaxed wrap-break-word whitespace-pre-wrap text-muted-foreground">
-                        {previewJob.description ||
-                          "No description has been provided for this position."}
-                      </p>
+                      <RichText
+                        value={previewJob.description || "No description has been provided for this position."}
+                        className="max-w-[68ch] text-sm leading-relaxed text-muted-foreground"
+                      />
                     </div>
                   </section>
                 </div>

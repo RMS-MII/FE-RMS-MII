@@ -10,6 +10,7 @@ import type { EditableStage } from "./types"
 
 export interface StageListProps {
   stages: EditableStage[]
+  batchEndDateTime: string
   selectedId: string | null
   stageTypes?: StageTypeDto[]
   onSelect: (tempId: string | null) => void
@@ -23,6 +24,7 @@ export interface StageListProps {
 
 export function StageList({
   stages,
+  batchEndDateTime,
   selectedId,
   stageTypes = [],
   onSelect,
@@ -174,6 +176,7 @@ export function StageList({
                     <div id={`settings-${stage.tempId}`}>
                       <StageConfigForm
                         stage={stage}
+                        batchEndDateTime={batchEndDateTime}
                         stageTypes={stageTypes}
                         onFieldChange={onFieldChange}
                       />

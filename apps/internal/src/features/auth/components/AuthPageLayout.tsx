@@ -16,7 +16,7 @@ export function AuthPageLayout({
 
       <div className="flex w-full flex-col justify-between bg-card/60 p-6 backdrop-blur-xs sm:p-12 lg:w-1/2 lg:p-16 xl:w-5/12 xl:p-20">
         <div className="mb-8 flex items-center gap-2.5 lg:hidden">
-          <div className="flex size-9 items-center justify-center rounded-xl bg-primary text-sm font-black text-primary-foreground">M</div>
+          <img src="/assets/mii.png" alt="" className="size-10 shrink-0 object-contain" />
           <div>
             <div className="flex items-center gap-1.5">
               <span className="text-sm font-bold tracking-tight text-foreground">METRODATA</span>

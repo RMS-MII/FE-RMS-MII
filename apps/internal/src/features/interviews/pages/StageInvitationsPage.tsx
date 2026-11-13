@@ -1,5 +1,4 @@
 import { useState, useMemo } from "react"
-import { RefreshCw } from "lucide-react"
 import {
   PageHeader,
   Panel,
@@ -8,7 +7,6 @@ import {
   DataTablePagination,
   type Chip,
 } from "@/shared/components"
-import { Button } from "@workspace/ui/components/button"
 import {
   Select,
   SelectContent,
@@ -227,17 +225,6 @@ export function StageInvitationsPage() {
               </SelectContent>
             </Select>
           </div>
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            disabled={isFetching || isResponding}
-            onClick={() => void refetch()}
-            className="h-10 gap-2 rounded-full bg-card px-4"
-          >
-            <RefreshCw className="size-4" aria-hidden />
-            Refresh
-          </Button>
         </div>
         <FilterChips chips={activeChips} onReset={handleResetFilters} />
         {notice && (

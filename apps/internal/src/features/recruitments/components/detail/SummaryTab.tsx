@@ -1,4 +1,5 @@
 import { Skeleton } from "@workspace/ui/components/skeleton"
+import { RichText } from "@workspace/ui/components/rich-text"
 import { Panel } from "@/shared/components"
 import { formatDate, formatNumber } from "@/shared/lib/format"
 import { safeFormatWibDateTime } from "@/shared/lib/utcDateTime"
@@ -67,9 +68,11 @@ export function SummaryTab({ recruitment }: SummaryTabProps) {
     ],
     [
       "Description",
-      <p key="desc" className="max-w-prose leading-relaxed text-foreground">
-        {recruitment.description || "—"}
-      </p>,
+      <RichText
+        key="desc"
+        value={recruitment.description || "—"}
+        className="max-w-prose leading-relaxed text-foreground"
+      />,
     ],
   ]
 

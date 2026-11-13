@@ -114,6 +114,7 @@ export function useManageStages({ id }: UseManageStagesProps) {
   const recruitment = useMemo(() => {
     return apiRecruitment ?? null
   }, [apiRecruitment])
+  const batchEndDateTime = toLocalDateTimeInput(recruitment?.endDate ?? recruitment?.closeDate, true)
 
   const [stages, setStages] = useState<EditableStage[]>(() => getInitialEditableStages(recruitment))
 
@@ -267,7 +268,8 @@ export function useManageStages({ id }: UseManageStagesProps) {
       }
 
       if ((batchStart && s.startDate && s.startDate < batchStart) ||
-          (batchEnd && s.endDate && s.endDate > batchEnd)) {
+          (batchEnd && ((s.startDate && s.startDate > batchEnd) ||
+            (s.endDate && s.endDate > batchEnd)))) {
         setErrorMessage(`Stage "${name}" must be within the batch period (${batchStart.replace("T", " ")} to ${batchEnd.replace("T", " ")} WIB).`)
         setSelectedTempId(s.tempId)
         return
@@ -342,6 +344,7 @@ export function useManageStages({ id }: UseManageStagesProps) {
 
   return {
     recruitment,
+    batchEndDateTime,
     isLoading,
     isError,
     refetch,

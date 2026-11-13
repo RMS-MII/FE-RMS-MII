@@ -14,6 +14,7 @@ import type { EditableStage } from "./types"
 
 export interface StageConfigFormProps {
   stage: EditableStage
+  batchEndDateTime: string
   stageTypes: StageTypeDto[]
   onFieldChange: <K extends keyof EditableStage>(
     field: K,
@@ -23,6 +24,7 @@ export interface StageConfigFormProps {
 
 export function StageConfigForm({
   stage,
+  batchEndDateTime,
   stageTypes,
   onFieldChange,
 }: StageConfigFormProps) {
@@ -121,6 +123,9 @@ export function StageConfigForm({
         <p className="text-xs font-semibold text-foreground">Stage Period</p>
         <DateTimeRangePicker
           value={{ start: stage.startDate, end: stage.endDate }}
+          maxDateTime={batchEndDateTime || undefined}
+          invalid={Boolean(batchEndDateTime &&
+            (stage.startDate > batchEndDateTime || stage.endDate > batchEndDateTime))}
           onChange={(range) => {
             onFieldChange("startDate", range.start)
             onFieldChange("endDate", range.end)
