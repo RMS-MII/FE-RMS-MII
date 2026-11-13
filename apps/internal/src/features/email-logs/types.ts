@@ -10,6 +10,8 @@ export type EmailType =
   | "Rejection"
   | "FinalResult"
   | "StageResult"
+  | "InterviewAssessment"
+  | "TakeHomeSubmission"
 
 export interface EmailLog {
   id: string

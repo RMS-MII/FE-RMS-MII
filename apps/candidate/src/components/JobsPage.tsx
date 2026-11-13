@@ -8,6 +8,7 @@ import {
 } from "lucide-react"
 import { Button } from "@workspace/ui/components/button"
 import { Input } from "@workspace/ui/components/input"
+import { DatePicker } from "@workspace/ui/components/date-picker"
 import { date, request } from "../api"
 import { PortalBrand } from "./PortalBrand"
 
@@ -23,12 +24,18 @@ export function JobsPage() {
   const [jobs, setJobs] = useState<PublicJob[]>()
   const [loadError, setLoadError] = useState(false)
   const [loadAttempt, setLoadAttempt] = useState(0)
-  const [selectedId, setSelectedId] = useState<string>()
-  const [applyingTo, setApplyingTo] = useState<PublicJob>()
+  const [locationSearch, setLocationSearch] = useState(
+    () => window.location.search
+  )
   const [search, setSearch] = useState("")
   const [department, setDepartment] = useState("")
   const searchInput = useRef<HTMLInputElement>(null)
   const positionHeading = useRef<HTMLHeadingElement>(null)
+  const params = new URLSearchParams(locationSearch)
+  const selectedId = params.get("job")
+  const isApplying = params.get("view") === "apply"
+  const selectedJob = jobs?.find((job) => job.id === selectedId)
+  const applyingTo = isApplying ? selectedJob : undefined
   const departments = [
     ...new Set(
       jobs?.flatMap((job) => (job.department ? [job.department] : []))
@@ -42,12 +49,51 @@ export function JobsPage() {
         value?.toLowerCase().includes(term)
       )
   )
-  const openedJob = visibleJobs?.find((job) => job.id === selectedId)
+  const openedJob = selectedJob
   const previewJob = openedJob ?? visibleJobs?.[0]
 
   useEffect(() => {
     if (selectedId && !applyingTo) positionHeading.current?.focus()
-  }, [selectedId, applyingTo])
+  }, [selectedId, applyingTo, selectedJob])
+
+  useEffect(() => {
+    const syncLocation = () => setLocationSearch(window.location.search)
+    window.addEventListener("popstate", syncLocation)
+    return () => window.removeEventListener("popstate", syncLocation)
+  }, [])
+
+  function navigateToJob(jobId?: string, apply = false, replace = false) {
+    const next = new URLSearchParams()
+    if (jobId) next.set("job", jobId)
+    if (apply) next.set("view", "apply")
+    const nextSearch = jobId ? `?${next}` : ""
+    if (nextSearch === window.location.search) return
+    if (replace) {
+      window.history.replaceState(null, "", `/jobs${nextSearch}`)
+    } else {
+      const jobSteps = (window.history.state?.jobSteps ?? 0) + 1
+      window.history.pushState({ jobSteps }, "", `/jobs${nextSearch}`)
+    }
+    setLocationSearch(nextSearch)
+  }
+
+  function backToPositions() {
+    const jobSteps = window.history.state?.jobSteps
+    if (jobSteps) {
+      window.addEventListener(
+        "popstate",
+        () => {
+          if (window.location.search) navigateToJob(undefined, false, true)
+          requestAnimationFrame(() => searchInput.current?.focus())
+        },
+        { once: true }
+      )
+      window.history.go(-jobSteps)
+    } else {
+      navigateToJob(undefined, false, true)
+      requestAnimationFrame(() => searchInput.current?.focus())
+    }
+  }
 
   useEffect(() => {
     const controller = new AbortController()
@@ -75,7 +121,7 @@ export function JobsPage() {
             <ApplicationForm
               key={applyingTo.id}
               job={applyingTo}
-              onBack={() => setApplyingTo(undefined)}
+              onBack={backToPositions}
             />
           </div>
         ) : (
@@ -99,7 +145,10 @@ export function JobsPage() {
                       aria-label="Search positions"
                       placeholder="Search positions"
                       value={search}
-                      onChange={(event) => setSearch(event.target.value)}
+                      onChange={(event) => {
+                        setSearch(event.target.value)
+                        if (selectedId) navigateToJob(undefined, false, true)
+                      }}
                       className="h-10 rounded-full border-border bg-muted pl-10"
                     />
                   </div>
@@ -107,7 +156,10 @@ export function JobsPage() {
                     <select
                       aria-label="Department"
                       value={department}
-                      onChange={(event) => setDepartment(event.target.value)}
+                      onChange={(event) => {
+                        setDepartment(event.target.value)
+                        if (selectedId) navigateToJob(undefined, false, true)
+                      }}
                       className="h-10 w-full rounded-full border border-border bg-muted px-4 text-sm focus-visible:outline-2 focus-visible:outline-ring sm:w-auto"
                     >
                       <option value="">All departments</option>
@@ -200,7 +252,7 @@ export function JobsPage() {
                               aria-label={`View position: ${job.name}`}
                               className="cursor-pointer text-left outline-none group-hover:text-primary after:absolute after:inset-0 after:rounded-2xl"
                               onClick={() => {
-                                setSelectedId(job.id)
+                                navigateToJob(job.id)
                                 if (openedJob?.id === job.id)
                                   positionHeading.current?.focus()
                               }}
@@ -230,11 +282,10 @@ export function JobsPage() {
                 >
                   <Button
                     variant="outline"
-                    className="rounded-full lg:hidden"
-                    onClick={() => {
-                      setSelectedId(undefined)
-                      requestAnimationFrame(() => searchInput.current?.focus())
-                    }}
+                    className={
+                      openedJob ? "rounded-full" : "rounded-full lg:hidden"
+                    }
+                    onClick={backToPositions}
                   >
                     <ArrowLeft aria-hidden /> Back to positions
                   </Button>
@@ -256,8 +307,8 @@ export function JobsPage() {
                       <Button
                         className="h-10 rounded-full px-5"
                         onClick={() => {
-                          setSelectedId(previewJob.id)
-                          setApplyingTo(previewJob)
+                          if (!openedJob) navigateToJob(previewJob.id)
+                          navigateToJob(previewJob.id, true)
                         }}
                       >
                         Apply for this position
@@ -311,6 +362,8 @@ function ApplicationForm({
   const [busy, setBusy] = useState(false)
   const [submitted, setSubmitted] = useState(false)
   const [error, setError] = useState("")
+  const [birthDate, setBirthDate] = useState("")
+  const [birthDateError, setBirthDateError] = useState(false)
   const submitting = useRef(false)
   const heading = useRef<HTMLHeadingElement>(null)
 
@@ -321,6 +374,11 @@ function ApplicationForm({
   async function apply(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     if (submitting.current) return
+    if (!birthDate) {
+      setBirthDateError(true)
+      document.getElementById("job-birth-date")?.focus()
+      return
+    }
     const fields = new FormData(event.currentTarget)
     const value = (name: string) => String(fields.get(name) ?? "").trim()
     submitting.current = true
@@ -332,7 +390,7 @@ function ApplicationForm({
         gender: Number(value("gender")),
         email: value("email").toLowerCase(),
         phoneNumber: value("phoneNumber"),
-        birthDate: value("birthDate"),
+        birthDate,
         address: value("address"),
         education: value("education"),
         institution: value("institution"),
@@ -362,7 +420,7 @@ function ApplicationForm({
         disabled={busy}
         onClick={onBack}
       >
-        <ArrowLeft aria-hidden /> Back to position
+        <ArrowLeft aria-hidden /> Back to positions
       </Button>
       <section className="space-y-2.5 rounded-2xl border border-border bg-primary-50 px-5 py-6 sm:px-7">
         <h1 className="text-2xl font-semibold tracking-tight wrap-break-word">
@@ -436,7 +494,31 @@ function ApplicationForm({
                     <option value="2">Female</option>
                   </select>
                 </label>
-                <JobField name="birthDate" label="Birth Date" type="date" />
+                <div className="space-y-1.5 text-sm font-medium">
+                  <label htmlFor="job-birth-date">
+                    Birth Date{" "}
+                    <span className="text-destructive" aria-hidden>
+                      *
+                    </span>
+                  </label>
+                  <DatePicker
+                    id="job-birth-date"
+                    value={birthDate}
+                    defaultMonth="2000-01-01"
+                    maxDate={new Date()}
+                    disabled={busy}
+                    aria-invalid={birthDateError}
+                    onChange={(value) => {
+                      setBirthDate(value)
+                      setBirthDateError(false)
+                    }}
+                  />
+                  {birthDateError && (
+                    <p role="alert" className="text-destructive">
+                      Select your birth date.
+                    </p>
+                  )}
+                </div>
               </div>
             </div>
             <div className="grid content-start gap-4">

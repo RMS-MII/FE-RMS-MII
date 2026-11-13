@@ -118,7 +118,7 @@ export function StageConfigForm({
       </div>
 
       <div className="space-y-1.5">
-        <p className="text-xs font-semibold text-foreground">Stage Period</p>
+        <p className="text-xs font-semibold text-foreground">Stage Period (WIB)</p>
         <DateTimeRangePicker
           value={{ start: stage.startDate, end: stage.endDate }}
           onChange={(range) => {

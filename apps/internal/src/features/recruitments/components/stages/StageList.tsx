@@ -136,7 +136,7 @@ export function StageList({
                           <span>{stageType?.name ?? stage.type}</span>
                           {stage.startDate && stage.endDate && (
                             <span>
-                              · {safeFormatDate(stage.startDate)} – {safeFormatDate(stage.endDate)}
+                              · {safeFormatDate(stage.startDate.slice(0, 10))} – {safeFormatDate(stage.endDate.slice(0, 10))}
                               {duration !== null && ` (${duration} days)`}
                             </span>
                           )}

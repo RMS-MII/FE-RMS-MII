@@ -31,6 +31,8 @@ const emailTypes: { value: EmailType; label: string }[] = [
   { value: "Rejection", label: "Rejection" },
   { value: "FinalResult", label: "Final result" },
   { value: "StageResult", label: "Stage result" },
+  { value: "InterviewAssessment", label: "Interview assessment" },
+  { value: "TakeHomeSubmission", label: "Take-home submission" },
 ]
 const emailStatusItems = [
   { label: "All Status", value: "all" },

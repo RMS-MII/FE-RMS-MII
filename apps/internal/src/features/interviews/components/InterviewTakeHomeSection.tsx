@@ -152,11 +152,17 @@ export function InterviewTakeHomeSection({ session, isSaving, onSave }: Props) {
                 Deadline: {formatWibDateTime(session.endedSubmissionAt)}
               </p>
             )}
+            {session.assessment && (
+              <p className="text-xs text-muted-foreground">
+                The assignment is locked after you submit an assessment.
+              </p>
+            )}
           </div>
         ) : (
           <p className="text-sm text-muted-foreground">
-            Assignment becomes available after the candidate confirms the
-            schedule while the stage is active.
+            {session.assessment
+              ? "Take-home assignments are locked after you submit an assessment."
+              : "You can send an assignment after the candidate confirms the schedule while the stage is active."}
           </p>
         )}
 

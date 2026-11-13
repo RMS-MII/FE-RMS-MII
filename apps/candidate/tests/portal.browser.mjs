@@ -432,6 +432,7 @@ try {
   await page.goto(base)
   await position(job.name).getByText("Apply by 31 Jan 2027, 07:00 WIB").waitFor()
   await viewPosition(legacyJob.name).click()
+  assert.equal(new URL(page.url()).searchParams.get("job"), legacyJob.id)
   await position(legacyJob.name).getByText("Open for applications", { exact: true }).waitFor()
   await viewPosition(job.name).waitFor()
   assert.equal(await page.getByLabel("Full Name").count(), 0)
@@ -443,7 +444,12 @@ try {
   await viewPosition(legacyJob.name).waitFor({ state: "hidden" })
   await position(job.name).getByRole("heading", { name: "Job description" }).waitFor()
   await applyButton.click()
-  await page.getByRole("button", { name: "Back to position", exact: true }).click()
+  assert.equal(new URL(page.url()).searchParams.get("view"), "apply")
+  await page.goBack()
+  await applyButton.waitFor()
+  assert.equal(new URL(page.url()).searchParams.get("job"), job.id)
+  await page.goBack()
+  await page.waitForURL(`${base}/jobs`)
   assert.equal(await page.getByLabel("Department", { exact: true }).inputValue(), "Engineering")
 
   await page.setViewportSize({ width: 390, height: 844 })
@@ -459,12 +465,20 @@ try {
   assert.equal(await searchPositions.inputValue(), "Frontend")
   await viewPosition(job.name).click()
   await applyButton.click()
+  const applyUrl = page.url()
+  await page.reload()
+  await page.waitForURL(applyUrl)
+  const birthDate = page.getByRole("button", { name: /Birth Date/ })
+  await birthDate.click()
+  const year = page.getByRole("combobox", { name: /Year/ })
+  assert.equal(await year.inputValue(), "2000")
+  await page.getByRole("combobox", { name: /Month/ }).selectOption("2")
+  await page.getByRole("button", { name: /March 8th, 2000/ }).click()
   await page.getByLabel("Gender").selectOption("2")
   for (const [label, value] of [
     ["Full Name", "Test Applicant"],
     ["Email Address", "applicant@example.test"],
     ["Phone Number", "08123456789"],
-    ["Birth Date", "2000-03-08"],
     ["Education Degree & Major", "Bachelor"],
     ["University / Campus", "Test University"],
     ["GPA", "3.5"],
@@ -475,6 +489,7 @@ try {
   await page.getByRole("button", { name: "Submit application" }).click()
   await page.getByText("Application received", { exact: true }).waitFor()
   assert.equal(application.fullName, "Test Applicant")
+  assert.equal(application.birthDate, "2000-03-08")
   assert.deepEqual(errors, [])
   console.log(
     "Browser checks passed: public jobs and application, overview, confirmation, submission, reschedule, mobile, invalid link; no exam calls."
