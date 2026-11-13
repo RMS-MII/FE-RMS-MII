@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react"
 import { useNavigate } from "@tanstack/react-router"
-import { AlertCircle, CirclePlay, Loader2, Settings2 } from "lucide-react"
+import { AlertCircle, CirclePlay, Settings2 } from "lucide-react"
 import {
   Dialog,
   DialogContent,
@@ -11,6 +11,7 @@ import {
 } from "@workspace/ui/components/dialog"
 import { Button } from "@workspace/ui/components/button"
 import { Input } from "@workspace/ui/components/input"
+import { Skeleton } from "@workspace/ui/components/skeleton"
 import {
   CancelButton,
   DatePicker,
@@ -174,12 +175,35 @@ export function OpenRecruitmentDialog({
 
         <div className="space-y-4 p-6">
           {isFetching ? (
-            <div
-              role="status"
-              className="flex items-center justify-center gap-2 py-6 text-sm text-muted-foreground"
-            >
-              <Loader2 className="size-4 animate-spin" aria-hidden />
-              Checking recruitment readiness...
+            <div role="status" aria-label="Loading recruitment details" className="space-y-5">
+              <div className="space-y-3">
+                {[
+                  ["w-24", "w-40"],
+                  ["w-20", "w-28"],
+                  ["w-16", "w-36"],
+                  ["w-32", "w-20"],
+                  ["w-28", "w-16"],
+                ].map(([labelWidth, valueWidth], index) => (
+                  <div key={index} className="flex items-center justify-between gap-4">
+                    <Skeleton className={`h-4 ${labelWidth}`} />
+                    <Skeleton className={`h-4 ${valueWidth}`} />
+                  </div>
+                ))}
+              </div>
+              <div className="space-y-2">
+                <Skeleton className="h-4 w-40" />
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-2">
+                    <Skeleton className="h-3 w-10" />
+                    <Skeleton className="h-10 w-full rounded-full" />
+                  </div>
+                  <div className="space-y-2">
+                    <Skeleton className="h-3 w-10" />
+                    <Skeleton className="h-10 w-full rounded-full" />
+                  </div>
+                </div>
+                <Skeleton className="h-3 w-64 max-w-full" />
+              </div>
             </div>
           ) : isError || !batch || !statusMeta ? (
             <ErrorState
@@ -294,7 +318,7 @@ export function OpenRecruitmentDialog({
                         value={deadlineTime}
                         onChange={(event) => setDeadlineTime(event.target.value)}
                         disabled={isSubmitting}
-                        className="font-mono tabular-nums"
+                        className="font-mono tabular-nums h-10 rounded-full border-0 bg-muted px-4 text-sm text-foreground shadow-none transition-all duration-150 outline-none placeholder:text-muted-foreground focus-visible:bg-card focus-visible:ring-2 focus-visible:ring-primary"
                       />
                     </div>
                   </div>
