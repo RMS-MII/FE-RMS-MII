@@ -47,6 +47,7 @@ try {
             batchStageId: "b2",
             stageName: "Technical interview",
             status: "InProgress",
+            startedAt: "2027-01-08T03:00:00Z",
             endAt: "2027-01-10T00:00:00Z",
             canTakeTest: false,
             sessions: [
@@ -127,6 +128,9 @@ try {
     .waitFor()
   await page.getByText("Final interview", { exact: true }).waitFor()
   await page.getByRole("heading", { name: "Application progress" }).waitFor()
+  await page.getByText("Stage starts 8 Jan 2027, 10:00 WIB").waitFor()
+  const stageDeadline = page.getByText("Stage deadline 10 Jan 2027, 07:00 WIB")
+  await stageDeadline.waitFor()
   await page.getByRole("heading", { name: "Next steps" }).waitFor()
   const openExam = page.getByRole("link", { name: "Open exam" })
   if (await openExam.count()) {
@@ -165,9 +169,7 @@ try {
     "24px"
   )
   assert.equal(
-    await page
-      .locator(".stage-deadline")
-      .evaluate((el) => getComputedStyle(el).fontSize),
+    await stageDeadline.evaluate((el) => getComputedStyle(el).fontSize),
     "12px"
   )
   await page.setViewportSize({ width: 390, height: 844 })

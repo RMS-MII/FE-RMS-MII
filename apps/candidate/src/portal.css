@@ -429,7 +429,7 @@ body {
   overflow-wrap: anywhere;
 }
 
-.stage-deadline {
+.stage-date {
   display: flex;
   align-items: center;
   gap: 7px;
@@ -437,7 +437,7 @@ body {
   font-size: var(--text-xs);
 }
 
-.stage-deadline svg {
+.stage-date svg {
   flex-shrink: 0;
 }
 
