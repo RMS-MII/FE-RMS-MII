@@ -17,7 +17,7 @@ import {
   ErrorState,
   type SortDirection,
 } from "@/shared/components"
-import { formatCurrency, safeFormatDate } from "@/shared/lib/format"
+import { safeFormatDate } from "@/shared/lib/format"
 import type { Candidate, CandidateSortKey } from "../types"
 
 export interface CandidateTableProps {
@@ -95,14 +95,6 @@ export function CandidateTable({
               />
 
               <TableSortHeader
-                label="Expected Salary"
-                sortKey="salary"
-                currentSortKey={sortKey}
-                currentDirection={sortDirection}
-                onSort={handleSort}
-              />
-
-              <TableSortHeader
                 label="Applied Batches"
                 sortKey="batches"
                 currentSortKey={sortKey}
@@ -126,10 +118,10 @@ export function CandidateTable({
           </TableHeader>
           <TableBody>
             {isLoading ? (
-              <TableSkeleton colCount={9} rowCount={pageSize} />
+              <TableSkeleton colCount={8} rowCount={pageSize} />
             ) : isError ? (
               <TableRow>
-                <TableCell colSpan={9} className="p-8">
+                <TableCell colSpan={8} className="p-8">
                   <ErrorState
                     title="Failed to load candidates"
                     description="Unable to fetch candidates from server. Please check your connection."
@@ -139,7 +131,7 @@ export function CandidateTable({
               </TableRow>
             ) : candidates.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={9} className="h-64 text-center">
+                <TableCell colSpan={8} className="h-64 text-center">
                   <EmptyState
                     title="No candidates match"
                     description={
@@ -209,17 +201,6 @@ export function CandidateTable({
                         </span>
                       ) : (
                         <span className="text-xs text-muted-foreground">-</span>
-                      )}
-                    </TableCell>
-
-                    {/* Expected Salary */}
-                    <TableCell className="py-3.5 whitespace-nowrap text-xs font-medium text-foreground">
-                      {c.expectedSalary ? (
-                        <span className="tabular-nums">
-                          {formatCurrency(c.expectedSalary)}
-                        </span>
-                      ) : (
-                        <span className="text-muted-foreground italic">Negotiable</span>
                       )}
                     </TableCell>
 

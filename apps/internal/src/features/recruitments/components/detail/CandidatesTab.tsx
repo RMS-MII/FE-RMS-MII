@@ -13,7 +13,7 @@ import {
   TableSkeleton,
   ErrorState,
 } from "@/shared/components"
-import { safeFormatDate } from "@/shared/lib/format"
+import { formatCurrency, safeFormatDate } from "@/shared/lib/format"
 import { getRecruitmentAddRestriction } from "../../utils/recruitmentUtils"
 import { AddCandidateDialog } from "./AddCandidateDialog"
 import {
@@ -227,6 +227,7 @@ export function CandidatesTab({ recruitment }: CandidatesTabProps) {
                   onSort={handleSort}
                 />
 
+                <TableHead>Expected Salary</TableHead>
                 <TableSortHeader
                   label="Applied Date"
                   sortKey="appliedAt"
@@ -242,10 +243,10 @@ export function CandidatesTab({ recruitment }: CandidatesTabProps) {
 
             <TableBody>
               {isApiLoading ? (
-                <TableSkeleton colCount={7} rowCount={pageSize} />
+                <TableSkeleton colCount={8} rowCount={pageSize} />
               ) : isApiError ? (
                 <TableRow>
-                  <TableCell colSpan={7} className="p-8">
+                  <TableCell colSpan={8} className="p-8">
                     <ErrorState
                       title={
                         getApiError(apiError).kind === "forbidden"
@@ -268,7 +269,7 @@ export function CandidatesTab({ recruitment }: CandidatesTabProps) {
                 </TableRow>
               ) : currentApplications.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={7} className="p-8">
+                  <TableCell colSpan={8} className="p-8">
                     {!hasStages ? (
                       <EmptyState
                         title="Selection stages required"
@@ -411,6 +412,10 @@ export function CandidatesTab({ recruitment }: CandidatesTabProps) {
                         <div className="flex flex-col items-start gap-1.5">
                           <StatusBadge tone={statusTone}>{statusLabel}</StatusBadge>
                         </div>
+                      </TableCell>
+
+                      <TableCell className="py-3.5 text-xs whitespace-nowrap text-muted-foreground">
+                        {app.expectedSalary ? formatCurrency(app.expectedSalary) : "—"}
                       </TableCell>
 
                       {/* Applied Date (BatchApplications.AppliedAt) */}

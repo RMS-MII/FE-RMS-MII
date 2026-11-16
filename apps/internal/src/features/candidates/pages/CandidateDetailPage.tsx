@@ -5,7 +5,7 @@ import { Skeleton } from "@workspace/ui/components/skeleton"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@workspace/ui/components/table"
 import { BackButton, DataTablePagination, EmptyState, ErrorState, Panel, StatusBadge } from "@/shared/components"
 import { usePageBreadcrumbs } from "@/shared/components/layout/breadcrumbs-context"
-import { formatCurrency, safeFormatDate } from "@/shared/lib/format"
+import { safeFormatDate } from "@/shared/lib/format"
 import { useGetCandidateByIdQuery } from "../api/candidates-api"
 import { mapBatchStatusDto, mapGenderDto } from "../hooks/useCandidatesList"
 
@@ -61,7 +61,6 @@ export function CandidateDetailPage({ id }: { id: string }) {
             <div><dt className="text-muted-foreground">Education</dt><dd className="mt-1 font-medium text-foreground">{candidate.education || "—"}</dd></div>
             <div><dt className="text-muted-foreground">Institution</dt><dd className="mt-1 font-medium text-foreground">{candidate.institution || "—"}</dd></div>
             <div><dt className="text-muted-foreground">GPA</dt><dd className="mt-1 font-medium text-foreground">{candidate.gpa ?? "—"}</dd></div>
-            <div><dt className="text-muted-foreground">Expected Salary</dt><dd className="mt-1 font-medium text-foreground">{candidate.expectedSalary ? formatCurrency(candidate.expectedSalary) : "Not specified"}</dd></div>
             <div><dt className="text-muted-foreground">Registered</dt><dd className="mt-1 font-medium text-foreground">{safeFormatDate(candidate.createdAt)}</dd></div>
             <div><dt className="text-muted-foreground">Documents</dt><dd className="mt-1 flex flex-wrap gap-3">{candidate.cv && <a href={candidate.cv.startsWith("http") ? candidate.cv : `#${candidate.cv}`} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-primary hover:underline"><FileText className="size-4" />CV</a>}{candidate.portfolio && <a href={candidate.portfolio} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-primary hover:underline"><ExternalLink className="size-4" />Portfolio</a>}{!candidate.cv && !candidate.portfolio && "—"}</dd></div>
           </dl>

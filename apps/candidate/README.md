@@ -1,12 +1,12 @@
 # Portal kandidat RMS
 
-Aplikasi mandiri yang mengikuti shared UI aplikasi internal. Akses langsung lewat CandidateId; tidak memakai akun/token internal.
+Aplikasi mandiri yang mengikuti shared UI aplikasi internal. Masuk dengan OTP email dari `/login`. Portal kandidat dan exam memakai sesi kandidat yang sama. Sesi akun internal dikelola terpisah.
 
 ## Menjalankan
 
 Dari root FE: `pnpm dev:candidate` (port 5175). Build: `pnpm build:candidate`.
 Buka `http://localhost:5175/jobs` untuk melihat lowongan dan mengirim lamaran.
-Buka `/portal/{candidateId}` menggunakan ID kandidat dari database. Aplikasi tidak menyertakan data demo saat dijalankan normal.
+Buka `/login` atau tautan undangan `/portal/{candidateId}`. Setelah verifikasi email, kandidat baru dapat mengisi profil. Profil baru muncul di Candidate Pool HR setelah lamaran pertama. Expected salary dapat diisi pada masing-masing lamaran.
 
 Jalankan `pnpm dev:exam` (port 5174) agar tautan exam lokal dapat dibuka.
 Untuk mengganti alamat API atau exam, gunakan `.env.local`:
@@ -18,6 +18,8 @@ VITE_EXAM_URL_TEMPLATE=http://localhost:5174/portal/{candidateId}/stages/{stageI
 
 Build produksi perlu `VITE_EXAM_URL_TEMPLATE` yang mengarah ke host exam. Jika URL belum disetel, portal menampilkan arahan untuk melihat undangan HR. Portal tidak memanggil GET test atau POST submit test.
 
+Setel `VITE_CANDIDATE_PORTAL_URL` di aplikasi exam ke URL portal kandidat. Kedua aplikasi harus memakai host API yang sama. Untuk cookie sesi lintas origin, gunakan HTTPS dan host dalam situs yang sama serta daftarkan origin portal dan exam di `Cors:AllowedOrigins` API. Saat pengembangan gunakan `localhost` secara konsisten.
+
 ## Routing deployment dan email
 
 Semua route SPA harus fallback ke index.html. Email backend saat ini masih menggunakan `App:FrontendUrl`, termasuk tautan exam. Jangan mengubah konfigurasi tersebut secara global hanya untuk aplikasi ini.
@@ -28,7 +30,7 @@ Pada host undangan yang sudah ada, arahkan `/portal/{candidateId}`, `/portal/{ca
 - GET tasks untuk ringkasan, pipeline, sesi, nama interviewer dan status permintaan reschedule.
 - POST confirm/reschedule/submission dengan kontrak request lama.
 - Take-home tetap menggunakan deadline dan tautan pada InterviewSession. Instruksi dikirim melalui email.
-- Batas tautan 100 karakter mengikuti database/API yang ada. Tidak ada migrasi schema.
+- Batas tautan take-home mengikuti database/API yang ada.
 - Waktu jadwal ditampilkan WIB; input usulan mengikuti zona perangkat dan dikirim sebagai UTC.
 - Data diperbarui ketika kembali ke halaman, setelah aksi, atau lewat tombol Perbarui.
 

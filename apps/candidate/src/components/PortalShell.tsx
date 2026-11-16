@@ -2,6 +2,7 @@ import { useRef } from "react"
 import type { ReactNode } from "react"
 import {
   LayoutDashboard,
+  UserRound,
   CalendarDays,
   FileText,
   HelpCircle,
@@ -79,6 +80,8 @@ export function PortalShell({
           <FileText size={18} />
           Take-home tasks
         </a>
+        <a href="/profile"><UserRound size={18} /> My profile</a>
+        <a href="/jobs"><BriefcaseBusiness size={18} /> Open positions</a>
       </nav>
       {!!data?.applications.length && (
         <>

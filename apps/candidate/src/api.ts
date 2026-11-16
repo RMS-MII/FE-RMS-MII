@@ -54,14 +54,25 @@ const base = (
   import.meta.env.VITE_API_BASE_URL || "http://localhost:5160/api"
 ).replace(/\/$/, "")
 
+export class RequestError extends Error {
+  readonly status: number
+
+  constructor(message: string, status: number) {
+    super(message)
+    this.status = status
+  }
+}
+
 export async function request<T>(
   path: string,
   body?: object,
-  signal?: AbortSignal
+  signal?: AbortSignal,
+  method = body === undefined ? "GET" : "POST"
 ): Promise<T> {
   const response = await fetch(`${base}${path}`, {
     signal,
-    method: body === undefined ? "GET" : "POST",
+    credentials: "include",
+    method,
     headers: body === undefined ? {} : { "Content-Type": "application/json" },
     body: body === undefined ? undefined : JSON.stringify(body),
   }).catch((error: unknown) => {
@@ -70,7 +81,15 @@ export async function request<T>(
   })
 
   if (!response.ok) {
-    if (path.startsWith("/portal/jobs/") && response.status < 500) {
+    if (response.status === 401) {
+      if (/^\/portal\/[0-9a-f-]{36}\//i.test(path) || path.endsWith("/applications") || path.endsWith("/session/profile")) {
+        const next = window.location.pathname + window.location.search
+        window.location.assign(`/login?${new URLSearchParams({ next })}`)
+      }
+      throw new RequestError("Sign in to continue.", 401)
+    }
+
+    if (path.startsWith("/portal/jobs/") || path.startsWith("/portal/session")) {
       const problem = (await response.json().catch(() => null)) as {
         detail?: string
         errors?: Record<string, string[]>
@@ -81,6 +100,7 @@ export async function request<T>(
       throw new Error(
         problem?.detail ||
           validationMessage ||
+          (response.status === 429 && "Too many attempts. Please wait and try again.") ||
           "Could not submit your application. Try again."
       )
     }
@@ -161,14 +181,10 @@ export const labels: Record<string, string> = {
 
 export function examUrl(candidateId: string, stageId: string) {
   const template =
-    import.meta.env.DEV &&
-    "http://localhost:5174/portal/{candidateId}/stages/{stageId}/test"
+    import.meta.env.VITE_EXAM_URL_TEMPLATE ||
+    (import.meta.env.DEV ? "http://localhost:5174/portal/{candidateId}/stages/{stageId}/test" : "")
 
-  return template
-    ? safeUrl(
-        template
-          .replace("{candidateId}", encodeURIComponent(candidateId))
-          .replace("{stageId}", encodeURIComponent(stageId))
-      )
-    : undefined
+  return template ? safeUrl(
+    template.replace("{candidateId}", encodeURIComponent(candidateId)).replace("{stageId}", encodeURIComponent(stageId))
+  ) : undefined
 }

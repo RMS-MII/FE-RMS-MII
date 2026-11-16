@@ -121,6 +121,38 @@ try {
     }
     return route.fulfill({ json: data })
   })
+  let profile
+  let candidateSession = { email: data.candidateEmail, profile: { id: candidate } }
+  let application
+  await page.route("**/api/portal/session**", async (route) => {
+    const request = route.request()
+    if (request.method() === "GET") {
+      return candidateSession
+        ? route.fulfill({ json: candidateSession })
+        : route.fulfill({ status: 401 })
+    }
+    if (request.url().endsWith("/code")) {
+      assert.equal(request.postDataJSON().email, "applicant@example.test")
+      return route.fulfill({ status: 202, json: { verificationId: "verification-id" } })
+    }
+    if (request.url().endsWith("/verify")) {
+      const { verificationId, code } = request.postDataJSON()
+      assert.equal(verificationId, "verification-id")
+      if (code !== "123456") {
+        return route.fulfill({ status: 400, json: { detail: "Enter a valid verification code." } })
+      }
+      candidateSession = { email: "applicant@example.test", profile: null }
+      return route.fulfill({ json: candidateSession })
+    }
+    if (request.url().endsWith("/logout")) {
+      candidateSession = null
+      return route.fulfill({ status: 204 })
+    }
+    assert.equal(request.method(), "PUT")
+    profile = request.postDataJSON()
+    candidateSession.profile = { ...profile, id: candidate }
+    return route.fulfill({ json: candidateSession })
+  })
   const base = process.env.PORTAL_URL || "http://127.0.0.1:5175"
   await page.goto(`${base}/portal/${candidate}`)
   await page
@@ -415,7 +447,6 @@ try {
     applicationDeadlineAt: "2027-01-31T00:00:00Z",
   }
   const legacyJob = { ...job, id: "legacy", name: "Legacy opening", department: "Operations", applicationDeadlineAt: null }
-  let application
   await page.route("**/api/portal/jobs**", async (route) => {
     const request = route.request()
     if (request.method() === "GET") return route.fulfill({ json: [job, legacyJob] })
@@ -423,6 +454,7 @@ try {
     application = request.postDataJSON()
     return route.fulfill({ status: 201 })
   })
+  candidateSession = null
   const positions = page.getByRole("region", { name: "Available positions" })
   const position = (name) => page.getByRole("region", { name, exact: true })
   const viewPosition = (name) =>
@@ -468,7 +500,19 @@ try {
   const applyUrl = page.url()
   await page.reload()
   await page.waitForURL(applyUrl)
-  const birthDate = page.getByRole("button", { name: /Birth Date/ })
+  await page.getByRole("link", { name: "Sign in to apply" }).click()
+  await page.getByLabel("Email address").fill("applicant@example.test")
+  await page.getByRole("button", { name: "Send verification code" }).click()
+  await page.getByRole("heading", { name: "Verify your email" }).waitFor()
+  await page.getByLabel("Verification code").fill("000000")
+  await page.getByRole("button", { name: "Sign in", exact: true }).click()
+  await page.getByRole("alert").getByText("Enter a valid verification code.").waitFor()
+  await page.getByLabel("Verification code").fill("123456")
+  await page.getByRole("button", { name: "Sign in", exact: true }).click()
+  await page.getByRole("heading", { name: "Complete your candidate profile" }).waitFor()
+  assert.equal(await page.getByLabel(/Expected salary/).count(), 0)
+  assert.equal(await page.getByLabel("Verified email").inputValue(), "applicant@example.test")
+  const birthDate = page.getByRole("button", { name: /Birth date/i })
   await birthDate.click()
   const year = page.getByRole("combobox", { name: /Year/ })
   assert.equal(await year.inputValue(), "2000")
@@ -476,23 +520,38 @@ try {
   await page.getByRole("button", { name: /March 8th, 2000/ }).click()
   await page.getByLabel("Gender").selectOption("2")
   for (const [label, value] of [
-    ["Full Name", "Test Applicant"],
-    ["Email Address", "applicant@example.test"],
-    ["Phone Number", "08123456789"],
-    ["Education Degree & Major", "Bachelor"],
-    ["University / Campus", "Test University"],
+    ["Full name", "Test Applicant"],
+    ["Phone number", "08123456789"],
+    ["Education degree and major", "Bachelor"],
+    ["University or campus", "Test University"],
     ["GPA", "3.5"],
     ["Address", "Jakarta"],
   ]) {
-    await page.getByLabel(new RegExp(`^${label}\\s*\\*?$`)).fill(value)
+    await page.getByLabel(label, { exact: true }).fill(value)
   }
+  await page.getByRole("button", { name: "Save profile" }).click()
+  await page.waitForURL(applyUrl)
+  assert.equal(profile.fullName, "Test Applicant")
+  assert.equal(profile.birthDate, "2000-03-08")
+  assert.equal(profile.expectedSalary, undefined)
+  assert.equal(profile.email, undefined)
+  assert.equal(application, undefined)
+  await page.getByLabel(/Expected salary/).fill("10000000")
   await page.getByRole("button", { name: "Submit application" }).click()
   await page.getByText("Application received", { exact: true }).waitFor()
-  assert.equal(application.fullName, "Test Applicant")
-  assert.equal(application.birthDate, "2000-03-08")
+  assert.deepEqual(application, { expectedSalary: 10000000 })
+  await page.goto(`${base}/profile`)
+  await page.getByLabel("Full name", { exact: true }).fill("Updated Applicant")
+  await page.getByRole("button", { name: "Save profile" }).click()
+  await page.getByText("Profile saved.", { exact: true }).waitFor()
+  assert.equal(profile.fullName, "Updated Applicant")
+  await page.getByRole("button", { name: "Sign out" }).click()
+  await page.waitForURL(`${base}/jobs`)
+  await page.goto(`${base}/portal/${candidate}`)
+  await page.getByRole("link", { name: "Sign in with email" }).waitFor()
   assert.deepEqual(errors, [])
   console.log(
-    "Browser checks passed: public jobs and application, overview, confirmation, submission, reschedule, mobile, invalid link; no exam calls."
+    "Browser checks passed: OTP login, profile, public jobs and application, overview, confirmation, submission, reschedule, mobile, invalid link; no exam calls."
   )
 } finally {
   await browser.close()

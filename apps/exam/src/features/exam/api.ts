@@ -72,6 +72,7 @@ export async function request<T>(
 ): Promise<T> {
   const response = await fetch(`${API_BASE_URL}${path}`, {
     ...init,
+    credentials: "include",
     signal,
     headers: {
       Accept: "application/json",
@@ -82,6 +83,12 @@ export async function request<T>(
   const body = await parseBody(response)
 
   if (!response.ok) {
+    if (response.status === 401) {
+      const login = new URL("/login", import.meta.env.VITE_CANDIDATE_PORTAL_URL || "http://localhost:5175")
+      login.searchParams.set("next", window.location.pathname)
+      login.searchParams.set("exam", "1")
+      window.location.assign(login.href)
+    }
     throw toApiError(response, body)
   }
 

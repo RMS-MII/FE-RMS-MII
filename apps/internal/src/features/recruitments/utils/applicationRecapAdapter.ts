@@ -174,6 +174,7 @@ export function mapApplicationRecap(
   return {
     id: dto.id,
     isStandalone: dto.isStandalone,
+    expectedSalary: dto.expectedSalary,
     candidateId: dto.candidateId,
     recruitmentBatchId: dto.recruitmentBatchId,
     codeApplication: dto.codeApplication,

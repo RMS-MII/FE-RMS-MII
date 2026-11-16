@@ -191,6 +191,7 @@ export function useCandidatesTab({ recruitment }: UseCandidatesTabProps) {
       return {
         id: item.id,
         isStandalone: item.isStandalone,
+        expectedSalary: item.expectedSalary,
         candidateId: item.candidateId,
         recruitmentBatchId: item.recruitmentBatchId,
         codeApplication: item.codeApplication,
