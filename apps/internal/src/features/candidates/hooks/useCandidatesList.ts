@@ -99,7 +99,7 @@ export function useCandidatesList() {
     search: search.trim() || undefined,
     page,
     pageSize,
-  })
+  }, { refetchOnMountOrArgChange: true })
 
   // Map API DTOs into domain CandidateEntity models
   const rawCandidates: Candidate[] = useMemo(() => {

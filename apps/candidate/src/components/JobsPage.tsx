@@ -6,15 +6,15 @@ import {
   ChevronRight,
   Search,
 } from "lucide-react"
-import { Button } from "@workspace/ui/components/button"
+import { Button, buttonVariants } from "@workspace/ui/components/button"
 import { Input } from "@workspace/ui/components/input"
 import {
   RichText,
   plainTextFromRichText,
 } from "@workspace/ui/components/rich-text"
-import { DatePicker } from "@workspace/ui/components/date-picker"
 import { date, request } from "../api"
 import { PortalBrand } from "./PortalBrand"
+import { portalHome, profileLink, signInLink, type CandidateSession } from "../session"
 
 interface PublicJob {
   id: string
@@ -24,7 +24,7 @@ interface PublicJob {
   applicationDeadlineAt?: string | null
 }
 
-export function JobsPage() {
+export function JobsPage({ session }: { session: CandidateSession | null }) {
   const [jobs, setJobs] = useState<PublicJob[]>()
   const [loadError, setLoadError] = useState(false)
   const [loadAttempt, setLoadAttempt] = useState(0)
@@ -118,6 +118,10 @@ export function JobsPage() {
           <span className="border-l border-border pl-4 text-sm font-medium text-muted-foreground">
             Careers
           </span>
+          <a className="ml-auto text-sm font-medium text-primary hover:underline"
+             href={session ? portalHome(session) : signInLink()}>
+            {session ? "My portal" : "Sign in"}
+          </a>
         </div>
       </header>
       <main className="mx-auto max-w-7xl space-y-6 px-5 py-6 sm:px-8 sm:py-9">
@@ -126,6 +130,7 @@ export function JobsPage() {
             <ApplicationForm
               key={applyingTo.id}
               job={applyingTo}
+              session={session}
               onBack={backToPositions}
             />
           </div>
@@ -360,97 +365,33 @@ function JobDetails({ job }: { job: PublicJob }) {
   )
 }
 
-function ApplicationForm({
-  job,
-  onBack,
-}: {
+function ApplicationForm({ job, onBack, session }: {
   job: PublicJob
   onBack: () => void
+  session: CandidateSession | null
 }) {
   const [busy, setBusy] = useState(false)
   const [submitted, setSubmitted] = useState(false)
   const [error, setError] = useState("")
-  const [birthDate, setBirthDate] = useState("")
-  const [birthDateError, setBirthDateError] = useState(false)
-  const [verification, setVerification] = useState<{
-    id: string
-    candidate: { email: string }
-  } | null>(null)
   const submitting = useRef(false)
   const heading = useRef<HTMLHeadingElement>(null)
 
-  useEffect(() => {
-    heading.current?.focus()
-  }, [submitted, verification])
-
-  const applicationPath = `/portal/jobs/${job.id}`
-
-  async function sendCode<T extends { email: string }>(candidate: T) {
-    if (submitting.current) return
-    submitting.current = true
-    setBusy(true)
-    setError("")
-    try {
-      const response = await request<{ verificationId: string }>(
-        `${applicationPath}/application-verifications`,
-        candidate
-      )
-      setVerification({ id: response.verificationId, candidate })
-    } catch (failure) {
-      setError(
-        failure instanceof Error
-          ? failure.message
-          : "Could not send a verification code."
-      )
-    } finally {
-      submitting.current = false
-      setBusy(false)
-    }
-  }
+  useEffect(() => { heading.current?.focus() }, [submitted])
 
   async function apply(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     if (submitting.current) return
-    if (!verification && !birthDate) {
-      setBirthDateError(true)
-      document.getElementById("job-birth-date")?.focus()
-      return
-    }
-    const fields = new FormData(event.currentTarget)
-    const value = (name: string) => String(fields.get(name) ?? "").trim()
-    if (!verification) {
-      await sendCode({
-        fullName: value("fullName"),
-        gender: Number(value("gender")),
-        email: value("email").toLowerCase(),
-        phoneNumber: value("phoneNumber"),
-        birthDate,
-        address: value("address"),
-        education: value("education"),
-        institution: value("institution"),
-        gpa: Number(value("gpa")),
-        expectedSalary: Number(value("expectedSalary")),
-        cv: value("cv") || null,
-        portfolio: value("portfolio") || null,
-      })
-      return
-    }
+    const value = new FormData(event.currentTarget).get("expectedSalary")
     submitting.current = true
     setBusy(true)
     setError("")
     try {
-      await request<void>(`${applicationPath}/applications`, {
-        candidate: verification.candidate,
-        verificationId: verification.id,
-        code: value("code"),
+      await request<void>(`/portal/jobs/${job.id}/applications`, {
+        expectedSalary: value ? Number(value) : null,
       })
       setSubmitted(true)
     } catch (failure) {
-      setError(
-        failure instanceof Error
-          ? failure.message
-          : "We couldn’t submit your application. Try again."
-      )
+      setError(failure instanceof Error ? failure.message : "Could not submit your application.")
     } finally {
       submitting.current = false
       setBusy(false)
@@ -459,259 +400,43 @@ function ApplicationForm({
 
   return (
     <div className="space-y-5">
-      <Button
-        variant="outline"
-        className="rounded-full"
-        disabled={busy}
-        onClick={onBack}
-      >
+      <Button variant="outline" className="rounded-full" disabled={busy} onClick={onBack}>
         <ArrowLeft aria-hidden /> Back to positions
       </Button>
       <section className="space-y-2.5 rounded-2xl border border-border bg-primary-50 px-5 py-6 sm:px-7">
-        <h1 className="text-2xl font-semibold tracking-tight wrap-break-word">
-          {job.name}
-        </h1>
+        <h1 className="text-2xl font-semibold tracking-tight wrap-break-word">{job.name}</h1>
         <JobDetails job={job} />
       </section>
-      {submitted ? (
-        <section
-          className="space-y-2 rounded-2xl border border-border bg-card p-6"
-          role="status"
-        >
-          <h2
-            ref={heading}
-            tabIndex={-1}
-            className="text-base font-semibold outline-none"
-          >
-            Application received
-          </h2>
-          <p className="text-sm text-muted-foreground">
-            The recruitment team will contact you by email if there are next
-            steps.
-          </p>
-        </section>
-      ) : (
-        <form
-          onSubmit={(event) => void apply(event)}
-          className="space-y-5 rounded-2xl border border-border bg-card p-5 sm:p-6"
-        >
-          <h2
-            ref={heading}
-            tabIndex={-1}
-            className="text-base font-semibold outline-none"
-          >
-            {verification ? "Verify your email" : "Application details"}
-          </h2>
-          <fieldset
-            disabled={busy || Boolean(verification)}
-            className={
-              verification ? "hidden" : "grid gap-x-6 gap-y-4 sm:grid-cols-2"
-            }
-          >
-            <div className="grid content-start gap-4">
-              <JobField
-                name="fullName"
-                label="Full Name"
-                maxLength={100}
-                placeholder="e.g. Budi Raharjo"
-              />
-              <JobField
-                name="email"
-                label="Email Address"
-                type="email"
-                maxLength={100}
-                placeholder="e.g. budi@example.com"
-              />
-              <JobField
-                name="phoneNumber"
-                label="Phone Number"
-                type="tel"
-                maxLength={20}
-                placeholder="e.g. +62 812-3456-7890"
-              />
-              <div className="grid gap-3 min-[420px]:grid-cols-2">
-                <label className="grid gap-1.5 text-sm font-medium">
-                  Gender
-                  <select
-                    name="gender"
-                    defaultValue="1"
-                    className="h-10 rounded-full border border-border bg-muted px-4"
-                  >
-                    <option value="1">Male</option>
-                    <option value="2">Female</option>
-                  </select>
-                </label>
-                <div className="space-y-1.5 text-sm font-medium">
-                  <label htmlFor="job-birth-date">
-                    Birth Date{" "}
-                    <span className="text-destructive" aria-hidden>
-                      *
-                    </span>
-                  </label>
-                  <DatePicker
-                    id="job-birth-date"
-                    value={birthDate}
-                    defaultMonth="2000-01-01"
-                    maxDate={new Date()}
-                    disabled={busy}
-                    aria-invalid={birthDateError}
-                    onChange={(value) => {
-                      setBirthDate(value)
-                      setBirthDateError(false)
-                    }}
-                  />
-                  {birthDateError && (
-                    <p role="alert" className="text-destructive">
-                      Select your birth date.
-                    </p>
-                  )}
-                </div>
-              </div>
-            </div>
-            <div className="grid content-start gap-4">
-              <JobField
-                name="education"
-                label="Education Degree & Major"
-                maxLength={50}
-                placeholder="e.g. S1 Computer Science"
-              />
-              <JobField
-                name="institution"
-                label="University / Campus"
-                maxLength={100}
-                placeholder="e.g. Universitas Indonesia"
-              />
-              <div className="grid grid-cols-2 gap-3">
-                <JobField
-                  name="gpa"
-                  label="GPA"
-                  type="number"
-                  min={0}
-                  max={4}
-                  step="0.01"
-                  placeholder="e.g. 3.75"
-                />
-                <JobField
-                  name="expectedSalary"
-                  label="Expected Salary (IDR)"
-                  type="number"
-                  min={0}
-                  step="1"
-                  required={false}
-                  placeholder="e.g. 10000000"
-                />
-              </div>
-              <JobField
-                name="cv"
-                label="CV / Resume URL"
-                type="url"
-                maxLength={200}
-                required={false}
-                placeholder="https://drive.google.com/..."
-              />
-            </div>
-            <div className="grid gap-4 border-t border-border pt-4 sm:col-span-2 sm:grid-cols-2">
-              <JobField
-                name="address"
-                label="Address"
-                maxLength={200}
-                placeholder="e.g. Jl. Jendral Sudirman No. 12, Jakarta Selatan"
-              />
-              <JobField
-                name="portfolio"
-                label="Portfolio / GitHub URL"
-                type="url"
-                maxLength={200}
-                required={false}
-                placeholder="https://github.com/username"
-              />
-            </div>
-          </fieldset>
-
-          {verification && (
-            <div className="space-y-4">
-              <p className="text-sm text-muted-foreground">
-                Enter the 6-digit code sent to {verification.candidate.email}.
-                It expires in 10 minutes.
-              </p>
-              <div className="max-w-64">
-                <JobField
-                  label="Verification code"
-                  name="code"
-                  inputMode="numeric"
-                  autoComplete="one-time-code"
-                  pattern="[0-9]{6}"
-                  maxLength={6}
-                  disabled={busy}
-                />
-              </div>
-              <div className="flex flex-wrap gap-2">
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="rounded-full"
-                  disabled={busy}
-                  onClick={() => void sendCode(verification.candidate)}
-                >
-                  Resend code
-                </Button>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  className="rounded-full"
-                  disabled={busy}
-                  onClick={() => {
-                    setVerification(null)
-                    setError("")
-                  }}
-                >
-                  Edit application
-                </Button>
-              </div>
-            </div>
-          )}
-          {error && (
-            <p role="alert" className="text-sm text-destructive">
-              {error}
-            </p>
-          )}
-          <Button type="submit" className="h-10 rounded-full" disabled={busy}>
-            {busy
-              ? "Please wait…"
-              : verification
-                ? "Submit application"
-                : "Send verification code"}
-          </Button>
-        </form>
-      )}
-    </div>
-  )
-}
-
-function JobField({
-  label,
-  required = true,
-  ...props
-}: React.ComponentProps<typeof Input> & { label: string }) {
-  return (
-    <label className="grid gap-1.5 text-sm font-medium">
-      <span>
-        {label}
-        {required ? (
-          <span className="ml-1 text-destructive" aria-hidden="true">
-            *
-          </span>
+      <section className="space-y-4 rounded-2xl border border-border bg-card p-5 sm:p-6">
+        <h2 ref={heading} tabIndex={-1} className="text-base font-semibold outline-none">
+          {submitted ? "Application received" : "Apply for this position"}
+        </h2>
+        {submitted && session ? (
+          <a href={portalHome(session)} className="text-sm font-medium text-primary hover:underline">View my applications</a>
+        ) : !session?.profile ? (
+          <a href={session ? profileLink() : signInLink()}
+             className={buttonVariants({ className: "h-10 rounded-full px-5" })}>
+            {session ? "Complete profile to apply" : "Sign in to apply"}
+          </a>
         ) : (
-          <span className="ml-2 font-normal text-muted-foreground">
-            (optional)
-          </span>
+          <form onSubmit={(event) => void apply(event)} className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              Applying as {session.profile.fullName} ({session.email}).{" "}
+              <a href={profileLink()} className="font-medium text-primary hover:underline">Edit profile</a>
+            </p>
+            <label className="grid max-w-80 gap-1.5 text-sm font-medium">
+              Expected salary (IDR)
+              <span className="text-xs font-normal text-muted-foreground">Optional</span>
+              <Input name="expectedSalary" type="number" min={0} step={1} placeholder="e.g. 10000000"
+                className="h-10 rounded-full border-border bg-muted px-4" disabled={busy} />
+            </label>
+            {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
+            <Button type="submit" className="h-10 rounded-full px-5" disabled={busy}>
+              {busy ? "Submitting…" : "Submit application"}
+            </Button>
+          </form>
         )}
-      </span>
-      <Input
-        required={required}
-        className="h-10 min-w-0 rounded-full border-border bg-muted px-4"
-        {...props}
-      />
-    </label>
+      </section>
+    </div>
   )
 }
