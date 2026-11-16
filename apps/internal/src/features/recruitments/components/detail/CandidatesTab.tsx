@@ -1,3 +1,4 @@
+import { useState } from "react"
 import { Link, useNavigate } from "@tanstack/react-router"
 import { cn } from "@/shared/lib/utils"
 import { getApiError } from "@/shared/api/api-error"
@@ -16,6 +17,12 @@ import { safeFormatDate } from "@/shared/lib/format"
 import { getRecruitmentAddRestriction } from "../../utils/recruitmentUtils"
 import { AddCandidateDialog } from "./AddCandidateDialog"
 import {
+  DocumentPreviewDialog,
+  emptyDocumentPreviewState,
+  type DocumentPreviewKind,
+  type DocumentPreviewState,
+} from "./DocumentPreviewDialog"
+import {
   Table,
   TableBody,
   TableCell,
@@ -32,7 +39,7 @@ import {
   SelectValue,
 } from "@workspace/ui/components/select"
 import { Button } from "@workspace/ui/components/button"
-import { Eye, UserPlus } from "lucide-react"
+import { Briefcase, Eye, FileText, UserPlus } from "lucide-react"
 import {
   useCandidatesTab,
   statusToneMap,
@@ -44,6 +51,17 @@ export type CandidatesTabProps = UseCandidatesTabProps
 
 export function CandidatesTab({ recruitment }: CandidatesTabProps) {
   const navigate = useNavigate()
+  const [preview, setPreview] = useState<DocumentPreviewState>(
+    emptyDocumentPreviewState
+  )
+
+  const openPreview = (
+    kind: DocumentPreviewKind,
+    candidateName: string,
+    value: string | null | undefined
+  ) => {
+    setPreview({ open: true, kind, candidateName, value: value ?? null })
+  }
 
   const {
     search,
@@ -218,7 +236,7 @@ export function CandidatesTab({ recruitment }: CandidatesTabProps) {
                   className="hidden md:table-cell"
                 />
 
-                <TableHead className="w-14 pr-5 text-center">Action</TableHead>
+                <TableHead className="w-36 pr-5 text-center">Action</TableHead>
               </TableRow>
             </TableHeader>
 
@@ -402,32 +420,74 @@ export function CandidatesTab({ recruitment }: CandidatesTabProps) {
 
                       {/* Action */}
                       <TableCell
-                        className="py-3.5 pr-5 text-center whitespace-nowrap"
+                        className="py-3.5 pr-5 whitespace-nowrap"
                         onClick={(e) => e.stopPropagation()}
                       >
-                        <Button
-                          type="button"
-                          nativeButton={false}
-                          render={
-                            <Link
-                              to="/recruitments/$id/applications/$applicationId"
-                              params={{
-                                id: recruitment.id,
-                                applicationId: app.id,
-                              }}
-                              search={detailSearch}
-                            />
-                          }
-                          variant="ghost"
-                          size="icon-xs"
-                          aria-label={
-                            "View application for " + app.candidateName
-                          }
-                          title="View application details & stages history"
-                          className="size-8 cursor-pointer rounded-full border-0 bg-muted text-foreground hover:bg-muted/60"
-                        >
-                          <Eye className="size-4" />
-                        </Button>
+                        <div className="flex items-center justify-center gap-1.5">
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon-xs"
+                            aria-label={`Preview CV untuk ${app.candidateName}`}
+                            title={
+                              app.candidateCv
+                                ? "Preview CV"
+                                : "CV belum tersedia"
+                            }
+                            disabled={!app.candidateCv}
+                            onClick={() =>
+                              openPreview("cv", app.candidateName, app.candidateCv)
+                            }
+                            className="size-8 cursor-pointer rounded-full border-0 bg-muted text-foreground hover:bg-muted/60 disabled:cursor-not-allowed disabled:opacity-40"
+                          >
+                            <FileText className="size-4" />
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon-xs"
+                            aria-label={`Preview portofolio untuk ${app.candidateName}`}
+                            title={
+                              app.candidatePortfolio
+                                ? "Preview portofolio"
+                                : "Portofolio belum tersedia"
+                            }
+                            disabled={!app.candidatePortfolio}
+                            onClick={() =>
+                              openPreview(
+                                "portfolio",
+                                app.candidateName,
+                                app.candidatePortfolio
+                              )
+                            }
+                            className="size-8 cursor-pointer rounded-full border-0 bg-muted text-foreground hover:bg-muted/60 disabled:cursor-not-allowed disabled:opacity-40"
+                          >
+                            <Briefcase className="size-4" />
+                          </Button>
+                          <Button
+                            type="button"
+                            nativeButton={false}
+                            render={
+                              <Link
+                                to="/recruitments/$id/applications/$applicationId"
+                                params={{
+                                  id: recruitment.id,
+                                  applicationId: app.id,
+                                }}
+                                search={detailSearch}
+                              />
+                            }
+                            variant="ghost"
+                            size="icon-xs"
+                            aria-label={
+                              "View application for " + app.candidateName
+                            }
+                            title="Lihat detail aplikasi & riwayat tahap"
+                            className="size-8 cursor-pointer rounded-full border-0 bg-muted text-foreground hover:bg-muted/60"
+                          >
+                            <Eye className="size-4" />
+                          </Button>
+                        </div>
                       </TableCell>
                     </TableRow>
                   )
@@ -454,6 +514,13 @@ export function CandidatesTab({ recruitment }: CandidatesTabProps) {
         onOpenChange={handleAddDialogOpenChange}
         onAddCandidates={handleAddCandidates}
         existingApplicationCount={totalCount}
+      />
+
+      <DocumentPreviewDialog
+        state={preview}
+        onOpenChange={(open) =>
+          setPreview((prev) => (open ? prev : { ...prev, open: false }))
+        }
       />
     </>
   )
