@@ -1,13 +1,14 @@
 import { useCallback, useEffect, useState } from "react"
-import {
-  ApiError,
-  finishCandidateTest,
-  startCandidateTest,
-  submitCandidateTestAnswer,
-} from "./api"
+import { ApiError } from "./api"
 import { useCandidateTest, useExamTimer } from "./hooks"
-import { clearExamDraft, saveExamDraft, type ExamDraft } from "./storage"
-import type { CandidateTest, ExamAnswers, FinishTestResult } from "./types"
+import { saveExamDraft, type ExamDraft } from "./storage"
+import type {
+  CandidateTest,
+  ExamAnswers,
+  FinishTestResult,
+  StartTestResult,
+  SubmitTestAnswer,
+} from "./types"
 import {
   formatDateTime,
   getMissingRequiredQuestions,
@@ -35,6 +36,8 @@ interface ExamRunnerProps {
   test: CandidateTest
   initialDraft: ExamDraft | null
   receivedAt: number
+  onStart: () => Promise<StartTestResult>
+  onComplete: (answers: SubmitTestAnswer[]) => Promise<FinishTestResult>
 }
 
 function getLoadErrorContent(error: unknown): {
@@ -122,7 +125,13 @@ function getSubmissionErrorMessage(error: unknown): string {
   return "Tidak dapat terhubung ke server. Periksa koneksi internet Anda lalu coba lagi."
 }
 
-function ExamRunner({ test, initialDraft, receivedAt }: ExamRunnerProps) {
+function ExamRunner({
+  test,
+  initialDraft,
+  receivedAt,
+  onStart,
+  onComplete,
+}: ExamRunnerProps) {
   const [phase, setPhase] = useState<ExamPhase>(() =>
     test.attemptStartedAt ? "exam" : "intro"
   )
@@ -192,19 +201,7 @@ function ExamRunner({ test, initialDraft, receivedAt }: ExamRunnerProps) {
           }))
           .filter((answer) => answer.selectedOptionIds.length > 0)
 
-        // Submit jawaban baru (strict: server akan menolak bila melewati batas
-        // waktu) lalu lanjut finalisasi skor via finish endpoint.
-        await submitCandidateTestAnswer({
-          candidateId: test.candidateId,
-          stageId: test.applicationStageId,
-          answers: payloadAnswers,
-        })
-
-        clearExamDraft(test.candidateId, test.applicationStageId)
-        const finishResponse = await finishCandidateTest(
-          test.candidateId,
-          test.applicationStageId
-        )
+        const finishResponse = await onComplete(payloadAnswers)
 
         setResult(finishResponse)
         setPhase("result")
@@ -216,7 +213,7 @@ function ExamRunner({ test, initialDraft, receivedAt }: ExamRunnerProps) {
         setSubmitting(false)
       }
     },
-    [answers, submitting, test]
+    [answers, onComplete, submitting, test]
   )
 
   const handleTimeExpired = useCallback(() => {
@@ -280,10 +277,7 @@ function ExamRunner({ test, initialDraft, receivedAt }: ExamRunnerProps) {
     setStartError(null)
 
     try {
-      const response = await startCandidateTest(
-        test.candidateId,
-        test.applicationStageId
-      )
+      const response = await onStart()
 
       const startedAtMs = parseServerDate(response.attemptStartedAt)
 
@@ -445,10 +439,16 @@ function ExamRunner({ test, initialDraft, receivedAt }: ExamRunnerProps) {
 }
 
 export function ExamTestPage({ candidateId, stageId }: ExamTestPageProps) {
-  const { data, draft, receivedAt, error, loading, reload } = useCandidateTest(
-    candidateId,
-    stageId
-  )
+  const {
+    data,
+    draft,
+    receivedAt,
+    error,
+    loading,
+    reload,
+    start,
+    complete,
+  } = useCandidateTest(candidateId, stageId)
 
   if (loading && !data) {
     return <ExamLoading />
@@ -476,6 +476,8 @@ export function ExamTestPage({ candidateId, stageId }: ExamTestPageProps) {
       test={data}
       initialDraft={draft}
       receivedAt={receivedAt}
+      onStart={start}
+      onComplete={complete}
     />
   )
 }

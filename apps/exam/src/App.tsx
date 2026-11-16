@@ -1,7 +1,18 @@
+import { useEffect } from "react"
 import { ExamInvalidLinkScreen } from "@/features/exam/components/ExamStateScreens"
 import { ExamTestPage } from "@/features/exam/ExamTestPage"
-import { CandidatePortalPage } from "@/features/portal/CandidatePortalPage"
+import { candidatePortalUrl } from "@/lib/candidate-portal-url"
 import { parseAppRoute } from "@/lib/route"
+
+function CandidatePortalRedirect({ candidateId }: { candidateId: string }) {
+  const destination = candidatePortalUrl(`/portal/${encodeURIComponent(candidateId)}`)
+
+  useEffect(() => {
+    window.location.replace(destination)
+  }, [destination])
+
+  return <a href={destination}>Open candidate portal</a>
+}
 
 export function App() {
   const route = parseAppRoute(window.location.pathname)
@@ -11,7 +22,7 @@ export function App() {
   }
 
   if (route.kind === "portal") {
-    return <CandidatePortalPage candidateId={route.candidateId} />
+    return <CandidatePortalRedirect candidateId={route.candidateId} />
   }
 
   return (

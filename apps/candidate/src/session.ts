@@ -1,5 +1,7 @@
 import { examUrl, request, RequestError } from "./api"
 
+export { signInLink } from "./auth-navigation"
+
 export interface CandidateProfile {
   id: string
   fullName: string
@@ -28,12 +30,6 @@ export async function getSession(
     if (error instanceof RequestError && error.status === 401) return null
     throw error
   }
-}
-
-export function signInLink(
-  next = window.location.pathname + window.location.search
-) {
-  return `/login?${new URLSearchParams({ next })}`
 }
 
 export function profileLink(

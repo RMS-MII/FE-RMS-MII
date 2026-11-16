@@ -1,8 +1,7 @@
-import { useCallback, useEffect, useRef, useState } from "react"
+import { useState } from "react"
 import { ArrowLeft, BriefcaseBusiness, FileText, RefreshCw } from "lucide-react"
 import { Button } from "@workspace/ui/components/button"
-import { request } from "./api"
-import type { Tasks } from "./api"
+import { useCandidateTasks } from "./hooks/useCandidateTasks"
 import {
   candidateId,
   interviewSessionId,
@@ -18,73 +17,11 @@ import { SessionDetail } from "./components/SessionDetail"
 import { Status } from "./components/Status"
 
 export function App() {
-  const [result, setResult] = useState<{ data: Tasks; fetchedAt: number }>()
+  const { result, error, loading, refresh } = useCandidateTasks(candidateId, prefix)
   const data = result?.data
-
-  const [error, setError] = useState("")
-
-  const [loading, setLoading] = useState(Boolean(candidateId))
 
   const [selected, setSelected] = useState("")
   const [submissionId, setSubmissionId] = useState(submissionSessionId)
-
-  const controller = useRef<AbortController | null>(null)
-
-  const refresh = useCallback(async () => {
-    if (!candidateId) {
-      setLoading(false)
-      return
-    }
-
-    controller.current?.abort()
-    const abort = new AbortController()
-    controller.current = abort
-
-    setLoading(true)
-    setError("")
-
-    try {
-      const data = await request<Tasks>(
-        `${prefix}/tasks`,
-        undefined,
-        abort.signal
-      )
-      setResult({ data, fetchedAt: Date.now() })
-    } catch (e) {
-      if (!abort.signal.aborted)
-        setError(
-          e instanceof Error ? e.message : "Could not connect. Try again."
-        )
-    } finally {
-      if (!abort.signal.aborted) setLoading(false)
-    }
-  }, [])
-
-  useEffect(() => {
-    const abort = new AbortController()
-    controller.current = abort
-    if (candidateId) {
-      request<Tasks>(`${prefix}/tasks`, undefined, abort.signal)
-        .then((data) => setResult({ data, fetchedAt: Date.now() }))
-        .catch((e: unknown) => {
-          if (!abort.signal.aborted)
-            setError(
-              e instanceof Error ? e.message : "Could not load the portal."
-            )
-        })
-        .finally(() => {
-          if (!abort.signal.aborted) setLoading(false)
-        })
-    }
-    const focus = () => {
-      void refresh()
-    }
-    window.addEventListener("focus", focus)
-    return () => {
-      controller.current?.abort()
-      window.removeEventListener("focus", focus)
-    }
-  }, [refresh])
 
   const app =
     data?.applications.find((a) => a.id === selected) ||
