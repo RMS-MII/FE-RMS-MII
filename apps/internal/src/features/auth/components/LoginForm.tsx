@@ -13,6 +13,7 @@ import { setCredentials } from "../store/auth-slice"
 import { useLoginMutation } from "../api/auth-api"
 import { mapCurrentUserToAuthUser } from "../types"
 import { cn } from "@/shared/lib/utils"
+import { clearLogoutPending } from "@/shared/api/auth-session"
 
 const loginSchema = z.object({
   username: z
@@ -58,6 +59,7 @@ export function LoginForm({ onSuccess }: LoginFormProps) {
         username: values.username.trim(),
         password: values.password,
       }).unwrap()
+      clearLogoutPending()
 
       const authUser = mapCurrentUserToAuthUser(response.user)
 

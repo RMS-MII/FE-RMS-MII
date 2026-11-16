@@ -1,4 +1,8 @@
 import { useState } from "react"
+import { useNavigate } from "@tanstack/react-router"
+import { useAppDispatch } from "@/app/store"
+import { broadcastLogout } from "@/shared/api/auth-session"
+import { logout } from "../store/auth-slice"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
@@ -21,6 +25,8 @@ const schema = z.object({
 type FormValues = z.infer<typeof schema>
 
 export function useChangePasswordForm() {
+  const dispatch = useAppDispatch()
+  const navigate = useNavigate()
   const form = useForm<FormValues>({
     resolver: zodResolver(schema),
     defaultValues: { currentPassword: "", newPassword: "", confirmPassword: "" },
@@ -36,6 +42,9 @@ export function useChangePasswordForm() {
       await changePassword({ currentPassword, newPassword }).unwrap()
       form.reset()
       setIsSaved(true)
+      dispatch(logout())
+      broadcastLogout()
+      void navigate({ to: "/login", replace: true })
     } catch (requestError) {
       setError(getApiError(requestError, "Unable to change your password.").message)
     }

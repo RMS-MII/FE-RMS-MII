@@ -142,7 +142,7 @@ export function StagesTab({
     result: BatchStageTransitionDto
   } | null>(null)
 
-  const configuredStages = stages.filter((stage) => stage.isActive)
+  const configuredStages = stages
   const activeStage = stages.find(
     (stage) => normalizeLifecycleStatus(stage.lifecycleStatus) === "active"
   )
@@ -350,9 +350,7 @@ export function StagesTab({
                   const lifecycleStatus = normalizeLifecycleStatus(
                     stage.lifecycleStatus
                   )
-                  const status = !stage.isActive
-                    ? { label: "Disabled", tone: "neutral" as const }
-                    : lifecycleStatus === "completed"
+                  const status = lifecycleStatus === "completed"
                       ? { label: "Completed", tone: "success" as const }
                       : lifecycleStatus === "active"
                         ? { label: "Active", tone: "info" as const }

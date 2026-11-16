@@ -93,7 +93,7 @@ export function OpenRecruitmentDialog({
   const isDraft = statusMeta?.label === "Draft"
   const editingDeadline = canEditApplicationDeadline(batch ?? recruitment)
   const enabledStages =
-    batch?.batchStages?.filter((stage) => stage.isActive) ?? []
+    batch?.batchStages ?? []
   const stageCount = enabledStages.length
   const canOpen = Boolean(
     batch &&

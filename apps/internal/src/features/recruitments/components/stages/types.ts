@@ -13,6 +13,5 @@ export interface EditableStage {
   passingScore: number | null
   startDate: string
   endDate: string
-  isActive: boolean
 }
 

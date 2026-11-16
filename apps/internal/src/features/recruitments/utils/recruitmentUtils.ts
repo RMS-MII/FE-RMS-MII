@@ -20,10 +20,10 @@ export function hasStartedBulkSelection(recruitment: Recruitment): boolean {
 }
 
 export function getRecruitmentCloseRestriction(recruitment: Recruitment): string | null {
-  const stages = (recruitment.batchStages ?? []).filter((stage) => stage.isActive)
-  if (stages.length === 0) return "Configure at least one active stage before closing this recruitment."
+  const stages = recruitment.batchStages ?? []
+  if (stages.length === 0) return "Configure at least one stage before closing this recruitment."
   if (stages.some((stage) => !["completed", "2"].includes(String(stage.lifecycleStatus).toLowerCase()))) {
-    return "Complete all active selection stages before closing this recruitment."
+    return "Complete all selection stages before closing this recruitment."
   }
   return null
 }
@@ -92,7 +92,8 @@ export function formatCurrentStageText(r: Recruitment): string {
     if (statusStr === "draft" || statusStr === "1") return "Not started"
     if (statusStr === "closed" || statusStr === "3") return "All stages completed"
 
-    const activeStage = r.batchStages.find((s) => s.isActive)
+    const activeStage = r.batchStages.find((s) =>
+      ["active", "1"].includes(String(s.lifecycleStatus).toLowerCase()))
     if (activeStage) return activeStage.stageName || activeStage.stageTypeName || "Active Stage"
 
     return `${r.batchStages.length} Stages`

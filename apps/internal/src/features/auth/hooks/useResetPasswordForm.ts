@@ -7,6 +7,7 @@ import { getApiError } from "@/shared/api/api-error"
 import { useResetPasswordMutation } from "../api/auth-api"
 import { passwordSchema } from "../schemas/passwordSchema"
 import { logout } from "../store/auth-slice"
+import { broadcastLogout } from "@/shared/api/auth-session"
 
 const schema = z.object({
   newPassword: passwordSchema,
@@ -35,6 +36,7 @@ export function useResetPasswordForm(token: string) {
     try {
       await resetPassword({ token, newPassword }).unwrap()
       dispatch(logout())
+      broadcastLogout()
       setIsComplete(true)
     } catch (requestError) {
       setError(getApiError(requestError, "Unable to reset your password.").message)

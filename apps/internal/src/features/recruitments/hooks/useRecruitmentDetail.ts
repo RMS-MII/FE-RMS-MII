@@ -93,7 +93,6 @@ export function useRecruitmentDetail({
         name: stage.stageName || stage.stageTypeName || `Stage ${index + 1}`,
         count: stage.candidateCount ?? undefined,
         state,
-        note: !stage.isActive ? "Disabled" : undefined,
       }
     })
   }, [recruitment])

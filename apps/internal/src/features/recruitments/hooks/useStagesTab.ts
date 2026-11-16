@@ -56,7 +56,6 @@ export function mapBatchStagesToStages(
       passingScore: bs.passingScore ?? null,
       startDate: bs.startDate ?? null,
       endDate: bs.endDate ?? null,
-      isActive: bs.isActive,
       lifecycleStatus: bs.lifecycleStatus,
       nextStageId: bs.nextStageId,
       assignedInterviewers: assignedList,

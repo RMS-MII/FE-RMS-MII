@@ -71,7 +71,6 @@ export function getInitialEditableStages(recruitment: Recruitment | null): Edita
         passingScore: bs.passingScore ?? null,
         startDate: toLocalDateTimeInput(bs.startDate),
         endDate: toLocalDateTimeInput(bs.endDate, true),
-        isActive: bs.isActive ?? true,
       }
     })
   }
@@ -92,7 +91,6 @@ export function getInitialEditableStages(recruitment: Recruitment | null): Edita
       passingScore: s.passingScore ?? null,
       startDate: toLocalDateTimeInput(s.startDate),
       endDate: toLocalDateTimeInput(s.endDate, true),
-      isActive: s.isActive ?? true,
     }))
   }
 
@@ -193,7 +191,6 @@ export function useManageStages({ id }: UseManageStagesProps) {
       passingScore: null,
       startDate: "",
       endDate: "",
-      isActive: true,
     }
 
     setStages((prev) => [...prev, newStage])
@@ -313,7 +310,6 @@ export function useManageStages({ id }: UseManageStagesProps) {
           stages: stages.map((s) => ({
             stageTypeId: s.stageTypeId,
             stageName: s.name.trim(),
-            isActive: s.isActive ?? true,
             passingScore:
               s.passingScore !== null && s.passingScore !== undefined
                 ? Number(s.passingScore)
