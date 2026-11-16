@@ -2,40 +2,13 @@ import { createSlice } from "@reduxjs/toolkit"
 import type { PayloadAction } from "@reduxjs/toolkit"
 import type { AuthState, AuthUser, DataMode, UserRole } from "../types"
 
-const STORAGE_KEY_TOKEN = "rms_access_token"
-const STORAGE_KEY_USER = "rms_user"
-const STORAGE_KEY_EXPIRES_AT = "rms_access_token_expires_at"
-
-const getInitialToken = (): string | null => {
-  if (typeof window === "undefined") return null
-  return localStorage.getItem(STORAGE_KEY_TOKEN)
-}
-
-const getInitialUser = (): AuthUser | null => {
-  if (typeof window === "undefined") return null
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY_USER)
-    return raw ? (JSON.parse(raw) as AuthUser) : null
-  } catch {
-    return null
-  }
-}
-
-const getInitialExpiresAt = (): string | null => {
-  if (typeof window === "undefined") return null
-  return localStorage.getItem(STORAGE_KEY_EXPIRES_AT)
-}
-
-const initialToken = getInitialToken()
-const initialUser = getInitialUser()
-
 const initialState: AuthState = {
-  user: initialUser,
-  accessToken: initialToken,
+  user: null,
+  accessToken: null,
   tokenType: "Bearer",
-  expiresAt: getInitialExpiresAt(),
-  isAuthenticated: Boolean(initialToken),
-  isInitializing: false,
+  expiresAt: null,
+  isAuthenticated: false,
+  isInitializing: true,
   dataMode: "normal",
 }
 
@@ -59,41 +32,17 @@ export const authSlice = createSlice({
       state.isAuthenticated = true
       state.isInitializing = false
 
-      if (typeof window !== "undefined") {
-        localStorage.setItem(STORAGE_KEY_TOKEN, action.payload.accessToken)
-        localStorage.setItem(STORAGE_KEY_USER, JSON.stringify(action.payload.user))
-        if (action.payload.expiresAt) {
-          localStorage.setItem(STORAGE_KEY_EXPIRES_AT, action.payload.expiresAt)
-        } else {
-          localStorage.removeItem(STORAGE_KEY_EXPIRES_AT)
-        }
-      }
     },
     setUser: (state, action: PayloadAction<AuthUser>) => {
       state.user = action.payload
-      if (typeof window !== "undefined") {
-        localStorage.setItem(STORAGE_KEY_USER, JSON.stringify(action.payload))
-      }
     },
     setRole: (state, action: PayloadAction<UserRole>) => {
       if (state.user) {
         state.user.role = action.payload
-        if (typeof window !== "undefined") {
-          localStorage.setItem(STORAGE_KEY_USER, JSON.stringify(state.user))
-        }
       }
     },
     setDataMode: (state, action: PayloadAction<DataMode>) => {
       state.dataMode = action.payload
-    },
-    setAccessToken: (state, action: PayloadAction<string>) => {
-      state.accessToken = action.payload
-      state.isAuthenticated = true
-      state.expiresAt = null
-      if (typeof window !== "undefined") {
-        localStorage.setItem(STORAGE_KEY_TOKEN, action.payload)
-        localStorage.removeItem(STORAGE_KEY_EXPIRES_AT)
-      }
     },
     logout: (state) => {
       state.user = null
@@ -103,11 +52,9 @@ export const authSlice = createSlice({
       state.isAuthenticated = false
       state.isInitializing = false
 
-      if (typeof window !== "undefined") {
-        localStorage.removeItem(STORAGE_KEY_TOKEN)
-        localStorage.removeItem(STORAGE_KEY_USER)
-        localStorage.removeItem(STORAGE_KEY_EXPIRES_AT)
-      }
+    },
+    finishInitialization: (state) => {
+      state.isInitializing = false
     },
   },
 })
@@ -117,6 +64,6 @@ export const {
   setUser,
   setRole,
   setDataMode,
-  setAccessToken,
   logout,
+  finishInitialization,
 } = authSlice.actions

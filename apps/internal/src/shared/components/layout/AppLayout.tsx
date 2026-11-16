@@ -7,10 +7,12 @@ import { useBreadcrumbOverride } from "./breadcrumbs-context"
 import { useAppDispatch, useAppSelector } from "@/app/store"
 import {
   logout,
+  setCredentials,
   setUser,
   useGetMeQuery,
   mapCurrentUserToAuthUser,
 } from "@/features/auth"
+import { broadcastLogout, clearLogoutPending, markLogoutPending, refreshSession, requestLogout } from "@/shared/api/auth-session"
 import { initialRecruitments } from "@/features/recruitments/data/mock"
 
 function getCrumbsForPath(path: string): Crumb[] {
@@ -123,23 +125,40 @@ function AuthenticatedLayout() {
 
     const maxTimeout = 2_147_000_000
     let timer = 0
-    const checkExpiry = () => {
-      const remaining = expiryTime - Date.now()
-      if (remaining <= 0) {
-        dispatch(logout())
-        void navigate({ to: "/login", replace: true })
+    let cancelled = false
+    const refresh = async () => {
+      let session
+      try {
+        session = await refreshSession()
+      } catch {
+        if (!cancelled) timer = window.setTimeout(() => void refresh(), 15_000)
         return
       }
-      timer = window.setTimeout(checkExpiry, Math.min(remaining, maxTimeout))
+      if (cancelled) return
+      if (session) {
+        dispatch(setCredentials({
+          accessToken: session.accessToken,
+          tokenType: session.tokenType,
+          expiresAt: session.expiresAt,
+          user: mapCurrentUserToAuthUser(session.user),
+        }))
+      } else {
+        dispatch(logout())
+        broadcastLogout()
+        void navigate({ to: "/login", replace: true })
+      }
     }
-
-    checkExpiry()
-    return () => window.clearTimeout(timer)
+    const remaining = expiryTime - Date.now() - 60_000
+    timer = window.setTimeout(() => void refresh(), Math.min(Math.max(remaining, 0), maxTimeout))
+    return () => { cancelled = true; window.clearTimeout(timer) }
   }, [dispatch, expiresAt, isAuthenticated, navigate])
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    markLogoutPending()
+    if (await requestLogout()) clearLogoutPending()
     dispatch(logout())
-    navigate({ to: "/login" })
+    broadcastLogout()
+    void navigate({ to: "/login" })
   }
 
   return (

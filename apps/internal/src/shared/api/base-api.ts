@@ -5,6 +5,9 @@ import type {
   FetchBaseQueryError,
 } from "@reduxjs/toolkit/query"
 import { env } from "@/config/env"
+import { logout, setCredentials } from "@/features/auth/store/auth-slice"
+import { mapCurrentUserToAuthUser } from "@/features/auth/types"
+import { broadcastLogout, refreshSession } from "./auth-session"
 
 interface AuthSliceState {
   auth?: {
@@ -14,13 +17,9 @@ interface AuthSliceState {
 
 const rawBaseQuery = fetchBaseQuery({
   baseUrl: env.VITE_API_BASE_URL,
+  credentials: "include",
   prepareHeaders: (headers, { getState }) => {
-    // 1. Ambil dari Redux state
-    let token = (getState() as AuthSliceState)?.auth?.accessToken
-    // 2. Fallback ambil dari localStorage jika state belum terhidrasi
-    if (!token && typeof window !== "undefined") {
-      token = localStorage.getItem("rms_access_token")
-    }
+    const token = (getState() as AuthSliceState)?.auth?.accessToken
     if (token) {
       headers.set("Authorization", `Bearer ${token}`)
     }
@@ -34,11 +33,7 @@ const baseQueryWithReauth: BaseQueryFn<
   FetchBaseQueryError
 > = async (args, api, extraOptions) => {
   const getActiveToken = () => {
-    const stateToken = (api.getState() as AuthSliceState).auth?.accessToken
-    if (stateToken) return stateToken
-    return typeof window !== "undefined"
-      ? localStorage.getItem("rms_access_token")
-      : null
+    return (api.getState() as AuthSliceState).auth?.accessToken ?? null
   }
   const requestToken = getActiveToken()
   const result = await rawBaseQuery(args, api, extraOptions)
@@ -52,22 +47,28 @@ const baseQueryWithReauth: BaseQueryFn<
     }
   }
 
-  // Tangani 401 Unauthorized
   if (result.error && result.error.status === 401) {
-    const isLoginEndpoint =
-      (typeof args === "string" && args.includes("/auth/login")) ||
-      (typeof args === "object" && args.url?.includes("/auth/login"))
-
-    // Jangan lakukan global reset jika request login itu sendiri yang gagal kredensial
-    if (!isLoginEndpoint) {
-      if (typeof window !== "undefined") {
-        api.dispatch({ type: "auth/logout" })
-        if (window.location.pathname !== "/login") {
-          window.location.replace("/login")
-        }
-      } else {
-        api.dispatch({ type: "auth/logout" })
+    const url = typeof args === "string" ? args : args.url
+    if (!/^\/?auth\/(login|refresh|logout|forgot-password|reset-password)(?:\?|$)/.test(url)) {
+      let session
+      try {
+        session = await refreshSession()
+      } catch {
+        return { error: { status: "FETCH_ERROR", error: "Unable to refresh session. Please retry." } }
       }
+      if (session && requestToken === getActiveToken()) {
+        api.dispatch(setCredentials({
+          accessToken: session.accessToken,
+          tokenType: session.tokenType,
+          expiresAt: session.expiresAt,
+          user: mapCurrentUserToAuthUser(session.user),
+        }))
+        return rawBaseQuery(args, api, extraOptions)
+      }
+      api.dispatch(logout())
+      broadcastLogout()
+      if (typeof window !== "undefined" && window.location.pathname !== "/login")
+        window.location.replace("/login")
     }
   }
 

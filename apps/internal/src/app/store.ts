@@ -12,7 +12,6 @@ sessionListener.startListening({
     const after = (currentState as { auth: AuthState }).auth
     return (
       authSlice.actions.logout.match(action) ||
-      before.accessToken !== after.accessToken ||
       before.user?.id !== after.user?.id ||
       before.user?.employeeId !== after.user?.employeeId ||
       before.user?.role !== after.user?.role
