@@ -213,8 +213,6 @@ export function useAddFromTalentPool({
         education: cand.education || undefined,
         institution: cand.institution || undefined,
         gpa: cand.gpa ? Number(cand.gpa) : undefined,
-        expectedSalary:
-          cand.expectedSalary != null ? Number(cand.expectedSalary) : undefined,
         cv: cand.cv || undefined,
         portfolio: cand.portfolio || undefined,
       }))

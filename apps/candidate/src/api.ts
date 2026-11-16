@@ -70,7 +70,7 @@ export async function request<T>(
   })
 
   if (!response.ok) {
-    if (path.startsWith("/portal/jobs/") && response.status < 500) {
+    if (path.startsWith("/portal/jobs/")) {
       const problem = (await response.json().catch(() => null)) as {
         detail?: string
         errors?: Record<string, string[]>
@@ -81,6 +81,7 @@ export async function request<T>(
       throw new Error(
         problem?.detail ||
           validationMessage ||
+          (response.status === 429 && "Too many attempts. Please wait and try again.") ||
           "Could not submit your application. Try again."
       )
     }

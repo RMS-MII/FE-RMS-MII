@@ -36,6 +36,7 @@ export interface CandidateDto {
 }
 
 export interface BatchApplicationListItemDto {
+  expectedSalary?: number | null
   id: string
   isStandalone?: boolean
   candidateId: string
@@ -248,6 +249,7 @@ export interface CandidateApplicationDetailItem extends CandidateApplicationItem
 
 /** Rich view model joining BatchApplications, Candidates, and ApplicationStages */
 export interface CandidateApplicationItem {
+  expectedSalary?: number | null
   id: string // BatchApplication.Id
   isStandalone?: boolean
   candidateId: string

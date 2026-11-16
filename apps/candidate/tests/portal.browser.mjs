@@ -419,8 +419,17 @@ try {
   await page.route("**/api/portal/jobs**", async (route) => {
     const request = route.request()
     if (request.method() === "GET") return route.fulfill({ json: [job, legacyJob] })
+    if (request.url().endsWith(`/jobs/${job.id}/application-verifications`)) {
+      assert.equal(request.postDataJSON().email, "applicant@example.test")
+      return route.fulfill({ status: 202, json: { verificationId: "verification-id" } })
+    }
     assert.ok(request.url().endsWith(`/jobs/${job.id}/applications`))
-    application = request.postDataJSON()
+    const requestBody = request.postDataJSON()
+    assert.equal(requestBody.verificationId, "verification-id")
+    if (requestBody.code !== "123456") {
+      return route.fulfill({ status: 400, json: { detail: "Enter a valid verification code." } })
+    }
+    application = requestBody.candidate
     return route.fulfill({ status: 201 })
   })
   const positions = page.getByRole("region", { name: "Available positions" })
@@ -486,6 +495,13 @@ try {
   ]) {
     await page.getByLabel(new RegExp(`^${label}\\s*\\*?$`)).fill(value)
   }
+  await page.getByRole("button", { name: "Send verification code" }).click()
+  await page.getByRole("heading", { name: "Verify your email" }).waitFor()
+  assert.equal(application, undefined)
+  await page.getByLabel("Verification code").fill("000000")
+  await page.getByRole("button", { name: "Submit application" }).click()
+  await page.getByRole("alert").getByText("Enter a valid verification code.").waitFor()
+  await page.getByLabel("Verification code").fill("123456")
   await page.getByRole("button", { name: "Submit application" }).click()
   await page.getByText("Application received", { exact: true }).waitFor()
   assert.equal(application.fullName, "Test Applicant")

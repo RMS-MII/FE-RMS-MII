@@ -1,5 +1,6 @@
 import { Mail, Phone, FileText, ExternalLink } from "lucide-react"
 import { Button } from "@workspace/ui/components/button"
+import { formatCurrency } from "@/shared/lib/format"
 import { StatusBadge } from "@/shared/components"
 import type { Tone } from "@/shared/components"
 import type { CandidateApplicationItem } from "../../types"
@@ -85,6 +86,9 @@ export function CandidateProfileCard({
           </StatusBadge>
         </div>
 
+        <p className="text-xs text-muted-foreground">
+          Expected Salary {application.expectedSalary ? formatCurrency(application.expectedSalary) : "—"}
+        </p>
         <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-muted-foreground">
           <span className="inline-flex min-w-0 items-center gap-1.5">
             <Mail className="size-3.5 shrink-0" aria-hidden />

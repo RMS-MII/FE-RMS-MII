@@ -8,7 +8,10 @@ import {
 } from "lucide-react"
 import { Button } from "@workspace/ui/components/button"
 import { Input } from "@workspace/ui/components/input"
-import { RichText, plainTextFromRichText } from "@workspace/ui/components/rich-text"
+import {
+  RichText,
+  plainTextFromRichText,
+} from "@workspace/ui/components/rich-text"
 import { DatePicker } from "@workspace/ui/components/date-picker"
 import { date, request } from "../api"
 import { PortalBrand } from "./PortalBrand"
@@ -47,8 +50,8 @@ export function JobsPage() {
     (job) =>
       (!department || job.department === department) &&
       (!term ||
-        [job.name, job.department, plainTextFromRichText(job.description)].some((value) =>
-          value?.toLowerCase().includes(term)
+        [job.name, job.department, plainTextFromRichText(job.description)].some(
+          (value) => value?.toLowerCase().includes(term)
         ))
   )
   const openedJob = selectedJob
@@ -321,7 +324,10 @@ export function JobsPage() {
                         Job description
                       </h3>
                       <RichText
-                        value={previewJob.description || "No description has been provided for this position."}
+                        value={
+                          previewJob.description ||
+                          "No description has been provided for this position."
+                        }
                         className="max-w-[68ch] text-sm leading-relaxed text-muted-foreground"
                       />
                     </div>
@@ -366,28 +372,54 @@ function ApplicationForm({
   const [error, setError] = useState("")
   const [birthDate, setBirthDate] = useState("")
   const [birthDateError, setBirthDateError] = useState(false)
+  const [verification, setVerification] = useState<{
+    id: string
+    candidate: { email: string }
+  } | null>(null)
   const submitting = useRef(false)
   const heading = useRef<HTMLHeadingElement>(null)
 
   useEffect(() => {
     heading.current?.focus()
-  }, [submitted])
+  }, [submitted, verification])
+
+  const applicationPath = `/portal/jobs/${job.id}`
+
+  async function sendCode<T extends { email: string }>(candidate: T) {
+    if (submitting.current) return
+    submitting.current = true
+    setBusy(true)
+    setError("")
+    try {
+      const response = await request<{ verificationId: string }>(
+        `${applicationPath}/application-verifications`,
+        candidate
+      )
+      setVerification({ id: response.verificationId, candidate })
+    } catch (failure) {
+      setError(
+        failure instanceof Error
+          ? failure.message
+          : "Could not send a verification code."
+      )
+    } finally {
+      submitting.current = false
+      setBusy(false)
+    }
+  }
 
   async function apply(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     if (submitting.current) return
-    if (!birthDate) {
+    if (!verification && !birthDate) {
       setBirthDateError(true)
       document.getElementById("job-birth-date")?.focus()
       return
     }
     const fields = new FormData(event.currentTarget)
     const value = (name: string) => String(fields.get(name) ?? "").trim()
-    submitting.current = true
-    setBusy(true)
-    setError("")
-    try {
-      await request<void>(`/portal/jobs/${job.id}/applications`, {
+    if (!verification) {
+      await sendCode({
         fullName: value("fullName"),
         gender: Number(value("gender")),
         email: value("email").toLowerCase(),
@@ -400,6 +432,17 @@ function ApplicationForm({
         expectedSalary: Number(value("expectedSalary")),
         cv: value("cv") || null,
         portfolio: value("portfolio") || null,
+      })
+      return
+    }
+    submitting.current = true
+    setBusy(true)
+    setError("")
+    try {
+      await request<void>(`${applicationPath}/applications`, {
+        candidate: verification.candidate,
+        verificationId: verification.id,
+        code: value("code"),
       })
       setSubmitted(true)
     } catch (failure) {
@@ -457,11 +500,13 @@ function ApplicationForm({
             tabIndex={-1}
             className="text-base font-semibold outline-none"
           >
-            Application details
+            {verification ? "Verify your email" : "Application details"}
           </h2>
           <fieldset
-            disabled={busy}
-            className="grid gap-x-6 gap-y-4 sm:grid-cols-2"
+            disabled={busy || Boolean(verification)}
+            className={
+              verification ? "hidden" : "grid gap-x-6 gap-y-4 sm:grid-cols-2"
+            }
           >
             <div className="grid content-start gap-4">
               <JobField
@@ -582,13 +627,60 @@ function ApplicationForm({
               />
             </div>
           </fieldset>
+
+          {verification && (
+            <div className="space-y-4">
+              <p className="text-sm text-muted-foreground">
+                Enter the 6-digit code sent to {verification.candidate.email}.
+                It expires in 10 minutes.
+              </p>
+              <div className="max-w-64">
+                <JobField
+                  label="Verification code"
+                  name="code"
+                  inputMode="numeric"
+                  autoComplete="one-time-code"
+                  pattern="[0-9]{6}"
+                  maxLength={6}
+                  disabled={busy}
+                />
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="rounded-full"
+                  disabled={busy}
+                  onClick={() => void sendCode(verification.candidate)}
+                >
+                  Resend code
+                </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  className="rounded-full"
+                  disabled={busy}
+                  onClick={() => {
+                    setVerification(null)
+                    setError("")
+                  }}
+                >
+                  Edit application
+                </Button>
+              </div>
+            </div>
+          )}
           {error && (
             <p role="alert" className="text-sm text-destructive">
               {error}
             </p>
           )}
           <Button type="submit" className="h-10 rounded-full" disabled={busy}>
-            {busy ? "Submitting…" : "Submit application"}
+            {busy
+              ? "Please wait…"
+              : verification
+                ? "Submit application"
+                : "Send verification code"}
           </Button>
         </form>
       )}
