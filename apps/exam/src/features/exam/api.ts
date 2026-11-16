@@ -4,9 +4,8 @@ import type {
   StartTestResult,
   SubmitAnswerResult,
   SubmitTestAnswer,
-  SubmitTestCommand,
-  SubmitTestResult,
 } from "./types"
+import { candidatePortalUrl } from "@/lib/candidate-portal-url"
 
 export interface ProblemDetails {
   type?: string | null
@@ -68,7 +67,8 @@ function toApiError(response: Response, body: unknown): ApiError {
 export async function request<T>(
   path: string,
   init?: RequestInit,
-  signal?: AbortSignal
+  signal?: AbortSignal,
+  redirectOnUnauthorized = true
 ): Promise<T> {
   const response = await fetch(`${API_BASE_URL}${path}`, {
     ...init,
@@ -83,11 +83,8 @@ export async function request<T>(
   const body = await parseBody(response)
 
   if (!response.ok) {
-    if (response.status === 401) {
-      const login = new URL("/login", import.meta.env.VITE_CANDIDATE_PORTAL_URL || "http://localhost:5175")
-      login.searchParams.set("next", window.location.pathname)
-      login.searchParams.set("exam", "1")
-      window.location.assign(login.href)
+    if (response.status === 401 && redirectOnUnauthorized) {
+      redirectToCandidateLogin()
     }
     throw toApiError(response, body)
   }
@@ -95,7 +92,14 @@ export async function request<T>(
   return body as T
 }
 
-export function getCandidateTest(
+export function redirectToCandidateLogin() {
+  const login = new URL(candidatePortalUrl("/login"))
+  login.searchParams.set("next", window.location.pathname + window.location.search)
+  login.searchParams.set("exam", "1")
+  window.location.assign(login.href)
+}
+
+export function getPortalCandidateTest(
   candidateId: string,
   stageId: string,
   signal?: AbortSignal
@@ -103,7 +107,21 @@ export function getCandidateTest(
   return request<CandidateTest>(
     `/portal/${encodeURIComponent(candidateId)}/stages/${encodeURIComponent(stageId)}/test`,
     { method: "GET" },
-    signal
+    signal,
+    false
+  )
+}
+
+export function getExamCandidateTest(
+  candidateId: string,
+  stageId: string,
+  signal?: AbortSignal
+) {
+  return request<CandidateTest>(
+    `/exam/${encodeURIComponent(candidateId)}/stages/${encodeURIComponent(stageId)}/test`,
+    { method: "GET" },
+    signal,
+    false
   )
 }
 
@@ -115,24 +133,8 @@ export function startCandidateTest(
   return request<StartTestResult>(
     `/portal/${encodeURIComponent(candidateId)}/stages/${encodeURIComponent(stageId)}/test/start`,
     { method: "POST" },
-    signal
-  )
-}
-
-export function submitCandidateTest(
-  command: SubmitTestCommand,
-  signal?: AbortSignal
-) {
-  return request<SubmitTestResult>(
-    `/portal/${encodeURIComponent(command.candidateId)}/stages/${encodeURIComponent(command.stageId)}/test/submit`,
-    {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(command),
-    },
-    signal
+    signal,
+    false
   )
 }
 
@@ -145,7 +147,7 @@ export function submitCandidateTestAnswer(
   signal?: AbortSignal
 ) {
   return request<SubmitAnswerResult>(
-    `/portal/${encodeURIComponent(params.candidateId)}/stages/${encodeURIComponent(params.stageId)}/test/answers`,
+    `/exam/${encodeURIComponent(params.candidateId)}/stages/${encodeURIComponent(params.stageId)}/test/answers`,
     {
       method: "POST",
       headers: {
@@ -154,8 +156,9 @@ export function submitCandidateTestAnswer(
       body: JSON.stringify({
         answers: params.answers,
       }),
-      signal,
-    }
+    },
+    signal,
+    false
   )
 }
 
@@ -165,10 +168,11 @@ export function finishCandidateTest(
   signal?: AbortSignal
 ) {
   return request<FinishTestResult>(
-    `/portal/${encodeURIComponent(candidateId)}/stages/${encodeURIComponent(stageId)}/test/finish`,
+    `/exam/${encodeURIComponent(candidateId)}/stages/${encodeURIComponent(stageId)}/test/finish`,
     {
       method: "POST",
-      signal,
-    }
+    },
+    signal,
+    false
   )
 }

@@ -41,25 +41,10 @@ export interface SubmitTestAnswer {
   selectedOptionIds: string[]
 }
 
-export interface SubmitTestCommand {
-  candidateId: string
-  stageId: string
-  answers: SubmitTestAnswer[]
-}
-
 export interface StartTestResult {
   applicationStageId: string
   attemptStartedAt: string
   deadline: string | null
-  serverTimeUtc: string
-}
-
-export interface SubmitTestResult {
-  applicationStageId: string
-  batchStageId: string
-  stageName: string
-  status: string | number
-  completedAt: string | null
   serverTimeUtc: string
 }
 

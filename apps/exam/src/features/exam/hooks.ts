@@ -1,7 +1,20 @@
 import { useEffect, useRef, useState } from "react"
-import { getCandidateTest } from "./api"
-import { loadExamDraft, type ExamDraft } from "./storage"
-import type { CandidateTest } from "./types"
+import {
+  ApiError,
+  finishCandidateTest,
+  getExamCandidateTest,
+  getPortalCandidateTest,
+  redirectToCandidateLogin,
+  startCandidateTest,
+  submitCandidateTestAnswer,
+} from "./api"
+import { clearExamDraft, loadExamDraft, type ExamDraft } from "./storage"
+import type {
+  CandidateTest,
+  FinishTestResult,
+  StartTestResult,
+  SubmitTestAnswer,
+} from "./types"
 import { getTestDeadline, parseServerDate } from "./utils"
 
 interface CandidateTestState {
@@ -12,7 +25,43 @@ interface CandidateTestState {
   loading: boolean
 }
 
+function isUnauthorized(error: unknown) {
+  return error instanceof ApiError && error.status === 401
+}
+
+function isExamSessionUnavailable(error: unknown) {
+  return error instanceof ApiError &&
+    (error.status === 401 || error.status === 403)
+}
+
+async function loadCandidateTest(
+  candidateId: string,
+  stageId: string,
+  signal: AbortSignal
+) {
+  try {
+    return await getExamCandidateTest(candidateId, stageId, signal)
+  } catch (error) {
+    if (!isExamSessionUnavailable(error)) throw error
+  }
+
+  let preview: CandidateTest
+  try {
+    preview = await getPortalCandidateTest(candidateId, stageId, signal)
+  } catch (error) {
+    if (!signal.aborted && isUnauthorized(error)) redirectToCandidateLogin()
+    throw error
+  }
+
+  if (!preview.attemptStartedAt) return preview
+
+  // Start is idempotent: restore the exam cookie without changing AttemptStartedAt.
+  await startCandidateTest(candidateId, stageId, signal)
+  return getExamCandidateTest(candidateId, stageId, signal)
+}
+
 export function useCandidateTest(candidateId: string, stageId: string) {
+  const savedAnswersKey = useRef<string | null>(null)
   const [state, setState] = useState<CandidateTestState>({
     data: null,
     draft: null,
@@ -30,7 +79,7 @@ export function useCandidateTest(candidateId: string, stageId: string) {
     // tanpa penundaan ini request pertama sudah terlanjur dikirim lalu
     // dibatalkan, sehingga server menerima dua request untuk data yang sama.
     const timer = window.setTimeout(() => {
-      getCandidateTest(candidateId, stageId, controller.signal)
+      loadCandidateTest(candidateId, stageId, controller.signal)
         .then((data) => {
           setState({
             data,
@@ -66,7 +115,58 @@ export function useCandidateTest(candidateId: string, stageId: string) {
     setReloadKey((key) => key + 1)
   }
 
-  return { ...state, reload }
+  const start = async (): Promise<StartTestResult> => {
+    let response: StartTestResult
+    try {
+      response = await startCandidateTest(candidateId, stageId)
+    } catch (error) {
+      if (isUnauthorized(error)) redirectToCandidateLogin()
+      throw error
+    }
+
+    const data = await getExamCandidateTest(candidateId, stageId)
+    setState((current) => ({
+      ...current,
+      data,
+      receivedAt: Date.now(),
+      error: null,
+    }))
+    return response
+  }
+
+  const withExamSession = async <T,>(operation: () => Promise<T>): Promise<T> => {
+    try {
+      return await operation()
+    } catch (error) {
+      if (!isExamSessionUnavailable(error)) throw error
+    }
+
+    try {
+      await startCandidateTest(candidateId, stageId)
+    } catch (error) {
+      if (isUnauthorized(error)) redirectToCandidateLogin()
+      throw error
+    }
+
+    return operation()
+  }
+
+  const complete = async (answers: SubmitTestAnswer[]): Promise<FinishTestResult> => {
+    const answersKey = JSON.stringify(answers)
+    if (savedAnswersKey.current !== answersKey) {
+      await withExamSession(() =>
+        submitCandidateTestAnswer({ candidateId, stageId, answers })
+      )
+      savedAnswersKey.current = answersKey
+    }
+    const result = await withExamSession(() =>
+      finishCandidateTest(candidateId, stageId)
+    )
+    clearExamDraft(candidateId, stageId)
+    return result
+  }
+
+  return { ...state, reload, start, complete }
 }
 
 export function useExamTimer(

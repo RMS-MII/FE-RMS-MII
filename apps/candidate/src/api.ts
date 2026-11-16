@@ -1,3 +1,5 @@
+import { redirectToSignIn, requiresCandidateSession } from "./auth-navigation"
+
 export interface Session {
   id: string
   sessionName: string
@@ -82,10 +84,7 @@ export async function request<T>(
 
   if (!response.ok) {
     if (response.status === 401) {
-      if (/^\/portal\/[0-9a-f-]{36}\//i.test(path) || path.endsWith("/applications") || path.endsWith("/session/profile")) {
-        const next = window.location.pathname + window.location.search
-        window.location.assign(`/login?${new URLSearchParams({ next })}`)
-      }
+      if (requiresCandidateSession(path)) redirectToSignIn()
       throw new RequestError("Sign in to continue.", 401)
     }
 
