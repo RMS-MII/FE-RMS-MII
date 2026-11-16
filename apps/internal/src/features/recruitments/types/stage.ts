@@ -47,7 +47,6 @@ export interface BatchStage {
   stageTypeName?: string
   stageCategory?: string | null
   stageName: string
-  isActive: boolean
   lifecycleStatus?: BatchStageLifecycleStatus
   candidateCount?: number | null
   passingScore?: number | null
@@ -117,7 +116,6 @@ export interface Stage {
   passingScore: number | null
   startDate: string | null
   endDate: string | null
-  isActive: boolean
   lifecycleStatus?: BatchStageLifecycleStatus
   nextStageId?: string | null
   sequence?: number
@@ -152,7 +150,6 @@ export interface StageInterviewerAssignment {
 export interface UpdateBatchStageItem {
   stageTypeId: string
   stageName: string
-  isActive: boolean
   passingScore?: number | null
   startDate: string
   endDate: string

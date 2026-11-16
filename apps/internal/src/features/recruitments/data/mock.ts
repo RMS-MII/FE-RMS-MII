@@ -252,7 +252,6 @@ const createStage = (
     passingScore,
     startDate,
     endDate,
-    isActive: true,
   }
 }
 

@@ -109,7 +109,6 @@ export function buildChainedStages(
       passingScore: s.passingScore !== null ? Number(s.passingScore) : null,
       startDate: s.startDate || null,
       endDate: s.endDate || null,
-      isActive: s.isActive ?? true,
     }
   })
 }
