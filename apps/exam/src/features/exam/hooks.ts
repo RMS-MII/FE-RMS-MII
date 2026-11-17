@@ -61,7 +61,7 @@ async function loadCandidateTest(
 }
 
 export function useCandidateTest(candidateId: string, stageId: string) {
-  const savedAnswersKey = useRef<string | null>(null)
+  const pendingSave = useRef<Promise<unknown>>(Promise.resolve())
   const [state, setState] = useState<CandidateTestState>({
     data: null,
     draft: null,
@@ -151,14 +151,21 @@ export function useCandidateTest(candidateId: string, stageId: string) {
     return operation()
   }
 
-  const complete = async (answers: SubmitTestAnswer[]): Promise<FinishTestResult> => {
-    const answersKey = JSON.stringify(answers)
-    if (savedAnswersKey.current !== answersKey) {
-      await withExamSession(() =>
-        submitCandidateTestAnswer({ candidateId, stageId, answers })
+  const save = (answers: SubmitTestAnswer[], isDraft: boolean) => {
+    // A slower save must never overwrite a newer selection from this tab.
+    const write = pendingSave.current.catch(() => undefined).then(() =>
+      withExamSession(() =>
+        submitCandidateTestAnswer({ candidateId, stageId, answers, isDraft })
       )
-      savedAnswersKey.current = answersKey
-    }
+    )
+    pendingSave.current = write
+    return write
+  }
+
+  const complete = async (answers?: SubmitTestAnswer[]): Promise<FinishTestResult> => {
+    if (answers) await save(answers, false)
+    else await pendingSave.current.catch(() => undefined)
+
     const result = await withExamSession(() =>
       finishCandidateTest(candidateId, stageId)
     )
@@ -166,7 +173,7 @@ export function useCandidateTest(candidateId: string, stageId: string) {
     return result
   }
 
-  return { ...state, reload, start, complete }
+  return { ...state, reload, start, saveDraft: (answers: SubmitTestAnswer[]) => save(answers, true), complete }
 }
 
 export function useExamTimer(

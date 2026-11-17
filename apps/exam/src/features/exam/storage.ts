@@ -6,6 +6,7 @@ export interface ExamDraft {
   answers: ExamAnswers
   currentIndex: number
   updatedAt: string
+  pendingSave?: boolean
 }
 
 const DRAFT_PREFIX = "rms_exam_draft"
@@ -49,6 +50,7 @@ export function loadExamDraft(
       answers: parsed.answers as ExamAnswers,
       currentIndex: parsed.currentIndex,
       updatedAt: parsed.updatedAt ?? new Date().toISOString(),
+      pendingSave: parsed.pendingSave,
     }
   } catch {
     return null

@@ -8,9 +8,10 @@ import { formatDateTime } from "../utils"
 interface ExamResultProps {
   result: FinishTestResult
   candidateName: string
+  timeUp: boolean
 }
 
-export function ExamResult({ result, candidateName }: ExamResultProps) {
+export function ExamResult({ result, candidateName, timeUp }: ExamResultProps) {
   const submittedAt = formatDateTime(result.completedAt ?? result.serverTimeUtc)
 
   return (
@@ -35,15 +36,16 @@ export function ExamResult({ result, candidateName }: ExamResultProps) {
             </div>
 
             <h1 className="font-heading text-xl font-semibold tracking-tight sm:text-2xl">
-              Jawaban berhasil dikirim
+              {timeUp ? "Waktu ujian habis" : "Jawaban berhasil dikirim"}
             </h1>
             <p className="mt-2 max-w-sm text-sm leading-relaxed text-muted-foreground">
               Terima kasih,{" "}
               <span className="font-medium text-foreground">
                 {candidateName}
               </span>
-              . Jawaban Anda sudah kami terima dan akan diproses oleh tim
-              rekrutmen.
+              . {timeUp
+                ? "Tim rekrutmen akan memproses jawaban yang tersimpan sebelum batas waktu."
+                : "Jawaban Anda sudah kami terima dan akan diproses oleh tim rekrutmen."}
             </p>
 
             <div className="mt-7 w-full space-y-3 rounded-xl border bg-muted/30 p-4 text-left">

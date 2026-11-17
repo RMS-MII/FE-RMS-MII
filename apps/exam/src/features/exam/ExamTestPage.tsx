@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react"
+import { useCallback, useEffect, useEffectEvent, useRef, useState } from "react"
 import { ApiError } from "./api"
 import { useCandidateTest, useExamTimer } from "./hooks"
 import { saveExamDraft, type ExamDraft } from "./storage"
@@ -37,7 +37,14 @@ interface ExamRunnerProps {
   initialDraft: ExamDraft | null
   receivedAt: number
   onStart: () => Promise<StartTestResult>
-  onComplete: (answers: SubmitTestAnswer[]) => Promise<FinishTestResult>
+  onSaveDraft: (answers: SubmitTestAnswer[]) => Promise<unknown>
+  onComplete: (answers?: SubmitTestAnswer[]) => Promise<FinishTestResult>
+}
+
+function answerPayload(test: CandidateTest, answers: ExamAnswers): SubmitTestAnswer[] {
+  return test.questions
+    .map(({ id: questionId }) => ({ questionId, selectedOptionIds: answers[questionId] ?? [] }))
+    .filter(({ selectedOptionIds }) => selectedOptionIds.length > 0)
 }
 
 function getLoadErrorContent(error: unknown): {
@@ -130,6 +137,7 @@ function ExamRunner({
   initialDraft,
   receivedAt,
   onStart,
+  onSaveDraft,
   onComplete,
 }: ExamRunnerProps) {
   const [phase, setPhase] = useState<ExamPhase>(() =>
@@ -171,6 +179,11 @@ function ExamRunner({
   const [result, setResult] = useState<FinishTestResult | null>(null)
   const [submitting, setSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState<string | null>(null)
+  const [draftSaveFailed, setDraftSaveFailed] = useState(false)
+  const [draftPending, setDraftPending] = useState(
+    () => !!initialDraft?.started && initialDraft.pendingSave !== false
+  )
+  const latestSave = useRef(0)
   const [submitDialogOpen, setSubmitDialogOpen] = useState(false)
   const [timeUp, setTimeUp] = useState(false)
   const [starting, setStarting] = useState(false)
@@ -194,14 +207,9 @@ function ExamRunner({
       setSubmitError(null)
 
       try {
-        const payloadAnswers = test.questions
-          .map((question) => ({
-            questionId: question.id,
-            selectedOptionIds: answers[question.id] ?? [],
-          }))
-          .filter((answer) => answer.selectedOptionIds.length > 0)
-
-        const finishResponse = await onComplete(payloadAnswers)
+        const finishResponse = await onComplete(
+          options?.force ? undefined : answerPayload(test, answers)
+        )
 
         setResult(finishResponse)
         setPhase("result")
@@ -248,8 +256,9 @@ function ExamRunner({
       answers,
       currentIndex,
       updatedAt: new Date().toISOString(),
+      pendingSave: draftPending,
     })
-  }, [answers, currentIndex, phase, sessionStartedAt, test])
+  }, [answers, currentIndex, draftPending, phase, sessionStartedAt, test])
 
   useEffect(() => {
     if (phase !== "exam") {
@@ -304,6 +313,28 @@ function ExamRunner({
     }
   }
 
+  const saveDraft = async (draft: ExamAnswers) => {
+    const revision = ++latestSave.current
+    setDraftPending(true)
+    try {
+      await onSaveDraft(answerPayload(test, draft))
+      if (latestSave.current === revision) {
+        setDraftPending(false)
+        setDraftSaveFailed(false)
+      }
+    } catch {
+      if (latestSave.current === revision) setDraftSaveFailed(true)
+    }
+  }
+
+  const restoreDraft = useEffectEvent(() => {
+    if (test.attemptStartedAt && initialDraft?.started &&
+        initialDraft.pendingSave !== false && latestSave.current === 0) {
+      void saveDraft(initialDraft.answers)
+    }
+  })
+  useEffect(() => { restoreDraft() }, [])
+
   const handleSelect = (questionId: string, optionId: string) => {
     if (timeUp || submitting) {
       return
@@ -315,19 +346,15 @@ function ExamRunner({
       return
     }
 
-    setAnswers((current) => {
-      const selected = current[questionId] ?? []
-
-      if (isMultipleChoice(question.questionType)) {
-        const next = selected.includes(optionId)
-          ? selected.filter((id) => id !== optionId)
-          : [...selected, optionId]
-
-        return { ...current, [questionId]: next }
-      }
-
-      return { ...current, [questionId]: [optionId] }
-    })
+    const selected = answers[questionId] ?? []
+    const options = isMultipleChoice(question.questionType)
+      ? selected.includes(optionId)
+        ? selected.filter((id) => id !== optionId)
+        : [...selected, optionId]
+      : [optionId]
+    const next = { ...answers, [questionId]: options }
+    setAnswers(next)
+    void saveDraft(next)
   }
 
   const handleIndexChange = (index: number) => {
@@ -363,7 +390,7 @@ function ExamRunner({
   }
 
   if (phase === "result" && result) {
-    return <ExamResult result={result} candidateName={test.candidateName} />
+    return <ExamResult result={result} candidateName={test.candidateName} timeUp={timeUp} />
   }
 
   if (timeUp && submitError) {
@@ -417,6 +444,8 @@ function ExamRunner({
         remainingMs={timer.remainingMs}
         timeUp={timeUp}
         submitting={submitting}
+        draftSaveFailed={draftSaveFailed}
+        onRetryDraft={() => void saveDraft(answers)}
         onSelect={handleSelect}
         onIndexChange={handleIndexChange}
         onSubmitClick={handleSubmitClick}
@@ -447,6 +476,7 @@ export function ExamTestPage({ candidateId, stageId }: ExamTestPageProps) {
     loading,
     reload,
     start,
+    saveDraft,
     complete,
   } = useCandidateTest(candidateId, stageId)
 
@@ -477,6 +507,7 @@ export function ExamTestPage({ candidateId, stageId }: ExamTestPageProps) {
       initialDraft={draft}
       receivedAt={receivedAt}
       onStart={start}
+      onSaveDraft={saveDraft}
       onComplete={complete}
     />
   )

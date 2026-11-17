@@ -60,9 +60,7 @@ export interface FinishTestResult {
   applicationStageId: string
   batchStageId: string
   stageName: string
-  status: string | number
   completedAt: string | null
-  totalScore: number | null
   serverTimeUtc: string
 }
 

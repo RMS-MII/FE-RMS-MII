@@ -41,6 +41,8 @@ interface ExamSessionProps {
   remainingMs: number | null
   timeUp: boolean
   submitting: boolean
+  draftSaveFailed: boolean
+  onRetryDraft: () => void
   onSelect: (questionId: string, optionId: string) => void
   onIndexChange: (index: number) => void
   onSubmitClick: () => void
@@ -98,6 +100,8 @@ export function ExamSession({
   remainingMs,
   timeUp,
   submitting,
+  draftSaveFailed,
+  onRetryDraft,
   onSelect,
   onIndexChange,
   onSubmitClick,
@@ -216,9 +220,18 @@ export function ExamSession({
               <Clock3 className="size-4" />
               <AlertTitle>Waktu pengerjaan habis</AlertTitle>
               <AlertDescription>
-                {submitting
-                  ? "Jawaban Anda sedang dikirim. Mohon tunggu dan jangan menutup halaman ini."
-                  : "Jawaban yang sudah Anda isi akan dikirim secara otomatis."}
+                Jawaban yang sudah tersimpan sedang dikumpulkan.
+              </AlertDescription>
+            </Alert>
+          ) : null}
+          {draftSaveFailed && !timeUp ? (
+            <Alert variant="destructive">
+              <AlertTitle>Perubahan jawaban belum tersimpan</AlertTitle>
+              <AlertDescription>
+                Periksa koneksi Anda, lalu{" "}
+                <button type="button" className="underline" onClick={onRetryDraft}>
+                  simpan ulang
+                </button>.
               </AlertDescription>
             </Alert>
           ) : null}
