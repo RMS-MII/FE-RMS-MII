@@ -147,7 +147,7 @@ function Brand({ collapsed }: { collapsed?: boolean }) {
   return (
     <Link
       to="/"
-      aria-label="RMS Metrodata, to dashboard"
+      aria-label="Rekrutin, to dashboard"
       className={cn(
         "flex items-center gap-2.5 rounded-lg",
         collapsed && "justify-center"
@@ -156,7 +156,7 @@ function Brand({ collapsed }: { collapsed?: boolean }) {
       <img src="/assets/mii.png" alt="" className="size-10 shrink-0 object-contain" />
       {!collapsed && (
         <span className="truncate text-lg font-semibold tracking-tight text-foreground">
-          Metrodata
+          Rekrutin
         </span>
       )}
     </Link>

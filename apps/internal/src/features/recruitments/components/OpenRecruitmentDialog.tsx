@@ -301,6 +301,8 @@ export function OpenRecruitmentDialog({
                       <DatePicker
                         id="deadline-date"
                         value={deadlineDate}
+                        minDate={getWibDateKey(new Date())}
+                        maxDate={batch?.endDate ? getWibDateKey(batch.endDate) : undefined}
                         onChange={setDeadlineDate}
                         disabled={isSubmitting}
                       />

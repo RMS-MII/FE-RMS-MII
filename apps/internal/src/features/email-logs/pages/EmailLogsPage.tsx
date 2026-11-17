@@ -211,7 +211,7 @@ export function EmailLogsPage() {
                     <TableCell className="py-3.5">
                       <StatusBadge
                         tone={log.status === "Sent" ? "success" : log.status === "Failed" ? "danger" : "info"}
-                        icon={log.status === "Sent" ? <MailCheck /> : log.status === "Failed" ? <MailX /> : <Loader2 className={log.status === "Sending" ? "animate-spin" : undefined} />}
+                        icon={log.status === "Sent" ? <MailCheck /> : log.status === "Failed" ? <MailX /> : <Loader2 className={"motion-safe:animate-spin"} />}
                       >
                         {log.status}
                       </StatusBadge>

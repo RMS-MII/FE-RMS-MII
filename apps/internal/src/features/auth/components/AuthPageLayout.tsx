@@ -19,8 +19,7 @@ export function AuthPageLayout({
           <img src="/assets/mii.png" alt="" className="size-10 shrink-0 object-contain" />
           <div>
             <div className="flex items-center gap-1.5">
-              <span className="text-sm font-bold tracking-tight text-foreground">METRODATA</span>
-              <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-semibold text-foreground">RMS MII</span>
+              <span className="text-sm font-bold tracking-tight text-foreground">Rekrutin</span>
             </div>
             <p className="text-[10px] text-muted-foreground">Internal Recruitment Portal</p>
           </div>
