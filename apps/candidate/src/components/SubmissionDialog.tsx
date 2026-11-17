@@ -32,7 +32,7 @@ export function SubmissionDialog({
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
-    if (lock.current) return
+    if (lock.current || !session.canUploadSubmission) return
     lock.current = true
     setBusy(true)
     setError("")
@@ -49,6 +49,7 @@ export function SubmissionDialog({
           ? e.message
           : "Could not save your submission. Try again."
       )
+      await refresh()
     } finally {
       lock.current = false
       setBusy(false)
@@ -128,9 +129,13 @@ export function SubmissionDialog({
               </p>
             </div>
           ) : (
-            <p className="text-muted-foreground">Submissions are closed.</p>
+            <p className="text-muted-foreground">
+              {session.isSubmissionLocked
+                ? "Submissions are closed because the assessment has been submitted."
+                : "Submissions are closed."}
+            </p>
           )}
-          {error && (
+          {error && !session.isSubmissionLocked && (
             <p className="text-destructive" role="alert">
               {error}
             </p>

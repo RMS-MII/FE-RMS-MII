@@ -78,6 +78,7 @@ try {
   data.applications[0].stages[1].sessions[0].fileTakeHome = taskUrl
   const calls = []
   let failSubmission = true
+  let assessmentSubmitted = false
   await page.route("**/api/portal/**", async (route) => {
     const req = route.request()
     calls.push(req.url())
@@ -92,6 +93,11 @@ try {
         })
       }
       if (req.url().endsWith("/submission")) {
+        if (assessmentSubmitted) {
+          s.isSubmissionLocked = true
+          s.canUploadSubmission = false
+          return route.fulfill({ status: 422 })
+        }
         assert.equal(body.fileSubmission, submissionUrl)
         s.fileSubmission = body.fileSubmission
         s.isSubmitted = true
@@ -396,6 +402,20 @@ try {
     await submissionDialog
       .getByRole("link", { name: "View submitted work" })
       .getAttribute("href"),
+    submissionUrl
+  )
+  assessmentSubmitted = true
+  await submissionDialog.getByLabel("Google Drive link").fill(
+    "https://drive.google.com/file/d/updated-work/view"
+  )
+  await submissionDialog.getByRole("button", { name: "Update submission" }).click()
+  await submissionDialog.getByText(
+    "Submissions are closed because the assessment has been submitted."
+  ).waitFor()
+  assert.equal(await submissionDialog.getByLabel("Google Drive link").count(), 0)
+  assert.equal(await submissionDialog.getByRole("button", { name: "Update submission" }).count(), 0)
+  assert.equal(
+    await submissionDialog.getByRole("link", { name: "View submitted work" }).getAttribute("href"),
     submissionUrl
   )
   await submissionDialog

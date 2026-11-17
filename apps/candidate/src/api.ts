@@ -15,6 +15,7 @@ export interface Session {
   fileTakeHome?: string
   fileSubmission?: string
   isSubmitted: boolean
+  isSubmissionLocked?: boolean
 
   canConfirm: boolean
   canRequestReschedule: boolean
