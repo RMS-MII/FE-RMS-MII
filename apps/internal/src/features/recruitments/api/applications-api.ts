@@ -17,12 +17,13 @@ export const applicationsApi = baseApi.injectEndpoints({
       PagedResult<BatchApplicationListItemDto>,
       GetBatchApplicationsParams
     >({
-      query: ({ id, search, status, page = 1, pageSize = 10 }) => ({
+      query: ({ id, search, status, stageId, page = 1, pageSize = 10 }) => ({
         url: `/batches/${id}/applications`,
         method: "GET",
         params: {
           Search: search || undefined,
           Status: status !== undefined ? status : undefined,
+          StageId: stageId || undefined,
           Page: page,
           PageSize: pageSize,
         },
