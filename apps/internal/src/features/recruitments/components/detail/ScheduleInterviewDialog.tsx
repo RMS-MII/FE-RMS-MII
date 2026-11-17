@@ -65,8 +65,8 @@ export function ScheduleInterviewDialog({
     <Dialog open={open} onOpenChange={(nextOpen) => {
       if (!isScheduling) onOpenChange(nextOpen)
     }}>
-      <DialogContent className="max-h-[92vh] overflow-y-auto rounded-2xl sm:max-w-3xl lg:max-w-4xl">
-        <DialogHeader>
+      <DialogContent className="max-h-[92vh] overflow-y-auto rounded-2xl sm:max-w-3xl lg:max-w-4xl p-0">
+        <DialogHeader className="border-b border-border p-6 pb-4">
           <div className="flex items-center gap-2">
             <DialogTitle>
               {isRescheduleMode
@@ -87,7 +87,7 @@ export function ScheduleInterviewDialog({
         {scheduleRestriction && (
           <div
             role="alert"
-            className="flex items-center gap-2.5 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-xs text-amber-700 dark:text-amber-400"
+            className="p-6 pb-4 flex items-center gap-2.5 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-xs text-amber-700 dark:text-amber-400"
           >
             <AlertTriangle className="size-4 shrink-0" aria-hidden />
             <p>{scheduleRestriction}</p>
@@ -131,7 +131,7 @@ export function ScheduleInterviewDialog({
           </div>
         )}
 
-        <form id={formId} onSubmit={handleSubmit} className="py-2">
+        <form id={formId} onSubmit={handleSubmit} className="py-2 px-6">
           {/* 2-Column Split Layout */}
           <div className="flex flex-col items-stretch gap-6 md:flex-row">
             {/* Column 1: Candidate, Stage, Title, & Schedule */}
@@ -513,7 +513,7 @@ export function ScheduleInterviewDialog({
           </div>
         </form>
 
-        <DialogFooter className="mt-4 gap-2 bg-white sm:gap-2 border border-border">
+        <DialogFooter className="mt-4 gap-2 bg-white sm:gap-2 border-t border-border">
           <CancelButton disabled={isScheduling} onClick={() => onOpenChange(false)} />
           <SaveButton
             type="submit"

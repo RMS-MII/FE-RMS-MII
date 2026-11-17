@@ -97,8 +97,8 @@ export function ReviewRescheduleDialog({
         if (!isSubmitting) onOpenChange(nextOpen)
       }}
     >
-      <DialogContent className="max-h-[92vh] overflow-y-auto rounded-2xl sm:max-w-lg">
-        <DialogHeader>
+      <DialogContent className="max-h-[92vh] overflow-y-auto rounded-2xl sm:max-w-xl p-0">
+        <DialogHeader className="border-b border-border p-6 pb-4 ">
           <div className="flex items-center gap-2">
             <DialogTitle>Review Reschedule Request</DialogTitle>
             <span className="rounded-md bg-amber-500/15 px-2 py-0.5 font-mono text-xs font-semibold text-amber-800 dark:text-amber-300">
@@ -112,7 +112,7 @@ export function ReviewRescheduleDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4 py-2">
+        <div className="space-y-4 py-2 px-6 pb-0">
           {/* Candidate Profile Summary */}
           <div className="flex items-center justify-between rounded-2xl border border-border/60 bg-muted/50 p-3.5">
             <div>
@@ -221,7 +221,7 @@ export function ReviewRescheduleDialog({
           </div>
         </div>
 
-        <DialogFooter className="mt-4 gap-2 sm:gap-2">
+        <DialogFooter className="mt-4 gap-2 sm:gap-2 border-t border-border bg-card">
           <CancelButton
             disabled={isSubmitting}
             onClick={() => onOpenChange(false)}
@@ -231,7 +231,7 @@ export function ReviewRescheduleDialog({
             variant="outline"
             disabled={isSubmitting}
             onClick={() => void handleReview("reject")}
-            className="h-10 cursor-pointer gap-1.5 rounded-full border-rose-300 px-4 text-xs font-semibold text-rose-700 hover:bg-rose-50 hover:text-rose-800 dark:border-rose-800 dark:text-rose-300 dark:hover:bg-rose-950/50"
+            className="h-10 cursor-pointer gap-1.5 rounded-full border-rose-300 bg-rose-50 px-4 text-xs font-semibold text-rose-700 hover:bg-rose-100 hover:text-rose-800 dark:border-rose-800 dark:text-rose-300 dark:hover:bg-rose-950/50"
           >
             {submittingDecision === "reject" ? <Loader2 className="size-4 animate-spin" aria-hidden /> : <XCircle className="size-4" />}
             <span>{submittingDecision === "reject" ? "Declining..." : "Decline"}</span>
