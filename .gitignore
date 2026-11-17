@@ -31,3 +31,8 @@ dist-ssr
 
 # typescript
 *.tsbuildinfo
+
+# Playwright artifacts and saved browser sessions
+playwright-report/
+test-results/
+playwright/.auth/

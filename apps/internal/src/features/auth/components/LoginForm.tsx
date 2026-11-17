@@ -141,20 +141,12 @@ export function LoginForm({ onSuccess }: LoginFormProps) {
 
       {/* Password Input */}
       <div className="space-y-1.5">
-        <div className="flex items-center justify-between px-1">
           <Label
             htmlFor="login-password"
-            className="text-xs font-semibold text-foreground"
+            className="text-xs font-semibold text-foreground px-1"
           >
             Password
           </Label>
-          <Link
-            to="/forgot-password"
-            className="text-xs font-medium text-primary hover:underline"
-          >
-            Forgot password?
-          </Link>
-        </div>
         <div className="relative">
           <Input
             id="login-password"
@@ -185,6 +177,14 @@ export function LoginForm({ onSuccess }: LoginFormProps) {
         {errors.password && (
           <p className="text-xs text-destructive px-1">{errors.password.message}</p>
         )}
+        <div className="text-end pr-1">
+          <Link
+            to="/forgot-password"
+            className="text-xs font-medium text-primary hover:underline"
+          >
+            Forgot password?
+          </Link>
+        </div>
       </div>
 
       {/* Submit Button */}
