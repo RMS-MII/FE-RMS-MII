@@ -51,7 +51,7 @@ export function UsersPage() {
     <div className="space-y-6">
       <PageHeader
         title="Users"
-        description="View RMS accounts, assigned roles, and account activity."
+        description="View Rekrutin accounts, assigned roles, and account activity."
       />
 
       <Panel>

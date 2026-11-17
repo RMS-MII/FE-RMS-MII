@@ -6,7 +6,7 @@ export function ChangePasswordPage() {
     <div className="space-y-6">
       <PageHeader
         title="Change Password"
-        description="Update the password for your RMS account."
+        description="Update the password for your Rekrutin account."
       />
       <Panel className="max-w-xl">
         <ChangePasswordForm />

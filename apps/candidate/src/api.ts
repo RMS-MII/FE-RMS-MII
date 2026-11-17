@@ -117,8 +117,11 @@ export async function request<T>(
           "Could not save your work. Check the link and the submission deadline."
         )
       if (path.endsWith("/reschedule"))
-        throw new Error(
-          "Could not reschedule. Check your proposed time and refresh to see the latest interview status."
+        throw new RequestError(
+          response.status === 409
+            ? "A schedule change is already awaiting review."
+            : "Could not reschedule. Check your proposed time and refresh to see the latest interview status.",
+          response.status
         )
       if (path.endsWith("/confirm"))
         throw new Error(
