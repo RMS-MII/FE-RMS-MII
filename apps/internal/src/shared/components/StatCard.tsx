@@ -1,7 +1,12 @@
-import type { LucideIcon } from "lucide-react"
+import { TrendingDown, TrendingUp, type LucideIcon } from "lucide-react"
 import { cn } from "@/shared/lib/utils"
 
 export type StatCardTone = "primary" | "success" | "danger" | "neutral"
+
+export interface StatCardTrend {
+  value: number
+  direction: "up" | "down"
+}
 
 const statCardToneStyles: Record<StatCardTone, string> = {
   primary: "bg-primary/10 text-primary",
@@ -10,12 +15,18 @@ const statCardToneStyles: Record<StatCardTone, string> = {
   neutral: "bg-neutral-soft text-neutral",
 }
 
+const trendToneStyles: Record<StatCardTrend["direction"], string> = {
+  up: "bg-success-soft text-success",
+  down: "bg-danger-soft text-danger",
+}
+
 export interface StatCardProps {
   label: string
   value: number | string
   icon: LucideIcon
   tone?: StatCardTone
   description?: string
+  trend?: StatCardTrend
   className?: string
 }
 
@@ -25,6 +36,7 @@ export function StatCard({
   icon: Icon,
   tone = "primary",
   description,
+  trend,
   className,
 }: StatCardProps) {
   return (
@@ -50,6 +62,21 @@ export function StatCard({
       <p className="text-3xl font-semibold tabular-nums tracking-tight text-foreground">
         {value}
       </p>
+      {trend ? (
+        <span
+          className={cn(
+            "inline-flex w-fit items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium tabular-nums",
+            trendToneStyles[trend.direction]
+          )}
+        >
+          {trend.direction === "up" ? (
+            <TrendingUp className="size-3" aria-hidden />
+          ) : (
+            <TrendingDown className="size-3" aria-hidden />
+          )}
+          <span>{trend.value > 0 ? `+${trend.value}` : trend.value}</span>
+        </span>
+      ) : null}
       {description ? (
         <p className="text-xs text-muted-foreground">{description}</p>
       ) : null}

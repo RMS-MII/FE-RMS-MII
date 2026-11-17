@@ -2,8 +2,8 @@ import { useRef, useState } from "react"
 import type { FormEvent } from "react"
 import { CalendarDays, MapPin, ArrowUpRight, Users, Check } from "lucide-react"
 import { Button } from "@workspace/ui/components/button"
-import { DatePicker } from "@workspace/ui/components/date-picker"
-import { TimePicker } from "@workspace/ui/components/time-picker"
+import { InterviewRescheduleFields } from "@workspace/ui/components/interview-reschedule-fields"
+import { wibToUtcISOString } from "@workspace/ui/lib/wib"
 import { Textarea } from "@workspace/ui/components/textarea"
 import {
   Dialog,
@@ -14,7 +14,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@workspace/ui/components/dialog"
-import { request, date, labels, safeUrl } from "../api"
+import { request, RequestError, date, labels, safeUrl } from "../api"
 import type { Session } from "../api"
 import { prefix } from "../route"
 export function SessionDetail({
@@ -27,7 +27,7 @@ export function SessionDetail({
   const [rescheduleOpen, setRescheduleOpen] = useState(false)
 
   const [schedule, setSchedule] = useState({
-    startDate: "",
+    date: "",
     startTime: "",
     endTime: "",
   })
@@ -63,6 +63,10 @@ export function SessionDetail({
           ? e.message
           : "Could not complete the request. Try again."
       )
+      if (action === "reschedule" && e instanceof RequestError && e.status === 409) {
+        setRescheduleOpen(false)
+        await refresh()
+      }
     } finally {
       lock.current = false
       setBusy(false)
@@ -72,12 +76,12 @@ export function SessionDetail({
   function reschedule(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     const f = new FormData(event.currentTarget)
-    if (!schedule.startDate || !schedule.startTime || !schedule.endTime) {
+    if (!schedule.date || !schedule.startTime || !schedule.endTime) {
       setError("Select a date, start time, and end time.")
       return
     }
-    const start = new Date(`${schedule.startDate}T${schedule.startTime}`)
-    const end = new Date(`${schedule.startDate}T${schedule.endTime}`)
+    const start = new Date(wibToUtcISOString(schedule.date, schedule.startTime))
+    const end = new Date(wibToUtcISOString(schedule.date, schedule.endTime))
     if (
       !Number.isFinite(start.getTime()) ||
       !Number.isFinite(end.getTime()) ||
@@ -188,49 +192,15 @@ export function SessionDetail({
                 </DialogDescription>
               </DialogHeader>
               <form className="space-y-4 text-sm" onSubmit={reschedule}>
-                <div className="grid gap-2">
-                  <label htmlFor="reschedule-start-date">Proposed date</label>
-                  <DatePicker
-                    id="reschedule-start-date"
-                    value={schedule.startDate}
-                    minDate={new Date().toLocaleDateString("en-CA")}
-                    placeholder="Select a date"
-                    disabled={busy}
-                    onChange={(value) => {
-                      setSchedule({ ...schedule, startDate: value })
-                      setError("")
-                    }}
-                  />
-                </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="grid gap-2">
-                    <label htmlFor="reschedule-start-time">Start time</label>
-                    <TimePicker
-                      id="reschedule-start-time"
-                      value={schedule.startTime}
-                      disabled={busy}
-                      placeholder="Select time"
-                      onChange={(value) => {
-                        setSchedule({ ...schedule, startTime: value })
-                        setError("")
-                      }}
-                    />
-                  </div>
-                  <div className="grid gap-2">
-                    <label htmlFor="reschedule-end-time">End time</label>
-                    <TimePicker
-                      id="reschedule-end-time"
-                      value={schedule.endTime}
-                      minTime={schedule.startTime || undefined}
-                      disabled={busy}
-                      placeholder="Select time"
-                      onChange={(value) => {
-                        setSchedule({ ...schedule, endTime: value })
-                        setError("")
-                      }}
-                    />
-                  </div>
-                </div>
+                <InterviewRescheduleFields
+                  id="candidate-reschedule"
+                  value={schedule}
+                  disabled={busy}
+                  onChange={(value) => {
+                    setSchedule(value)
+                    setError("")
+                  }}
+                />
                 <label>
                   Reason
                   <Textarea
@@ -243,10 +213,6 @@ export function SessionDetail({
                     rows={3}
                   />
                 </label>
-                <p className="text-sm text-muted-foreground">
-                  Times use your device’s time zone (
-                  {Intl.DateTimeFormat().resolvedOptions().timeZone}).
-                </p>
                 {error && (
                   <p role="alert" className="text-sm text-destructive">
                     {error}

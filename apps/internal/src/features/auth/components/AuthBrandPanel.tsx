@@ -21,7 +21,7 @@ export function AuthBrandPanel() {
           <div>
             <div className="flex items-center gap-2">
               <span className="font-bold tracking-tight text-base text-white">
-                METRODATA
+                Rekrutin
               </span>
             </div>
             <p className="text-[11px] text-white/60">
@@ -38,7 +38,7 @@ export function AuthBrandPanel() {
         </h1>
 
         <p className="text-sm xl:text-base text-white/75 leading-relaxed font-normal">
-          A centralized, seamless workspace for Metrodata HR and interview panels
+          A centralized, seamless workspace for Rekrutin HR and interview panels
           to orchestrate candidate pipelines, interview schedules, and rigorous
           competency assessments.
         </p>

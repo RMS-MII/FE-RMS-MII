@@ -241,7 +241,7 @@ function ExamRunner({
     document.title = `${test.stageName} - Tes Online`
 
     return () => {
-      document.title = "Tes Online | Metrodata"
+      document.title = "Tes Online | Rekrutin"
     }
   }, [test.stageName])
 
@@ -390,7 +390,7 @@ function ExamRunner({
   }
 
   if (phase === "result" && result) {
-    return <ExamResult result={result} candidateName={test.candidateName} timeUp={timeUp} />
+    return <ExamResult result={result} candidateName={test.candidateName} candidateId={test.candidateId} timeUp={timeUp} />
   }
 
   if (timeUp && submitError) {

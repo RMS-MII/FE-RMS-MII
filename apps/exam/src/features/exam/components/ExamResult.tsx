@@ -1,17 +1,20 @@
 import { CheckCircle2, Clock3, FileCheck2 } from "lucide-react"
 import { Badge } from "@workspace/ui/components/badge"
+import { buttonVariants } from "@workspace/ui/components/button"
 import { Card, CardContent } from "@workspace/ui/components/card"
 import { Brand } from "./Brand"
 import type { FinishTestResult } from "../types"
 import { formatDateTime } from "../utils"
+import { candidatePortalUrl } from "@/lib/candidate-portal-url"
 
 interface ExamResultProps {
   result: FinishTestResult
   candidateName: string
+  candidateId: string
   timeUp: boolean
 }
 
-export function ExamResult({ result, candidateName, timeUp }: ExamResultProps) {
+export function ExamResult({ result, candidateName, candidateId, timeUp }: ExamResultProps) {
   const submittedAt = formatDateTime(result.completedAt ?? result.serverTimeUtc)
 
   return (
@@ -91,6 +94,10 @@ export function ExamResult({ result, candidateName, timeUp }: ExamResultProps) {
               Anda dapat menutup halaman ini. Hasil seleksi akan diinformasikan
               lebih lanjut oleh tim rekrutmen melalui email.
             </p>
+            <a href={candidatePortalUrl(`/portal/${encodeURIComponent(candidateId)}`)}
+              className={buttonVariants({ className: "mt-5 rounded-full" })}>
+              Kembali ke portal kandidat
+            </a>
           </CardContent>
         </Card>
       </main>

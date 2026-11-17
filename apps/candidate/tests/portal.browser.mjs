@@ -565,7 +565,12 @@ try {
   await page.getByRole("button", { name: "Save profile" }).click()
   await page.getByText("Profile saved.", { exact: true }).waitFor()
   assert.equal(profile.fullName, "Updated Applicant")
-  await page.getByRole("button", { name: "Sign out" }).click()
+  await page.goto(`${base}/portal/${candidate}`)
+  await page.getByRole("button", { name: "Open navigation" }).click()
+  await page
+    .getByRole("dialog", { name: "Candidate portal navigation" })
+    .getByRole("button", { name: "Sign out" })
+    .click()
   await page.waitForURL(`${base}/jobs`)
   await page.goto(`${base}/portal/${candidate}`)
   await page.getByRole("link", { name: "Sign in with email" }).waitFor()
