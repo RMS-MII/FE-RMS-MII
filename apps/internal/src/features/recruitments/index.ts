@@ -4,7 +4,6 @@ export {
   recruitmentDetailSearchSchema,
 } from "./schemas/recruitment-navigation"
 export { mapStageEmployeeStatus } from "./utils/statusAdapters"
-export * from "./data/mock"
 export * from "./utils"
 export * from "./components"
 export * from "./api/recruitments-api"

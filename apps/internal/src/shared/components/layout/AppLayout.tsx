@@ -13,7 +13,6 @@ import {
   mapCurrentUserToAuthUser,
 } from "@/features/auth"
 import { broadcastLogout, clearLogoutPending, markLogoutPending, refreshSession, requestLogout } from "@/shared/api/auth-session"
-import { initialRecruitments } from "@/features/recruitments/data/mock"
 
 function getCrumbsForPath(path: string): Crumb[] {
   if (path.startsWith("/dashboard")) {
@@ -24,11 +23,10 @@ function getCrumbsForPath(path: string): Crumb[] {
   const stagesMatch = path.match(/^\/recruitments\/([^/]+)\/stages/)
   if (stagesMatch && stagesMatch[1]) {
     const id = stagesMatch[1]
-    const rec = initialRecruitments.find((r) => r.id === id)
     return [
       { label: "Dashboard", to: "/dashboard" },
       { label: "Recruitments", to: "/recruitments" },
-      { label: rec ? rec.name : "Detail", to: `/recruitments/${id}` },
+      { label: "Detail", to: `/recruitments/${id}` },
       { label: "Manage Stages" },
     ]
   }
@@ -36,12 +34,10 @@ function getCrumbsForPath(path: string): Crumb[] {
   // Recruitment detail page
   const recruitmentMatch = path.match(/^\/recruitments\/([^/]+)/)
   if (recruitmentMatch && recruitmentMatch[1]) {
-    const id = recruitmentMatch[1]
-    const rec = initialRecruitments.find((r) => r.id === id)
     return [
       { label: "Dashboard", to: "/dashboard" },
       { label: "Recruitments", to: "/recruitments" },
-      { label: rec ? rec.name : "Detail" },
+      { label: "Detail" },
     ]
   }
 

@@ -3,7 +3,6 @@ import { Trash2, Users, Loader2 } from "lucide-react"
 import { Label } from "@workspace/ui/components/label"
 import { Button } from "@workspace/ui/components/button"
 import { SearchCombobox, type SearchComboboxOption } from "@/shared/components"
-import { mockDepartments, mockEmployees } from "../data/mock"
 import type {
   StageEmployeeStatus,
   StageInterviewerAssignment,
@@ -58,16 +57,8 @@ export function InterviewerAssignSection({
   // Query departments for grouping in combobox
   const { data: apiDepartments } = useGetDepartmentsQuery()
 
-  const finalEmployees = useMemo(() => {
-    if (propEmployees && propEmployees.length > 0) return propEmployees
-    if (apiEmployees && apiEmployees.length > 0) return apiEmployees
-    return mockEmployees
-  }, [propEmployees, apiEmployees])
-
-  const finalDepartments = useMemo(() => {
-    if (apiDepartments && apiDepartments.length > 0) return apiDepartments
-    return mockDepartments
-  }, [apiDepartments])
+  const finalEmployees = propEmployees ?? apiEmployees ?? []
+  const finalDepartments = apiDepartments ?? []
 
   const isLoading = propIsLoadingEmployees ?? isFetchingEmployees
 
