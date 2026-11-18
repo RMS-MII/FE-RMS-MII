@@ -30,14 +30,6 @@ import {
   TableHeader,
   TableRow,
 } from "@workspace/ui/components/table"
-import {
-  Select,
-  SelectContent,
-  SelectGroup,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@workspace/ui/components/select"
 import { Button } from "@workspace/ui/components/button"
 import { Briefcase, Eye, FileText, UserPlus } from "lucide-react"
 import {
@@ -67,7 +59,6 @@ export function CandidatesTab({ recruitment }: CandidatesTabProps) {
     search,
     setSearch,
     stageFilter,
-    statusFilter,
     sortKey,
     sortDirection,
     page,
@@ -80,14 +71,10 @@ export function CandidatesTab({ recruitment }: CandidatesTabProps) {
     detailSearch,
     isAddOpen,
     setIsAddOpen,
-    stageItems,
-    statusItems,
     currentApplications,
     totalCount,
     startIndex,
     activeChips,
-    handleStageChange,
-    handleStatusChange,
     handleSort,
     handlePageChange,
     handleResetFilters,
@@ -117,46 +104,6 @@ export function CandidatesTab({ recruitment }: CandidatesTabProps) {
               placeholder="Search candidate, email, or application code..."
               containerClassName="sm:w-80"
             />
-
-            {/* Stage Filter */}
-            <Select
-              items={stageItems}
-              value={stageFilter}
-              onValueChange={handleStageChange}
-            >
-              <SelectTrigger className="h-10 w-48 rounded-full border-0 bg-muted px-4 text-sm text-foreground shadow-none transition-all duration-150 hover:bg-muted/40 focus-visible:ring-2 focus-visible:ring-primary">
-                <SelectValue placeholder="All Stages" />
-              </SelectTrigger>
-              <SelectContent className="rounded-xl">
-                <SelectGroup>
-                  {stageItems.map((item) => (
-                    <SelectItem key={item.value} value={item.value}>
-                      {item.label}
-                    </SelectItem>
-                  ))}
-                </SelectGroup>
-              </SelectContent>
-            </Select>
-
-            {/* Status Filter */}
-            <Select
-              items={statusItems}
-              value={statusFilter}
-              onValueChange={handleStatusChange}
-            >
-              <SelectTrigger className="h-10 w-40 rounded-full border-0 bg-muted px-4 text-sm text-foreground shadow-none transition-all duration-150 hover:bg-muted/40 focus-visible:ring-2 focus-visible:ring-primary">
-                <SelectValue placeholder="All Status" />
-              </SelectTrigger>
-              <SelectContent className="rounded-xl">
-                <SelectGroup>
-                  {statusItems.map((item) => (
-                    <SelectItem key={item.value} value={item.value}>
-                      {item.label}
-                    </SelectItem>
-                  ))}
-                </SelectGroup>
-              </SelectContent>
-            </Select>
           </div>
 
           <div className="flex shrink-0 flex-wrap items-center gap-3 self-start sm:self-center">
@@ -179,9 +126,9 @@ export function CandidatesTab({ recruitment }: CandidatesTabProps) {
 
         {/* Removable Active Filter Chips */}
         {activeChips.length > 0 && (
-        <div className="border-b border-border bg-muted/20 px-6 py-2.5">
-          <FilterChips chips={activeChips} onReset={handleResetFilters} />
-        </div>
+          <div className="border-b border-border bg-muted/20 px-6 py-2.5">
+            <FilterChips chips={activeChips} onReset={handleResetFilters} />
+          </div>
         )}
 
         {/* Candidate Application Table */}
@@ -336,25 +283,33 @@ export function CandidatesTab({ recruitment }: CandidatesTabProps) {
                       : app.currentStageName
 
                   const currentBatchStage = recruitment.batchStages?.find(
-                    (stage) => stage.id === app.applicationStages[app.currentStageIndex]?.batchStageId
+                    (stage) =>
+                      stage.id ===
+                      app.applicationStages[app.currentStageIndex]?.batchStageId
                   )
                   const isUnpublishedDecision =
-                    (parsedStageIndex === null || parsedStageIndex === app.currentStageIndex) &&
+                    (parsedStageIndex === null ||
+                      parsedStageIndex === app.currentStageIndex) &&
                     (currentBatchStage?.lifecycleStatus === "Active" ||
                       currentBatchStage?.lifecycleStatus === 1) &&
-                    ["prioritized", "considered", "rejected", "dropped"].includes(
-                      app.currentStageStatus
-                    )
+                    [
+                      "prioritized",
+                      "considered",
+                      "rejected",
+                      "dropped",
+                    ].includes(app.currentStageStatus)
                   const displayStatus =
                     parsedStageIndex !== null
                       ? app.applicationStages[parsedStageIndex]?.status ||
                         app.currentStageStatus
                       : app.status === "in_progress" &&
-                          (app.currentStageStatus === "submitted" || isUnpublishedDecision)
+                          (app.currentStageStatus === "submitted" ||
+                            isUnpublishedDecision)
                         ? app.currentStageStatus
                         : app.status
                   const statusTone = statusToneMap[displayStatus] || "neutral"
-                  const statusLabel = statusLabelMap[displayStatus] || displayStatus
+                  const statusLabel =
+                    statusLabelMap[displayStatus] || displayStatus
 
                   return (
                     <TableRow
@@ -410,12 +365,16 @@ export function CandidatesTab({ recruitment }: CandidatesTabProps) {
                       {/* Status Badge (ApplicationStage.Status / BatchApplications.Status) */}
                       <TableCell className="py-3.5 whitespace-nowrap">
                         <div className="flex flex-col items-start gap-1.5">
-                          <StatusBadge tone={statusTone}>{statusLabel}</StatusBadge>
+                          <StatusBadge tone={statusTone}>
+                            {statusLabel}
+                          </StatusBadge>
                         </div>
                       </TableCell>
 
                       <TableCell className="py-3.5 text-xs whitespace-nowrap text-muted-foreground">
-                        {app.expectedSalary ? formatCurrency(app.expectedSalary) : "—"}
+                        {app.expectedSalary
+                          ? formatCurrency(app.expectedSalary)
+                          : "—"}
                       </TableCell>
 
                       {/* Applied Date (BatchApplications.AppliedAt) */}
@@ -441,7 +400,11 @@ export function CandidatesTab({ recruitment }: CandidatesTabProps) {
                             }
                             disabled={!app.candidateCv}
                             onClick={() =>
-                              openPreview("cv", app.candidateName, app.candidateCv)
+                              openPreview(
+                                "cv",
+                                app.candidateName,
+                                app.candidateCv
+                              )
                             }
                             className="size-8 cursor-pointer rounded-full border-0 bg-muted text-foreground hover:bg-muted/60 disabled:cursor-not-allowed disabled:opacity-40"
                           >

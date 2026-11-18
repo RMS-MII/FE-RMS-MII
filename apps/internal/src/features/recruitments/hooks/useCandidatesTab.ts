@@ -4,7 +4,6 @@ import type { Recruitment, CandidateApplicationItem } from "../types"
 import type { Chip } from "@/shared/components"
 import {
   candidateSortSchema,
-  candidateStatusFilterSchema,
   getCandidateNavigationSearch,
   type RecruitmentDetailSearch,
 } from "../schemas/recruitment-navigation"
@@ -13,7 +12,6 @@ import {
   mapApplicationStatus,
   mapApplicationStageStatus,
   mapFinalResultStatus,
-  parseStatusFilterToNumber,
 } from "../utils/statusAdapters"
 
 export {
@@ -58,14 +56,6 @@ export const statusLabelMap: Record<string, string> = {
   unknown: "Unknown",
 }
 
-export const candidateStatusItems = [
-  { label: "All Status", value: "all" },
-  { label: "In Progress", value: "in_progress" },
-  { label: "Rejected", value: "rejected" },
-  { label: "Dropped", value: "dropped" },
-  { label: "Accepted", value: "accepted" },
-]
-
 export interface UseCandidatesTabProps {
   recruitment: Recruitment
 }
@@ -76,12 +66,28 @@ export function useCandidatesTab({ recruitment }: UseCandidatesTabProps) {
   const search = searchParams.candidateSearch ?? ""
   const stageFilter =
     searchParams.stage !== undefined ? String(searchParams.stage) : "all"
-  const statusFilter = searchParams.candidateStatus ?? "all"
   const sortKey = searchParams.candidateSort ?? "appliedAt"
   const sortDirection = searchParams.candidateDirection ?? "desc"
   const page = searchParams.candidatePage ?? 1
   const pageSize = 10
   const detailSearch = getCandidateNavigationSearch(searchParams)
+  const stageFilterIndex = stageFilter !== "all" ? Number(stageFilter) : null
+
+  // Stage "Active" (pipeline biru) dipakai sebagai default saat tidak ada
+  // pilihan stage dari stepper. Filter FE sudah dinonaktifkan karena redudan,
+  // jadi daftar kandidat sepenuhnya berasal dari API.
+  const activeStageId = useMemo(() => {
+    const activeStage = (recruitment.batchStages ?? []).find((stage) => {
+      const lifecycle = String(stage.lifecycleStatus ?? "").toLowerCase()
+      return lifecycle === "active" || lifecycle === "1"
+    })
+    return activeStage?.id
+  }, [recruitment.batchStages])
+
+  const effectiveStageId =
+    (stageFilterIndex !== null
+      ? recruitment.batchStages?.[stageFilterIndex]?.id
+      : undefined) ?? activeStageId
 
   const updateSearch = useCallback(
     (updates: Partial<RecruitmentDetailSearch>) => {
@@ -115,17 +121,13 @@ export function useCandidatesTab({ recruitment }: UseCandidatesTabProps) {
   } = useGetBatchApplicationsQuery({
     id: recruitment.id,
     search: search.trim() || undefined,
-    status:
-      statusFilter !== "all"
-        ? parseStatusFilterToNumber(statusFilter)
-        : undefined,
+    stageId: effectiveStageId,
     page,
     pageSize,
   })
 
   const [isAddOpen, setIsAddOpen] = useState(false)
 
-  // Build stage dropdown items directly from batchStages
   const stageCount = useMemo(() => {
     if (recruitment.batchStages && recruitment.batchStages.length > 0) {
       return recruitment.batchStages.length
@@ -134,46 +136,6 @@ export function useCandidatesTab({ recruitment }: UseCandidatesTabProps) {
   }, [recruitment.batchStages, recruitment.stages])
 
   const hasStages = stageCount > 0
-
-  const stageItems = useMemo(() => {
-    const items = [{ label: "All Stages", value: "all" }]
-    const list =
-      recruitment.batchStages && recruitment.batchStages.length > 0
-        ? recruitment.batchStages.map((bs) => bs.stageName)
-        : (recruitment.stages || []).map((s) => s.name)
-
-    list.forEach((name, idx) => {
-      items.push({
-        label: `Stage ${idx + 1}: ${name}`,
-        value: String(idx),
-      })
-    })
-    return items
-  }, [recruitment.batchStages, recruitment.stages])
-
-  const handleStageChange = useCallback(
-    (value: string | null) => {
-      if (!value) return
-      updateSearch({
-        stage: value === "all" ? undefined : Number(value),
-        candidatePage: undefined,
-      })
-    },
-    [updateSearch]
-  )
-
-  const handleStatusChange = useCallback(
-    (value: string | null) => {
-      if (!value) return
-      const result = candidateStatusFilterSchema.safeParse(value)
-      if (value !== "all" && !result.success) return
-      updateSearch({
-        candidateStatus: result.success ? result.data : undefined,
-        candidatePage: undefined,
-      })
-    },
-    [updateSearch]
-  )
 
   // Map API data into UI application items
   const currentApplications: CandidateApplicationItem[] = useMemo(() => {
@@ -186,7 +148,9 @@ export function useCandidatesTab({ recruitment }: UseCandidatesTabProps) {
       const currentStageIndex = stages.findIndex(
         (stage) => stage.id === item.currentStageId
       )
-      const currentStageStatus = mapApplicationStageStatus(item.currentStageStatus)
+      const currentStageStatus = mapApplicationStageStatus(
+        item.currentStageStatus
+      )
 
       return {
         id: item.id,
@@ -268,7 +232,7 @@ export function useCandidatesTab({ recruitment }: UseCandidatesTabProps) {
     refetchApplications()
   }
 
-  // Active filter chips
+  // Active filter chips (hanya search — stage/status ditentukan pipeline & API)
   const activeChips: Chip[] = useMemo(() => {
     const chips: Chip[] = []
     if (search.trim()) {
@@ -280,32 +244,8 @@ export function useCandidatesTab({ recruitment }: UseCandidatesTabProps) {
         },
       })
     }
-    if (stageFilter !== "all") {
-      const match = stageItems.find((s) => s.value === stageFilter)
-      chips.push({
-        key: "stage",
-        label: match?.label || `Stage ${Number(stageFilter) + 1}`,
-        onRemove: () => handleStageChange("all"),
-      })
-    }
-    if (statusFilter !== "all") {
-      const match = candidateStatusItems.find((s) => s.value === statusFilter)
-      chips.push({
-        key: "status",
-        label: `Status: ${match?.label || statusFilter}`,
-        onRemove: () => handleStatusChange("all"),
-      })
-    }
     return chips
-  }, [
-    search,
-    stageFilter,
-    statusFilter,
-    stageItems,
-    handleStageChange,
-    handleStatusChange,
-    setSearch,
-  ])
+  }, [search, setSearch])
 
   const startIndex = (page - 1) * pageSize
 
@@ -313,7 +253,6 @@ export function useCandidatesTab({ recruitment }: UseCandidatesTabProps) {
     search,
     setSearch,
     stageFilter,
-    statusFilter,
     sortKey,
     sortDirection,
     page,
@@ -328,14 +267,10 @@ export function useCandidatesTab({ recruitment }: UseCandidatesTabProps) {
     detailSearch,
     isAddOpen,
     setIsAddOpen,
-    stageItems,
-    statusItems: candidateStatusItems,
     currentApplications,
     totalCount,
     startIndex,
     activeChips,
-    handleStageChange,
-    handleStatusChange,
     handleSort,
     handlePageChange,
     handleResetFilters,

@@ -60,6 +60,7 @@ export interface GetBatchApplicationsParams {
   id: string
   search?: string
   status?: ApplicationStatusValue
+  stageId?: string
   page?: number
   pageSize?: number
 }
