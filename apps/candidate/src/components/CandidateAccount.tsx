@@ -224,7 +224,7 @@ export function CandidateProfileForm({
     },
     {
       name: "cv",
-      label: "CV or resume URL (optional)",
+      label: "CV or résumé URL (optional)",
       value: profile?.cv,
       type: "url",
       maxLength: 200,
@@ -376,7 +376,7 @@ export function CandidateProfileForm({
           >
             {profile ? "Back to portal" : "Browse positions"}
           </a>
-          {!profile && <Button
+          <Button
             type="button"
             variant="ghost"
             className="h-10 rounded-full px-5"
@@ -388,7 +388,7 @@ export function CandidateProfileForm({
             }
           >
             Sign out
-          </Button>}
+          </Button>
         </div>
       </form>
     </AccountLayout>
