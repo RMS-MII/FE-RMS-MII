@@ -203,7 +203,7 @@ function SummaryCell({
           value > 0 ? ACCENT_CHIP[accent] : "bg-muted text-muted-foreground"
         )}
       >
-        <Icon className="size-[18px]" aria-hidden />
+        <Icon className="size-4.5" aria-hidden />
       </span>
       <span className="min-w-0">
         <span
@@ -491,7 +491,7 @@ function DashboardContent({
         >
           <div className="flex items-center gap-3">
             <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-rose-500/10 text-rose-600 dark:text-rose-400">
-              <AlertTriangle className="size-[18px]" aria-hidden />
+              <AlertTriangle className="size-4.5" aria-hidden />
             </span>
             <div>
               <p className="text-sm font-medium text-foreground">
@@ -616,7 +616,7 @@ function DashboardContent({
                 <>
                   <div
                     className={cn(
-                      tasksExpanded && "max-h-[34rem] overflow-y-auto"
+                      tasksExpanded && "max-h-136 overflow-y-auto"
                     )}
                   >
                     {showGroupLabels && (
@@ -667,8 +667,8 @@ function DashboardContent({
         <div className="space-y-6">
           <Panel>
             <PanelHeader
-              title="Upcoming Sessions"
-              description="Sesi wawancara yang akan datang."
+              title="Upcoming / Ongoing Sessions"
+              description="Sesi wawancara yang akan datang atau sedang berlangsung."
               meta={`${summary.upcomingSessionsCount} sesi`}
             />
             {upcomingSessions.length > 0 ? (

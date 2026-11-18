@@ -95,7 +95,7 @@ function KpiCard({ label, value, icon: Icon, tone, hint, share }: KpiCardProps) 
         <span
           className={`flex size-9 shrink-0 items-center justify-center rounded-xl ${styles.chip}`}
         >
-          <Icon className="size-[18px]" aria-hidden />
+          <Icon className="size-4.5" aria-hidden />
         </span>
       </div>
 
@@ -219,11 +219,14 @@ export function HrDashboardPage() {
 
   const stats = useMemo(() => {
     if (!data) return null
-    const total = data.totalCandidates
-    const accepted = data.acceptedCandidates
-    const notPassed = data.notPassedCandidates
-    const inProcess = Math.max(0, total - accepted - notPassed)
-    const decided = accepted + notPassed
+    const total = data.totalApplications
+    const accepted = data.acceptedApplications
+    const rejected = data.rejectedApplications
+    const dropped = data.droppedApplications
+    const notPassed = rejected + dropped
+    const inProcess = data.inProcessApplications
+    const decided = accepted + rejected
+    const concluded = accepted + notPassed
 
     return {
       total,
@@ -233,9 +236,9 @@ export function HrDashboardPage() {
       acceptedPct: toPercent(accepted, total),
       notPassedPct: toPercent(notPassed, total),
       inProcessPct: toPercent(inProcess, total),
-      // Pass rate among candidates whose result is already final
+      // Dropped applications were not evaluated as accepted or rejected.
       passRate: toPercent(accepted, decided),
-      decidedPct: toPercent(decided, total),
+      decidedPct: toPercent(concluded, total),
     }
   }, [data])
 
@@ -265,7 +268,7 @@ export function HrDashboardPage() {
     <div className="space-y-6 pb-12">
       <PageHeader
         title="Dashboard"
-        description={`${today}. Recruitment pipeline overview: candidate totals, accepted hires, and employee headcount.`}
+        description={`${today}. Recruitment applications, outcomes, and active employee headcount.`}
         actions={
           <div className="flex items-center gap-3">
             {lastUpdated && (
@@ -308,27 +311,27 @@ export function HrDashboardPage() {
           {/* KPI cards */}
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
             <KpiCard
-              label="Total Candidates"
+              label="Total Applications"
               value={stats.total}
               icon={Users}
               tone="primary"
-              hint={`${formatNumber(stats.inProcess)} still in process`}
+              hint={`${formatNumber(stats.inProcess)} in process · ${formatPercent(stats.decidedPct)} concluded`}
               share={stats.decidedPct}
             />
             <KpiCard
-              label="Accepted Candidates"
+              label="Accepted Applications"
               value={stats.accepted}
               icon={BadgeCheck}
               tone="success"
-              hint={`${formatPercent(stats.acceptedPct)} of all candidates`}
+              hint={`${formatPercent(stats.acceptedPct)} of all applications`}
               share={stats.acceptedPct}
             />
             <KpiCard
-              label="Not Passed Candidates"
+              label="Rejected / Dropped"
               value={stats.notPassed}
               icon={UserX}
               tone="danger"
-              hint={`${formatPercent(stats.notPassedPct)} of all candidates`}
+              hint={`${formatPercent(stats.notPassedPct)} of all applications`}
               share={stats.notPassedPct}
             />
             <KpiCard
@@ -344,14 +347,14 @@ export function HrDashboardPage() {
           <div className="grid gap-4 lg:grid-cols-3">
             <Panel className="lg:col-span-2">
               <PanelHeader
-                title="Candidate Pipeline"
-                description="How all candidates are distributed by outcome."
+                title="Application Outcomes"
+                description="How applications are distributed by current status."
               />
               <div className="space-y-5 px-5 pb-5">
                 <div
                   className="flex h-3 w-full overflow-hidden rounded-full bg-muted"
                   role="img"
-                  aria-label={`Accepted ${formatPercent(stats.acceptedPct)}, in process ${formatPercent(stats.inProcessPct)}, not passed ${formatPercent(stats.notPassedPct)}`}
+                  aria-label={`Accepted ${formatPercent(stats.acceptedPct)}, in process ${formatPercent(stats.inProcessPct)}, rejected or dropped ${formatPercent(stats.notPassedPct)}`}
                 >
                   <div
                     className={`h-full transition-[width] duration-700 ease-out ${toneStyles.success.bar}`}
@@ -382,7 +385,7 @@ export function HrDashboardPage() {
                       tone="primary"
                     />
                     <LegendItem
-                      label="Not passed"
+                      label="Rejected / dropped"
                       value={stats.notPassed}
                       percent={stats.notPassedPct}
                       tone="danger"
@@ -390,7 +393,7 @@ export function HrDashboardPage() {
                   </div>
                 ) : (
                   <p className="text-sm text-muted-foreground">
-                    No candidates yet. Open a recruitment batch to start
+                    No applications yet. Open a recruitment batch to start
                     receiving applicants.
                   </p>
                 )}
@@ -406,16 +409,16 @@ export function HrDashboardPage() {
                 <Insight
                   label="Pass rate"
                   value={
-                    stats.accepted + stats.notPassed > 0
+                    stats.accepted + data.rejectedApplications > 0
                       ? formatPercent(stats.passRate)
                       : "–"
                   }
-                  description="Accepted out of candidates with a final result."
+                  description="Accepted out of accepted or rejected applications."
                 />
                 <Insight
                   label="Awaiting result"
                   value={formatNumber(stats.inProcess)}
-                  description={`${formatPercent(stats.inProcessPct)} of candidates are still being processed.`}
+                  description={`${formatPercent(stats.inProcessPct)} of applications are still being processed.`}
                 />
               </div>
             </Panel>
@@ -424,10 +427,10 @@ export function HrDashboardPage() {
           {/* Active tasks */}
           <Panel>
             <PanelHeader
-              title="Active Tasks"
+              title="Open Recruitments"
               description={
                 activeTasks.length > 0
-                  ? `${activeTasks.length} open batch${activeTasks.length > 1 ? "es" : ""} with ${formatNumber(totalOpenCandidates)} open candidate${totalOpenCandidates === 1 ? "" : "s"} in total.`
+                  ? `Showing ${activeTasks.length} of ${batchesData?.totalItems ?? activeTasks.length} open batches with ${formatNumber(totalOpenCandidates)} active applications in the batches shown.`
                   : "Recruitment batches that are currently open."
               }
             />
