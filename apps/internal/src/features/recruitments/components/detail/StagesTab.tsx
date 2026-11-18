@@ -582,8 +582,8 @@ export function StagesTab({
           if (!isTransitioning && !open) setPendingTransition(null)
         }}
       >
-        <DialogContent className="rounded-2xl sm:max-w-md">
-          <DialogHeader>
+        <DialogContent className="rounded-2xl sm:max-w-md p-0">
+          <DialogHeader className="px-6 pt-6">
             <DialogTitle>
               {pendingTransition?.action === "activate"
                 ? "Activate selection stage?"
@@ -598,12 +598,14 @@ export function StagesTab({
             </DialogDescription>
           </DialogHeader>
           {transitionError && (
-            <p
-              role="alert"
-              className="rounded-xl bg-danger-soft p-3 text-sm text-danger"
-            >
-              {transitionError}
-            </p>
+            <div className="px-6">
+              <p
+                role="alert"
+                className="rounded-xl bg-danger-soft p-3 text-sm text-danger"
+              >
+                {transitionError}
+              </p>
+            </div>
           )}
           <DialogFooter className="bg-card border-t border-border">
             <CancelButton

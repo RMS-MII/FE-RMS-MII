@@ -430,19 +430,6 @@ export const InterviewSessionTable = React.memo(function InterviewSessionTable({
                             {sessionStatusLabels[session.status]?.label ??
                               "Unknown"}
                           </StatusBadge>
-
-                          {/* Reschedule Request Notice Badge */}
-                          {isPendingReschedule && (
-                            <button
-                              type="button"
-                              disabled={!onReviewReschedule}
-                              onClick={() => onReviewReschedule?.(session)}
-                              className="inline-flex cursor-pointer items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold text-amber-800 transition-colors hover:bg-amber-200 dark:bg-amber-950 dark:text-amber-300"
-                            >
-                              <AlertTriangle className="size-2.5 text-amber-600" />
-                              Reschedule Req.
-                            </button>
-                          )}
                         </div>
                       </TableCell>
 
@@ -455,7 +442,7 @@ export const InterviewSessionTable = React.memo(function InterviewSessionTable({
                               onClick={() => onReviewReschedule(session)}
                               className="cursor-pointer rounded-full bg-amber-600 px-3 py-1 text-xs font-semibold text-white shadow-xs transition-colors hover:bg-amber-700"
                             >
-                              Review Reschedule
+                              Reschedule
                             </button>
                           ) : (
                             <span className="text-xs text-muted-foreground/60">
@@ -474,7 +461,7 @@ export const InterviewSessionTable = React.memo(function InterviewSessionTable({
 
         {/* Pagination */}
         {filteredSessions.length > pageSize && (
-          <DataTablePagination
+          <DataTablePagination className="px-9 py-5"
             page={page}
             pageSize={pageSize}
             totalItems={filteredSessions.length}

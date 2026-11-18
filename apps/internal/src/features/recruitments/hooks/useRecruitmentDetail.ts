@@ -1,6 +1,5 @@
 import { useMemo, useState } from "react"
 import { useNavigate } from "@tanstack/react-router"
-import { getRecruitmentInterviewSessions, mockInterviewSessions } from "../data/interviewMock"
 import type { PipelineItem, StageState } from "../types"
 import { useGetBatchByIdQuery } from "../api/recruitments-api"
 import { useGetBatchApplicationsQuery } from "../api/applications-api"
@@ -71,13 +70,7 @@ export function useRecruitmentDetail({
     { skip: !id || !isRealBatch }
   )
 
-  const interviewsCount = useMemo(() => {
-    if (isRealBatch) {
-      return batchInterviews?.length ?? 0
-    }
-    const list = getRecruitmentInterviewSessions(id)
-    return list.length > 0 ? list.length : mockInterviewSessions.length
-  }, [isRealBatch, batchInterviews, id])
+  const interviewsCount = batchInterviews?.length ?? 0
 
   const pipelineItems = useMemo(() => {
     if (!recruitment) return []
