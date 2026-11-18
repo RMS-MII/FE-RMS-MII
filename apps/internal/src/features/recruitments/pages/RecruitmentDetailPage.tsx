@@ -31,9 +31,9 @@ export function RecruitmentDetailPage(props: RecruitmentDetailPageProps) {
     isError,
     refetch,
     activeTab,
-    selectedStage,
     tabs,
     pipelineItems,
+    candidateStageIndex,
     handleTabChange,
     handleStageSelect,
     handleCreateStage,
@@ -142,7 +142,7 @@ export function RecruitmentDetailPage(props: RecruitmentDetailPageProps) {
       <section aria-label="Recruitment stages flow">
         <StagePipeline
           items={pipelineItems}
-          selected={activeTab === "candidates" ? selectedStage : null}
+          selected={activeTab === "candidates" && candidateStageIndex >= 0 ? candidateStageIndex : null}
           onSelect={handleStageSelect}
           onCreateStage={isClosed ? undefined : handleCreateStage}
         />

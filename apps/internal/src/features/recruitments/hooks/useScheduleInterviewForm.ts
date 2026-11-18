@@ -4,11 +4,10 @@ import { addMinutesToTime, isTimeBefore } from "@/shared/lib/timeUtils"
 import { formatWibTime, getWibDateKey, wibToUtcISOString } from "@/shared/lib/utcDateTime"
 import { getApiError } from "@/shared/api/api-error"
 import type { Recruitment, InterviewSessionItem, ScheduleInterviewSessionRequest } from "../types"
-import type { BatchApplicationListItemDto } from "../types/application"
 import { getRecruitmentAddRestriction } from "../utils/recruitmentUtils"
-import { mapApplicationStatus, mapApplicationStageStatus } from "../utils/statusAdapters"
-import { useLazyGetBatchApplicationsQuery, useGetApplicationByIdQuery } from "../api/applications-api"
-import { useGetAvailableInterviewersQuery } from "../api/interviews-api"
+import { mapApplicationStageStatus } from "../utils/statusAdapters"
+import { useGetApplicationByIdQuery } from "../api/applications-api"
+import { useGetAvailableInterviewersQuery, useGetInterviewCandidatesQuery, type InterviewCandidateOption } from "../api/interviews-api"
 
 export interface ScheduleInterviewFormOptions {
   open: boolean
@@ -38,13 +37,28 @@ export function useScheduleInterviewForm({
   // Interview stage options
   const [candidateId, setCandidateId] = useState("")
   const [applicationStageId, setApplicationStageId] = useState("")
-  const [loadApplications, { isFetching: isApplicationsLoading }] =
-    useLazyGetBatchApplicationsQuery()
-  const [allApplications, setAllApplications] = useState<
-    BatchApplicationListItemDto[]
-  >([])
-  const applications = allApplications
-  const selectedApplication = applications.find((item) => item.id === candidateId)
+  const [candidateSearch, setCandidateSearch] = useState("")
+  const [debouncedCandidateSearch, setDebouncedCandidateSearch] = useState("")
+  const [selectedCandidateOption, setSelectedCandidateOption] = useState<InterviewCandidateOption | null>(null)
+  useEffect(() => {
+    const timer = window.setTimeout(() => setDebouncedCandidateSearch(candidateSearch.trim()), 300)
+    return () => window.clearTimeout(timer)
+  }, [candidateSearch])
+  const {
+    currentData: interviewCandidates,
+    isFetching: isCandidatesFetching,
+    isError: isCandidatesError,
+    error: candidatesError,
+  } = useGetInterviewCandidatesQuery(
+    { batchId: recruitment.id, search: debouncedCandidateSearch },
+    { skip: !open || isRescheduleMode, refetchOnMountOrArgChange: true }
+  )
+  const isApplicationsLoading = isCandidatesFetching || candidateSearch.trim() !== debouncedCandidateSearch
+  const selectCandidate = (option: SearchComboboxOption<InterviewCandidateOption>) => {
+    if (!option.data) return
+    setCandidateId(option.id)
+    setSelectedCandidateOption(option.data)
+  }
   const {
     currentData: applicationDetail,
     isFetching: isApplicationLoading,
@@ -96,18 +110,15 @@ export function useScheduleInterviewForm({
   } = useGetAvailableInterviewersQuery(applicationStageId, {
     skip: !open || !applicationStageId,
   })
-  const unscheduledCandidates = useMemo(
-    () => applications.filter((item) => mapApplicationStatus(item.status) === "in_progress"),
-    [applications]
-  )
-  const candidateComboboxOptions = useMemo<SearchComboboxOption[]>(
-    () => unscheduledCandidates.map((item) => ({
-      id: item.id,
-      label: item.candidate?.fullName ?? "Candidate",
-      subLabel: item.candidate?.email ?? "",
+  const candidateComboboxOptions = useMemo<SearchComboboxOption<InterviewCandidateOption>[]>(
+    () => (interviewCandidates ?? []).map((item) => ({
+      id: item.applicationId,
+      label: item.candidateName,
+      subLabel: item.candidateEmail,
       meta: item.codeApplication,
+      data: item,
     })),
-    [unscheduledCandidates]
+    [interviewCandidates]
   )
   const [sessionName, setSessionName] = useState<string>("")
   const [scheduledDate, setScheduledDate] = useState<string>("")
@@ -122,40 +133,12 @@ export function useScheduleInterviewForm({
   // Errors state
   const [errors, setErrors] = useState<Record<string, string>>({})
 
-  // Load every application page so candidates are not silently limited to page one.
-  useEffect(() => {
-    if (!open || isRescheduleMode) return
-    let cancelled = false
-    const loadRemainingPages = async () => {
-      const collected: typeof allApplications = []
-      let page = 1
-      let hasNextPage = true
-      while (hasNextPage && !cancelled) {
-        const result = await loadApplications({
-          id: recruitment.id,
-          page,
-          pageSize: 100,
-        }, true).unwrap()
-        if (cancelled) return
-        collected.push(...result.items)
-        setAllApplications([...collected])
-        hasNextPage = result.hasNextPage
-        page += 1
-      }
-    }
-    setAllApplications([])
-    void loadRemainingPages().catch((error) => {
-      if (!cancelled) setErrors((previous) => ({
-        ...previous,
-        recruitment: getApiError(error).message,
-      }))
-    })
-    return () => { cancelled = true }
-  }, [open, isRescheduleMode, recruitment.id, loadApplications])
-
   useEffect(() => {
     if (open) return
     setCandidateId("")
+    setSelectedCandidateOption(null)
+    setCandidateSearch("")
+    setDebouncedCandidateSearch("")
     setApplicationStageId("")
     setSelectedInterviewerIds([])
     setLeadEmployeeId("")
@@ -197,15 +180,15 @@ export function useScheduleInterviewForm({
           email: sessionToReschedule.candidateEmail,
           codeApplication: sessionToReschedule.codeApplication,
         }
-      : selectedApplication?.candidate
+      : selectedCandidateOption
       ? {
-          id: selectedApplication.id,
-          name: selectedApplication.candidate.fullName,
-          email: selectedApplication.candidate.email,
-          codeApplication: selectedApplication.codeApplication,
+          id: selectedCandidateOption.applicationId,
+          name: selectedCandidateOption.candidateName,
+          email: selectedCandidateOption.candidateEmail,
+          codeApplication: selectedCandidateOption.codeApplication,
         }
       : undefined,
-    [selectedApplication, isRescheduleMode, sessionToReschedule]
+    [selectedCandidateOption, isRescheduleMode, sessionToReschedule]
   )
 
   useEffect(() => {
@@ -355,11 +338,12 @@ export function useScheduleInterviewForm({
 
   return {
     isRescheduleMode, scheduleRestriction, minScheduleDate,
-    candidateId, setCandidateId, applicationStageId, setApplicationStageId,
+    candidateId, selectCandidate, candidateSearch, setCandidateSearch, applicationStageId, setApplicationStageId,
     isApplicationsLoading, isApplicationLoading, isApplicationError, applicationError,
+    isCandidatesError, candidatesError,
     eligibleStages, eligibleStageOptions, selectedCandidate,
     availableInterviewers, isInterviewersLoading, isInterviewersError,
-    interviewersError, refetchInterviewers, unscheduledCandidates, candidateComboboxOptions,
+    interviewersError, refetchInterviewers, candidateComboboxOptions,
     sessionName, setSessionName, scheduledDate, setScheduledDate,
     startTime, endTime, mode, setMode,
     meetingUrl, setMeetingUrl, location, setLocation,

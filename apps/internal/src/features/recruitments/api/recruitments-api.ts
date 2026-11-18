@@ -1,11 +1,13 @@
 import { baseApi } from "@/shared/api/base-api"
 import type {
   Recruitment,
+  RecruitmentBatchSummary,
   PagedResult,
   GetBatchesParams,
   CreateBatchRequest,
   UpdateBatchStatusRequest,
   BatchStage,
+  BatchStageFlow,
   BatchStageWithInterviewers,
   UpdateBatchStagesRequest,
   AssignInterviewersRequest,
@@ -47,6 +49,18 @@ export const recruitmentsApi = baseApi.injectEndpoints({
     getBatchById: builder.query<Recruitment, string>({
       query: (id) => `/batches/${id}`,
       providesTags: (_result, _err, id) => [{ type: "Recruitment", id }],
+    }),
+    getBatchSummary: builder.query<RecruitmentBatchSummary, string>({
+      query: (id) => `/batches/${id}/summary`,
+      providesTags: (_result, _err, id) => [
+        { type: "Recruitment", id },
+        { type: "Candidate", id: `APPLICATION_BATCH_${id}` },
+        { type: "Interview", id: `BATCH_${id}` },
+      ],
+    }),
+    getBatchStageFlow: builder.query<BatchStageFlow[], string>({
+      query: (id) => `/batches/${id}/stage-flow`,
+      providesTags: (_result, _err, id) => [{ type: "Stage", id }],
     }),
     getBatchDashboard: builder.query<BatchDashboardResponse, void>({
       query: () => ({
@@ -179,6 +193,8 @@ export const recruitmentsApi = baseApi.injectEndpoints({
 export const {
   useGetBatchesQuery,
   useGetBatchByIdQuery,
+  useGetBatchSummaryQuery,
+  useGetBatchStageFlowQuery,
   useGetBatchDashboardQuery,
   useGetBatchStagesQuery,
   useLazyGetBatchesQuery,
