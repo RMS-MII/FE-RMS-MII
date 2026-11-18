@@ -4,8 +4,6 @@ import {
   ChevronDown,
   LayoutDashboard,
   Menu as MenuIcon,
-  PanelLeftClose,
-  PanelLeftOpen,
   UserCog,
   Users,
   Mail,
@@ -19,6 +17,7 @@ import type { UserRole } from "@/features/auth"
 
 // Import shadcn primitives from @workspace/ui
 import { Button } from "@workspace/ui/components/button"
+import { SidebarHeader } from "@workspace/ui/components/sidebar-header"
 import { AccountMenu } from "@workspace/ui/components/account-menu"
 import { Brand as RekrutinBrand } from "@workspace/ui/components/brand"
 import { DropdownMenuItem } from "@workspace/ui/components/dropdown-menu"
@@ -136,10 +135,11 @@ const NAV: NavGroup[] = [
   },
 ]
 
-function Brand({ collapsed }: { collapsed?: boolean }) {
+function Brand({ collapsed, onNavigate }: { collapsed?: boolean; onNavigate?: () => void }) {
   return (
     <Link
-      to="/"
+      to="/dashboard"
+      onClick={onNavigate}
       aria-label="Rekrutin, to dashboard"
       className={cn(
         "flex items-center gap-2.5 rounded-lg",
@@ -351,36 +351,9 @@ export function AppShell({
           collapsed ? "w-17" : "w-62"
         )}
       >
-        <div
-          className={cn(
-            "flex h-19 shrink-0 items-center",
-            collapsed ? "justify-center px-3" : "px-5"
-          )}
-        >
+        <SidebarHeader collapsed={collapsed} onToggle={toggle}>
           <Brand collapsed={collapsed} />
-        </div>
-
-        <button
-          type="button"
-          onClick={toggle}
-          aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-          title={`${collapsed ? "Expand" : "Collapse"} sidebar (Ctrl+B)`}
-          className="absolute top-3 -right-4.5 z-40 flex size-9 items-center justify-center rounded-full border border-border bg-card text-foreground shadow-card transition-colors duration-150 hover:bg-primary-50 hover:text-primary cursor-pointer"
-        >
-          {collapsed ? (
-            <PanelLeftOpen
-              className="size-4.5"
-              strokeWidth={1.8}
-              aria-hidden
-            />
-          ) : (
-            <PanelLeftClose
-              className="size-4.5"
-              strokeWidth={1.8}
-              aria-hidden
-            />
-          )}
-        </button>
+        </SidebarHeader>
 
         <Nav path={path} collapsed={collapsed} />
 
@@ -400,9 +373,9 @@ export function AppShell({
         swipeDirection="left"
       >
         <DrawerContent className="w-72 max-w-[85vw] h-full flex flex-col p-2">
-          <DrawerHeader className="h-19 px-5 flex items-center justify-between border-b border-border">
+          <DrawerHeader className="h-19 px-5 flex items-center justify-center border-b border-border">
             <DrawerTitle>
-              <Brand />
+              <Brand onNavigate={() => setSheetOpen(false)} />
             </DrawerTitle>
           </DrawerHeader>
           <Nav path={path} onNavigate={() => setSheetOpen(false)} />

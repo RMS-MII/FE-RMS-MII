@@ -3,8 +3,9 @@ import { AccountMenu } from "@workspace/ui/components/account-menu"
 import { request } from "../api"
 import type { CandidateSession } from "../session"
 
-export function CandidateAccountMenu({ session, container }: {
+export function CandidateAccountMenu({ session, container, collapsed }: {
   session: CandidateSession
+  collapsed?: boolean
   container?: RefObject<HTMLElement | null>
 }) {
   const [signingOut, setSigningOut] = useState(false)
@@ -28,6 +29,7 @@ export function CandidateAccountMenu({ session, container }: {
         name={session.profile?.fullName || session.email}
         email={session.email}
         role="Candidate"
+        collapsed={collapsed}
         container={container}
         signingOut={signingOut}
         onLogout={() => void signOut()}
