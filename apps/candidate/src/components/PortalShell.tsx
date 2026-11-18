@@ -1,4 +1,4 @@
-import { useRef, useState } from "react"
+import { useRef } from "react"
 import type { ReactNode } from "react"
 import {
   LayoutDashboard,
@@ -10,41 +10,29 @@ import {
   X,
   ChevronRight,
   BriefcaseBusiness,
-  LogOut,
 } from "lucide-react"
 import { Button } from "@workspace/ui/components/button"
-import { request, type Tasks } from "../api"
+import type { Tasks } from "../api"
 import { prefix, interviewSessionId, portalPage, pageTitle } from "../route"
+import { CandidateAccountMenu } from "./CandidateAccountMenu"
+import type { CandidateSession } from "../session"
 import { PortalBrand } from "./PortalBrand"
 
 export function PortalShell({
   children,
   data,
   selected,
+  session,
   onSelect,
 }: {
   children: ReactNode
+  session: CandidateSession
   data?: Tasks
   selected?: string
   onSelect: (id: string) => void
 }) {
   const dialog = useRef<HTMLDialogElement>(null)
-  const [signingOut, setSigningOut] = useState(false)
-  const [signOutError, setSignOutError] = useState("")
-
-  async function signOut() {
-    setSignOutError("")
-    setSigningOut(true)
-    try {
-      await request("/portal/session/logout", {})
-      window.location.assign("/jobs")
-    } catch (failure) {
-      setSignOutError(failure instanceof Error ? failure.message : "Could not sign out. Try again.")
-      setSigningOut(false)
-    }
-  }
-
-  const navigation = (
+  const navigation = (mobile: boolean) => (
     <>
       <PortalBrand href={prefix} />
       <p className="nav-label">Candidate portal</p>
@@ -135,28 +123,9 @@ export function PortalShell({
             </p>
           </div>
         </div>
-        {data && (
-          <div className="sidebar-profile">
-            <div className="avatar" aria-hidden="true">
-              {data.candidateName
-                .trim()
-                .split(/\s+/)
-                .slice(0, 2)
-                .map((part) => part[0])
-                .join("")
-                .toUpperCase()}
-            </div>
-            <div>
-              <strong>{data.candidateName}</strong>
-              <small>{data.candidateEmail}</small>
-            </div>
-          </div>
-        )}
-        <Button type="button" variant="ghost" className="mt-2 w-full justify-start rounded-full" disabled={signingOut}
-          onClick={() => void signOut()}>
-          <LogOut size={18} aria-hidden /> {signingOut ? "Signing out…" : "Sign out"}
-        </Button>
-        {signOutError && <p role="alert" className="px-3 text-sm text-destructive">{signOutError}</p>}
+        <div className="border-t border-border py-3">
+          <CandidateAccountMenu session={session} container={mobile ? dialog : undefined} />
+        </div>
       </div>
     </>
   )
@@ -165,7 +134,7 @@ export function PortalShell({
       <a className="skip-link" href="#main-content">
         Skip to content
       </a>
-      <aside className="desktop-sidebar">{navigation}</aside>
+      <aside className="desktop-sidebar">{navigation(false)}</aside>
       <dialog
         aria-label="Candidate portal navigation"
         ref={dialog}
@@ -184,7 +153,7 @@ export function PortalShell({
           >
             <X size={18} />
           </Button>
-          {navigation}
+          {navigation(true)}
         </div>
       </dialog>
       <div className="portal-workspace">

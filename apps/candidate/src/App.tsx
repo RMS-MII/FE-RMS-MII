@@ -10,13 +10,14 @@ import {
   prefix,
   submissionSessionId,
 } from "./route"
+import type { CandidateSession } from "./session"
 import { PortalShell } from "./components/PortalShell"
 import { ApplicationView } from "./components/ApplicationView"
 import { SessionList } from "./components/SessionList"
 import { SessionDetail } from "./components/SessionDetail"
 import { Status } from "./components/Status"
 
-export function App() {
+export function App({ candidateSession }: { candidateSession: CandidateSession }) {
   const { result, error, loading, refresh } = useCandidateTasks(candidateId, prefix)
   const data = result?.data
 
@@ -55,6 +56,7 @@ export function App() {
 
   return (
     <PortalShell
+      session={candidateSession}
       data={data}
       selected={app?.id}
       onSelect={(id) => {

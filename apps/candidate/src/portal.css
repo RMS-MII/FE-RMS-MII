@@ -57,15 +57,6 @@ body {
   gap: 10px;
   width: fit-content;
   margin: 0 8px;
-  font-size: var(--text-lg);
-  font-weight: 650;
-  letter-spacing: -0.025em;
-}
-
-.portal-brand-mark {
-  width: 40px;
-  height: 40px;
-  object-fit: contain;
 }
 
 .nav-label {
@@ -129,8 +120,7 @@ body {
   overflow-wrap: anywhere;
 }
 
-.application-choice small,
-.sidebar-profile small {
+.application-choice small {
   display: block;
   color: var(--muted-foreground);
   font-size: var(--text-xs);
@@ -141,14 +131,11 @@ body {
   margin-top: auto;
   padding-top: 28px;
 }
-.help-note,
-.sidebar-profile {
+.help-note {
   display: flex;
   align-items: flex-start;
   gap: 10px;
   padding: 16px 8px;
-}
-.help-note {
   color: var(--muted-foreground);
   font-size: var(--text-xs);
 }
@@ -156,32 +143,10 @@ body {
   flex-shrink: 0;
   margin-top: 3px;
 }
-.help-note strong,
-.sidebar-profile strong {
+.help-note strong {
   color: var(--foreground);
   font-weight: 600;
 }
-.sidebar-profile {
-  align-items: center;
-  border-top: 1px solid var(--border);
-}
-.sidebar-profile > div:last-child {
-  min-width: 0;
-  overflow-wrap: anywhere;
-}
-
-.avatar {
-  display: grid;
-  flex: 0 0 38px;
-  height: 38px;
-  place-items: center;
-  border-radius: 50%;
-  background: var(--primary-50);
-  color: var(--primary);
-  font-size: var(--text-xs);
-  font-weight: 650;
-}
-
 .portal-workspace {
   display: flex;
   flex-direction: column;

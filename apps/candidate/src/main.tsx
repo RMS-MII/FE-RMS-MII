@@ -83,7 +83,7 @@ function CandidateSite() {
         </div>
       </AccountLayout>
     )
-  return <App />
+  return <App candidateSession={session} />
 }
 
 createRoot(document.getElementById("root")!).render(

@@ -1,3 +1,4 @@
+import { Brand } from "@workspace/ui/components/brand"
 import type { ReactNode } from "react"
 import { AuthBrandPanel } from "./AuthBrandPanel"
 
@@ -16,13 +17,7 @@ export function AuthPageLayout({
 
       <div className="flex w-full flex-col justify-between bg-card/60 p-6 backdrop-blur-xs sm:p-12 lg:w-1/2 lg:p-16 xl:w-5/12 xl:p-20">
         <div className="mb-8 flex items-center gap-2.5 lg:hidden">
-          <img src="/assets/mii.png" alt="" className="size-10 shrink-0 object-contain" />
-          <div>
-            <div className="flex items-center gap-1.5">
-              <span className="text-sm font-bold tracking-tight text-foreground">Rekrutin</span>
-            </div>
-            <p className="text-[10px] text-muted-foreground">Internal Recruitment Portal</p>
-          </div>
+          <Brand subtitle="Internal Recruitment Portal" />
         </div>
 
         <div className="mx-auto my-auto w-full max-w-sm space-y-6">

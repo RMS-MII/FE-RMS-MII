@@ -1,3 +1,5 @@
+import { Brand } from "@workspace/ui/components/brand"
+
 export function AuthBrandPanel() {
   return (
     <div className="relative hidden lg:flex lg:w-1/2 xl:w-7/12 flex-col justify-between overflow-hidden bg-slate-950 p-10 xl:p-14 text-white select-none">
@@ -16,18 +18,8 @@ export function AuthBrandPanel() {
 
       {/* Top Header: Brand Badge & Portal Identity */}
       <div className="relative z-10 flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <img src="/assets/mii.png" alt="" className="size-12 shrink-0 rounded-lg bg-white object-contain" />
-          <div>
-            <div className="flex items-center gap-2">
-              <span className="font-bold tracking-tight text-base text-white">
-                Rekrutin
-              </span>
-            </div>
-            <p className="text-[11px] text-white/60">
-              Mitra Integrasi Informatika
-            </p>
-          </div>
+        <div className="rounded-lg bg-white px-3 py-2">
+          <Brand subtitle="Mitra Integrasi Informatika" />
         </div>
       </div>
 

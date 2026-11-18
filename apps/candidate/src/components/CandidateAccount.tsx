@@ -8,22 +8,26 @@ import {
   sessionDestination,
   type CandidateSession,
 } from "../session"
+import { CandidateAccountMenu } from "./CandidateAccountMenu"
 import { PortalBrand } from "./PortalBrand"
 
 export function AccountLayout({
   title,
   wide,
+  account,
   children,
 }: {
   title: string
   wide?: boolean
+  account?: CandidateSession
   children: ReactNode
 }) {
   return (
     <div className="min-h-svh bg-background text-foreground">
       <header className="border-b border-border bg-card">
-        <div className="mx-auto max-w-7xl px-5 py-4 sm:px-8">
+        <div className="mx-auto flex max-w-7xl items-center justify-between gap-3 px-5 py-4 sm:px-8">
           <PortalBrand href="/jobs" />
+          {account && <div className="min-w-0 max-w-48"><CandidateAccountMenu session={account} /></div>}
         </div>
       </header>
       <main className={`mx-auto px-5 py-10 ${wide ? "max-w-4xl" : "max-w-md"}`}>
@@ -288,6 +292,7 @@ export function CandidateProfileForm({
   return (
     <AccountLayout
       wide
+      account={profile ? undefined : session}
       title={profile ? "My profile" : "Complete your candidate profile"}
     >
       <form onSubmit={(event) => void submit(event)} className="space-y-5">
@@ -376,19 +381,6 @@ export function CandidateProfileForm({
           >
             {profile ? "Back to portal" : "Browse positions"}
           </a>
-          <Button
-            type="button"
-            variant="ghost"
-            className="h-10 rounded-full px-5"
-            disabled={busy}
-            onClick={() =>
-              void request("/portal/session/logout", {})
-                .then(() => window.location.assign("/jobs"))
-                .catch((failure) => setError(String(failure)))
-            }
-          >
-            Sign out
-          </Button>
         </div>
       </form>
     </AccountLayout>
