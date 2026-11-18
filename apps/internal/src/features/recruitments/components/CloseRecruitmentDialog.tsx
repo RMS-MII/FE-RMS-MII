@@ -17,6 +17,7 @@ import {
 import { formatPeriod } from "@/shared/lib/format"
 import {
   useGetBatchByIdQuery,
+  useGetBatchStageFlowQuery,
   useUpdateBatchStatusMutation,
 } from "../api/recruitments-api"
 import { getRecruitmentStatusMeta } from "../types"
@@ -58,12 +59,19 @@ export function CloseRecruitmentDialog({
     skip: !open,
     refetchOnMountOrArgChange: true,
   })
+  const stagesQuery = useGetBatchStageFlowQuery(recruitment.id, {
+    skip: !open,
+    refetchOnMountOrArgChange: true,
+  })
+  const batchWithStages = batch && stagesQuery.currentData
+    ? { ...batch, batchStages: stagesQuery.currentData }
+    : null
   const [updateStatus, { isLoading: isSubmitting }] =
     useUpdateBatchStatusMutation()
   const statusMeta = batch ? getRecruitmentStatusMeta(batch.status) : null
   const isOpen = statusMeta?.label === "Open"
-  const closeRestriction = batch ? getRecruitmentCloseRestriction(batch) : null
-  const canClose = Boolean(batch && isOpen && !closeRestriction && !isFetching && !isError)
+  const closeRestriction = batchWithStages ? getRecruitmentCloseRestriction(batchWithStages) : null
+  const canClose = Boolean(batchWithStages && isOpen && !closeRestriction && !isFetching && !stagesQuery.isFetching && !isError && !stagesQuery.isError)
 
   const handleOpenChange = (nextOpen: boolean) => {
     if (!isSubmitting) onOpenChange(nextOpen)
@@ -82,6 +90,7 @@ export function CloseRecruitmentDialog({
     } catch (error) {
       setSubmitError(getCloseErrorMessage(error))
       void refetch()
+      void stagesQuery.refetch()
     }
   }
 
@@ -101,7 +110,7 @@ export function CloseRecruitmentDialog({
         </DialogHeader>
 
         <div className="space-y-4 p-6">
-          {isFetching ? (
+          {isFetching || stagesQuery.isFetching ? (
             <div
               role="status"
               className="flex items-center justify-center gap-2 py-6 text-sm text-muted-foreground"
@@ -109,11 +118,11 @@ export function CloseRecruitmentDialog({
               <Loader2 className="size-4 animate-spin" aria-hidden />
               Checking recruitment status...
             </div>
-          ) : isError || !batch || !statusMeta ? (
+          ) : isError || stagesQuery.isError || !batchWithStages || !statusMeta ? (
             <ErrorState
               title="Unable to load recruitment"
               description="Please reload the batch before closing recruitment."
-              onRetry={() => refetch()}
+              onRetry={() => { void refetch(); void stagesQuery.refetch() }}
               className="px-0 py-3"
             />
           ) : (
@@ -124,19 +133,19 @@ export function CloseRecruitmentDialog({
                     Recruitment
                   </dt>
                   <dd className="text-right font-semibold text-foreground">
-                    {batch.name}
+                    {batchWithStages.name}
                   </dd>
                 </div>
                 <div className="flex items-center justify-between gap-4">
                   <dt className="text-muted-foreground">Batch code</dt>
                   <dd className="font-mono text-xs text-foreground">
-                    {batch.batchCode}
+                    {batchWithStages.batchCode}
                   </dd>
                 </div>
                 <div className="flex items-start justify-between gap-4">
                   <dt className="shrink-0 text-muted-foreground">Period</dt>
                   <dd className="text-right text-foreground">
-                    {formatPeriod(batch.startDate, batch.endDate)}
+                    {formatPeriod(batchWithStages.startDate, batchWithStages.endDate)}
                   </dd>
                 </div>
                 <div className="flex items-center justify-between gap-4">

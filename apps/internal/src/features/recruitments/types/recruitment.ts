@@ -77,6 +77,15 @@ export interface Recruitment {
   stages?: Stage[]
 }
 
+export interface RecruitmentBatchSummary {
+  ownerName: string | null
+  totalCandidates: number
+  activeCandidates: number
+  rejectedCandidates: number
+  droppedCandidates: number
+  interviewSessions: number
+}
+
 export interface CreateRecruitmentFormData {
   name: string
   departmentId: string

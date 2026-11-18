@@ -21,6 +21,7 @@ export interface InterviewerAssignSectionProps {
   className?: string
   employees?: Employee[]
   isLoadingEmployees?: boolean
+  allowRemove?: boolean
 }
 
 const statusBadgeStyles: Record<StageEmployeeStatus, string> = {
@@ -47,6 +48,7 @@ export function InterviewerAssignSection({
   className,
   employees: propEmployees,
   isLoadingEmployees: propIsLoadingEmployees,
+  allowRemove = true,
 }: InterviewerAssignSectionProps) {
   // Query employees if not passed from parent
   const { data: apiEmployees, isLoading: isFetchingEmployees } =
@@ -198,7 +200,7 @@ export function InterviewerAssignSection({
                 </div>
               </div>
 
-              <Button
+              {allowRemove && <Button
                 type="button"
                 variant="ghost"
                 size="icon-xs"
@@ -207,7 +209,7 @@ export function InterviewerAssignSection({
                 className="size-7 shrink-0 cursor-pointer rounded-full border-0 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
               >
                 <Trash2 className="size-3.5" />
-              </Button>
+              </Button>}
             </div>
           ))}
         </div>

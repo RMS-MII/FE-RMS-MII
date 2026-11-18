@@ -42,7 +42,7 @@ export interface StageTypeEntity {
 /** Matches BatchStage table in ERD.sql */
 export interface BatchStage {
   id: string
-  recruitmentBatchId: string
+  recruitmentBatchId?: string
   stageTypeId: string
   stageTypeName?: string
   stageCategory?: string | null
@@ -59,6 +59,13 @@ export interface BatchStage {
   stageType?: StageTypeEntity | StageTypeDto
   interviewers?: AssignedInterviewer[]
 }
+
+/** Data stage ringkas untuk pipeline dan validasi dasar batch. */
+export type BatchStageFlow = Pick<
+  BatchStage,
+  "id" | "stageTypeId" | "stageName" | "stageCategory" |
+  "lifecycleStatus" | "candidateCount" | "passingScore" | "endDate"
+>
 
 export interface AssignedInterviewer {
   stageEmployeeId: string

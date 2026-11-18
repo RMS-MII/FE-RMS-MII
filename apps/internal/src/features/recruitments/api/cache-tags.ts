@@ -12,6 +12,7 @@ export function applicationTags(applicationId?: string, batchId?: string) {
       : []),
     { type: "Recruitment" as const, id: "LIST" },
     ...(batchId ? [{ type: "Recruitment" as const, id: batchId }] : []),
+    ...(batchId ? [{ type: "Stage" as const, id: batchId }] : []),
     { type: "Interview" as const, id: "LIST" },
     { type: "Evaluation" as const, id: "LIST" },
     { type: "OfferingLetter" as const, id: "LIST" },

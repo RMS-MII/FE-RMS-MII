@@ -16,8 +16,26 @@ export interface GetBatchInterviewSessionsParams {
   date?: string
 }
 
+export interface InterviewCandidateOption {
+  applicationId: string
+  codeApplication: string
+  candidateName: string
+  candidateEmail: string
+}
+
 export const interviewsApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
+    getInterviewCandidates: builder.query<InterviewCandidateOption[], { batchId: string; search: string }>({
+      query: ({ batchId, search }) => ({
+        url: `/batches/${batchId}/interview-candidates`,
+        params: search ? { search } : undefined,
+      }),
+      providesTags: (_result, _error, { batchId }) => [
+        { type: "Candidate", id: `BATCH_${batchId}` },
+        { type: "Interview", id: `BATCH_${batchId}` },
+        { type: "Stage", id: batchId },
+      ],
+    }),
     getAvailableInterviewers: builder.query<AvailableInterviewerDto[], string>({
       query: (applicationStageId) =>
         `/application-stages/${applicationStageId}/available-interviewers`,
@@ -128,6 +146,7 @@ export const interviewsApi = baseApi.injectEndpoints({
 })
 
 export const {
+  useGetInterviewCandidatesQuery,
   useGetAvailableInterviewersQuery,
   useGetBatchInterviewSessionsQuery,
   useLazyGetBatchInterviewSessionsQuery,
