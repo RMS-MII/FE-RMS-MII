@@ -63,6 +63,8 @@ export interface GetBatchApplicationsParams {
   stageId?: string
   page?: number
   pageSize?: number
+  sortBy?: "name" | "code" | "stage" | "status" | "appliedAt"
+  order?: "asc" | "desc"
 }
 
 export interface ApplicationDetailDto extends BatchApplicationListItemDto {

@@ -73,7 +73,7 @@ export function CreateRecruitmentDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[90dvh] gap-0 rounded-2xl bg-card p-0 sm:max-w-5xl">
+      <DialogContent className="max-h-[90dvh] gap-0 overflow-y-auto rounded-2xl bg-card p-0 sm:max-w-5xl">
         <DialogHeader className="border-b border-border p-6 pb-4">
           <DialogTitle>Create Recruitment</DialogTitle>
           <DialogDescription>
@@ -206,7 +206,7 @@ export function CreateRecruitmentDialog({
                 fallback={
                   <div
                     role="status"
-                    className="min-h-80 flex-1 rounded-2xl bg-muted p-4 text-sm text-muted-foreground"
+                    className="min-h-80 max-h-96 flex-1 rounded-2xl bg-muted p-4 text-sm text-muted-foreground"
                   >
                     Loading editor...
                   </div>
@@ -225,7 +225,7 @@ export function CreateRecruitmentDialog({
           </div>
         </form>
 
-        <DialogFooter className="gap-2 border-t border-border bg-card px-9 pb-9 ">
+        <DialogFooter className="gap-2 border-t border-border bg-card px-6 pb-6 ">
           <CancelButton
             onClick={() => onOpenChange(false)}
             disabled={isSubmitting}

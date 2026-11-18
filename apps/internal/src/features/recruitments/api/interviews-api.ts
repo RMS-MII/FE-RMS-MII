@@ -23,13 +23,25 @@ export interface InterviewCandidateOption {
   candidateEmail: string
 }
 
+export interface InterviewCandidatesPage {
+  items: InterviewCandidateOption[]
+  hasMore: boolean
+}
+
 export const interviewsApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
-    getInterviewCandidates: builder.query<InterviewCandidateOption[], { batchId: string; search: string }>({
-      query: ({ batchId, search }) => ({
+    getInterviewCandidates: builder.query<InterviewCandidatesPage, { batchId: string; search: string; page: number }>({
+      query: ({ batchId, search, page }) => ({
         url: `/batches/${batchId}/interview-candidates`,
-        params: search ? { search } : undefined,
+        params: { search: search || undefined, page },
       }),
+      transformResponse: (response: InterviewCandidatesPage | InterviewCandidateOption[]) =>
+        Array.isArray(response)
+          ? { items: response, hasMore: false }
+          : {
+              items: Array.isArray(response?.items) ? response.items : [],
+              hasMore: response?.hasMore === true,
+            },
       providesTags: (_result, _error, { batchId }) => [
         { type: "Candidate", id: `BATCH_${batchId}` },
         { type: "Interview", id: `BATCH_${batchId}` },
@@ -147,6 +159,7 @@ export const interviewsApi = baseApi.injectEndpoints({
 
 export const {
   useGetInterviewCandidatesQuery,
+  useLazyGetInterviewCandidatesQuery,
   useGetAvailableInterviewersQuery,
   useGetBatchInterviewSessionsQuery,
   useLazyGetBatchInterviewSessionsQuery,

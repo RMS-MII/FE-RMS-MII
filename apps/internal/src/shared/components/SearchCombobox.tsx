@@ -38,6 +38,9 @@ export interface SearchComboboxProps<T = unknown> {
   isLoading?: boolean
   loadingText?: string
   errorContent?: React.ReactNode
+  hasMore?: boolean
+  isLoadingMore?: boolean
+  onLoadMore?: () => void
 }
 
 export function SearchCombobox<T = unknown>({
@@ -60,6 +63,9 @@ export function SearchCombobox<T = unknown>({
   isLoading = false,
   loadingText = "Loading...",
   errorContent,
+  hasMore = false,
+  isLoadingMore = false,
+  onLoadMore,
 }: SearchComboboxProps<T>) {
   const [open, setOpen] = React.useState(false)
   const [internalQuery, setInternalQuery] = React.useState("")
@@ -190,6 +196,12 @@ export function SearchCombobox<T = unknown>({
         <div
           className="max-h-56 space-y-1 overflow-y-auto pr-0.5"
           aria-busy={isLoading}
+          onScroll={(event) => {
+            const list = event.currentTarget
+            if (hasMore && !isLoadingMore &&
+              list.scrollTop + list.clientHeight >= list.scrollHeight - 32)
+              onLoadMore?.()
+          }}
         >
           {isLoading ? (
             <div
@@ -206,7 +218,8 @@ export function SearchCombobox<T = unknown>({
               {emptyText}
             </div>
           ) : (
-            filteredOptions.map((opt) => {
+            <>
+            {filteredOptions.map((opt) => {
               const isSelected = selectedIds.includes(opt.id)
               return (
                 <button
@@ -250,7 +263,19 @@ export function SearchCombobox<T = unknown>({
                   )}
                 </button>
               )
-            })
+            })}
+            {hasMore && (
+              <div className="py-2 text-center text-xs text-muted-foreground">
+                {isLoadingMore ? (
+                  <span role="status">Loading more candidates...</span>
+                ) : (
+                  <button type="button" onClick={onLoadMore} className="cursor-pointer underline hover:text-foreground">
+                    Load more
+                  </button>
+                )}
+              </div>
+            )}
+            </>
           )}
         </div>
       </PopoverContent>

@@ -26,6 +26,8 @@ export interface GetBatchesParams {
   departmentId?: string
   page?: number
   pageSize?: number
+  sortBy?: RecruitmentSortKey
+  order?: SortOrder
 }
 
 export interface CreateBatchRequest {

@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react"
+import { useRef, useState } from "react"
 import {
   Dialog,
   DialogContent,
@@ -7,7 +7,6 @@ import {
   DialogTitle,
 } from "@workspace/ui/components/dialog"
 import { cn } from "@/shared/lib/utils"
-import { useGetCandidatesQuery } from "@/features/candidates/api/candidates-api"
 import type { Recruitment, CandidateApplicationItem } from "../../types"
 import { Users, UserPlus, AlertCircle } from "lucide-react"
 import { AddFromTalentPoolTab } from "./AddFromTalentPoolTab"
@@ -30,27 +29,18 @@ export function AddCandidateDialog({
   existingApplicationCount,
 }: AddCandidateDialogProps) {
   const [activeTab, setActiveTab] = useState<"talent-pool" | "new-candidate">("talent-pool")
+  const [isBulkAdding, setIsBulkAdding] = useState(false)
+  const isBulkAddingRef = useRef(false)
+
+  const handleOpenChange = (nextOpen: boolean) => {
+    if (!nextOpen && isBulkAddingRef.current) return
+    onOpenChange(nextOpen)
+  }
 
   const addRestriction = getRecruitmentAddRestriction(recruitment, "candidate")
 
-  const { data: apiCandidatesData } = useGetCandidatesQuery(undefined, {
-    skip: !open,
-  })
-
-  // Count available candidates not yet in this recruitment batch directly from API
-  const availableCount = useMemo(() => {
-    if (!apiCandidatesData?.items) return 0
-    return apiCandidatesData.items.filter((c) => {
-      return !c.assignedBatches?.some(
-        (b) =>
-          (b.batchId && b.batchId.toLowerCase() === recruitment.id?.toLowerCase()) ||
-          (recruitment.batchCode && b.batchCode && b.batchCode.toLowerCase() === recruitment.batchCode.toLowerCase())
-      )
-    }).length
-  }, [apiCandidatesData, recruitment.id, recruitment.batchCode])
-
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="sm:max-w-2xl p-0 gap-0 overflow-hidden rounded-2xl border-border bg-card shadow-xl">
         <DialogHeader className="p-6 pb-4 border-b border-border text-left">
           <div className="flex items-center gap-2">
@@ -83,6 +73,7 @@ export function AddCandidateDialog({
             <button
               type="button"
               onClick={() => setActiveTab("talent-pool")}
+              disabled={isBulkAdding}
               className={cn(
                 "inline-flex items-center justify-center gap-2 h-9 rounded-full text-sm font-medium transition-all duration-150 cursor-pointer",
                 activeTab === "talent-pool"
@@ -91,11 +82,12 @@ export function AddCandidateDialog({
               )}
             >
               <Users className="size-4" />
-              <span>From Talent Pool ({availableCount})</span>
+              <span>From Talent Pool</span>
             </button>
             <button
               type="button"
               onClick={() => setActiveTab("new-candidate")}
+              disabled={isBulkAdding}
               className={cn(
                 "inline-flex items-center justify-center gap-2 h-9 rounded-full text-sm font-medium transition-all duration-150 cursor-pointer",
                 activeTab === "new-candidate"
@@ -118,7 +110,11 @@ export function AddCandidateDialog({
               onAddCandidates(apps)
               onOpenChange(false)
             }}
-            onCancel={() => onOpenChange(false)}
+            onCancel={() => handleOpenChange(false)}
+            onBulkSubmittingChange={(submitting) => {
+              isBulkAddingRef.current = submitting
+              setIsBulkAdding(submitting)
+            }}
           />
         )}
 
