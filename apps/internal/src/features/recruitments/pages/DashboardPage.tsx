@@ -4,8 +4,11 @@ import {
   BadgeCheck,
   Briefcase,
   ChevronRight,
+  Flame,
   Hourglass,
+  Layers,
   RefreshCw,
+  TrendingUp,
   UserX,
   Users,
   type LucideIcon,
@@ -27,12 +30,24 @@ import { getRecruitmentStatusMeta } from "../types"
 
 type KpiTone = "primary" | "success" | "danger" | "neutral"
 
+interface WorkloadLevel {
+  label: string
+  tone: KpiTone
+}
+
 interface ActiveTask {
   batchId: string
   batchName: string
   statusLabel: string
   statusTone: Tone
   openCandidateCount: number
+  /** Share of all open candidates across active batches (0-100) */
+  sharePct: number
+  /** Load relative to the busiest batch (0-100) */
+  loadPct: number
+  /** 1-based position when sorted by open candidates */
+  rank: number
+  workload: WorkloadLevel
 }
 
 /* --------------------------------- Helpers -------------------------------- */
@@ -47,29 +62,40 @@ const toPercent = (part: number, whole: number) =>
 const formatPercent = (value: number) =>
   `${value >= 10 || value === 0 ? Math.round(value) : value.toFixed(1)}%`
 
+const getWorkload = (loadPct: number, count: number): WorkloadLevel => {
+  if (count === 0) return { label: "Idle", tone: "neutral" }
+  if (loadPct >= 75) return { label: "High workload", tone: "danger" }
+  if (loadPct >= 40) return { label: "Medium workload", tone: "primary" }
+  return { label: "Low workload", tone: "success" }
+}
+
 const toneStyles: Record<
   KpiTone,
-  { chip: string; bar: string; dot: string }
+  { chip: string; bar: string; dot: string; stroke: string }
 > = {
   primary: {
     chip: "bg-primary/10 text-primary",
     bar: "bg-primary",
     dot: "bg-primary",
+    stroke: "stroke-primary",
   },
   success: {
     chip: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
     bar: "bg-emerald-500",
     dot: "bg-emerald-500",
+    stroke: "stroke-emerald-500",
   },
   danger: {
     chip: "bg-rose-500/10 text-rose-600 dark:text-rose-400",
     bar: "bg-rose-500",
     dot: "bg-rose-500",
+    stroke: "stroke-rose-500",
   },
   neutral: {
     chip: "bg-muted text-muted-foreground",
     bar: "bg-muted-foreground/60",
     dot: "bg-muted-foreground/60",
+    stroke: "stroke-muted-foreground/60",
   },
 }
 
@@ -184,6 +210,115 @@ function Insight({ label, value, description }: InsightProps) {
   )
 }
 
+interface PieSlice {
+  label: string
+  value: number
+  tone: KpiTone
+}
+
+interface PieChartProps {
+  slices: PieSlice[]
+  /** Teks besar di tengah donut */
+  centerValue: string
+  /** Teks kecil di bawah centerValue */
+  centerLabel: string
+  className?: string
+}
+
+function PieChart({
+  slices,
+  centerValue,
+  centerLabel,
+  className = "size-44",
+}: PieChartProps) {
+  const total = slices.reduce((sum, slice) => sum + slice.value, 0)
+  const ariaLabel = slices
+    .map(
+      (slice) =>
+        `${slice.label} ${formatPercent(toPercent(slice.value, total))}`
+    )
+    .join(", ")
+
+  let offset = 0
+
+  return (
+    <div className={`relative shrink-0 ${className}`}>
+      <svg
+        viewBox="0 0 200 200"
+        className="size-full -rotate-90"
+        role="img"
+        aria-label={total > 0 ? ariaLabel : "No data"}
+      >
+        {/* Track */}
+        <circle
+          cx="100"
+          cy="100"
+          r="70"
+          fill="none"
+          strokeWidth="28"
+          className="stroke-muted"
+        />
+        {total > 0 &&
+          slices.map((slice) => {
+            const pct = (slice.value / total) * 100
+            if (pct <= 0) return null
+            const currentOffset = offset
+            offset += pct
+            return (
+              <circle
+                key={slice.label}
+                cx="100"
+                cy="100"
+                r="70"
+                fill="none"
+                strokeWidth="28"
+                pathLength={100}
+                strokeDasharray={`${pct} ${100 - pct}`}
+                strokeDashoffset={-currentOffset}
+                className={`${toneStyles[slice.tone].stroke} transition-all duration-700 ease-out`}
+              >
+                <title>{`${slice.label}: ${formatNumber(slice.value)} (${formatPercent(pct)})`}</title>
+              </circle>
+            )
+          })}
+      </svg>
+
+      <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center text-center">
+        <span className="text-2xl font-semibold tracking-tight text-foreground tabular-nums">
+          {centerValue}
+        </span>
+        <span className="text-xs text-muted-foreground">{centerLabel}</span>
+      </div>
+    </div>
+  )
+}
+
+interface SummaryTileProps {
+  icon: LucideIcon
+  label: string
+  value: string
+  hint?: string
+}
+
+function SummaryTile({ icon: Icon, label, value, hint }: SummaryTileProps) {
+  return (
+    <div className="flex items-center gap-3 rounded-xl bg-muted/50 p-3.5">
+      <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-background text-muted-foreground shadow-sm">
+        <Icon className="size-4" aria-hidden />
+      </span>
+      <div className="min-w-0">
+        <p className="text-xs font-medium text-muted-foreground">{label}</p>
+        <p className="truncate text-lg font-semibold leading-tight text-foreground tabular-nums">
+          {value}
+        </p>
+        {hint && (
+          <p className="truncate text-xs text-muted-foreground">{hint}</p>
+        )}
+      </div>
+    </div>
+  )
+}
+
 /* ---------------------------------- Page ---------------------------------- */
 
 export function HrDashboardPage() {
@@ -196,7 +331,7 @@ export function HrDashboardPage() {
   } = useGetBatchesQuery({ page: 1, pageSize: 10, status: 2 })
 
   const activeTasks = useMemo<ActiveTask[]>(() => {
-    return (batchesData?.items ?? []).map((batch) => {
+    const base = (batchesData?.items ?? []).map((batch) => {
       const statusMeta = getRecruitmentStatusMeta(batch.status)
       return {
         batchId: batch.id,
@@ -206,16 +341,37 @@ export function HrDashboardPage() {
         openCandidateCount: batch.activeCandidateCount ?? 0,
       }
     })
+
+    // Busiest batch first
+    base.sort((a, b) => b.openCandidateCount - a.openCandidateCount)
+
+    const total = base.reduce((sum, task) => sum + task.openCandidateCount, 0)
+    const max = Math.max(1, ...base.map((task) => task.openCandidateCount))
+
+    return base.map((task, index) => {
+      const loadPct = (task.openCandidateCount / max) * 100
+      return {
+        ...task,
+        sharePct: toPercent(task.openCandidateCount, total),
+        loadPct,
+        rank: index + 1,
+        workload: getWorkload(loadPct, task.openCandidateCount),
+      }
+    })
   }, [batchesData])
 
   const totalOpenCandidates = useMemo(
     () => activeTasks.reduce((sum, task) => sum + task.openCandidateCount, 0),
     [activeTasks]
   )
-  const maxOpenCandidates = useMemo(
-    () => Math.max(1, ...activeTasks.map((task) => task.openCandidateCount)),
-    [activeTasks]
-  )
+
+  const averageOpenCandidates =
+    activeTasks.length > 0 ? totalOpenCandidates / activeTasks.length : 0
+
+  const busiestTask =
+    activeTasks.length > 0 && activeTasks[0].openCandidateCount > 0
+      ? activeTasks[0]
+      : null
 
   const stats = useMemo(() => {
     if (!data) return null
@@ -233,6 +389,7 @@ export function HrDashboardPage() {
       accepted,
       notPassed,
       inProcess,
+      decided,
       acceptedPct: toPercent(accepted, total),
       notPassedPct: toPercent(notPassed, total),
       inProcessPct: toPercent(inProcess, total),
@@ -345,52 +502,86 @@ export function HrDashboardPage() {
 
           {/* Pipeline breakdown + insights */}
           <div className="grid gap-4 lg:grid-cols-3">
-            <Panel className="lg:col-span-2">
+            <Panel className="flex flex-col lg:col-span-2">
               <PanelHeader
                 title="Application Outcomes"
                 description="How applications are distributed by current status."
               />
-              <div className="space-y-5 px-5 pb-5">
-                <div
-                  className="flex h-3 w-full overflow-hidden rounded-full bg-muted"
-                  role="img"
-                  aria-label={`Accepted ${formatPercent(stats.acceptedPct)}, in process ${formatPercent(stats.inProcessPct)}, rejected or dropped ${formatPercent(stats.notPassedPct)}`}
-                >
-                  <div
-                    className={`h-full transition-[width] duration-700 ease-out ${toneStyles.success.bar}`}
-                    style={{ width: `${stats.acceptedPct}%` }}
-                  />
-                  <div
-                    className={`h-full transition-[width] duration-700 ease-out ${toneStyles.primary.bar}`}
-                    style={{ width: `${stats.inProcessPct}%` }}
-                  />
-                  <div
-                    className={`h-full transition-[width] duration-700 ease-out ${toneStyles.danger.bar}`}
-                    style={{ width: `${stats.notPassedPct}%` }}
-                  />
-                </div>
-
+              <div className="flex flex-1 flex-col justify-between gap-6 px-5 pb-5">
                 {stats.total > 0 ? (
-                  <div className="grid gap-3 sm:grid-cols-3 sm:gap-6">
-                    <LegendItem
-                      label="Accepted"
-                      value={stats.accepted}
-                      percent={stats.acceptedPct}
-                      tone="success"
-                    />
-                    <LegendItem
-                      label="In process"
-                      value={stats.inProcess}
-                      percent={stats.inProcessPct}
-                      tone="primary"
-                    />
-                    <LegendItem
-                      label="Rejected / dropped"
-                      value={stats.notPassed}
-                      percent={stats.notPassedPct}
-                      tone="danger"
-                    />
-                  </div>
+                  <>
+                    <div className="flex flex-1 flex-col items-center justify-center gap-6 sm:flex-row sm:gap-10">
+                      <PieChart
+                        className="size-48"
+                        centerValue={formatNumber(stats.total)}
+                        centerLabel="Candidates"
+                        slices={[
+                          {
+                            label: "Accepted",
+                            value: stats.accepted,
+                            tone: "success",
+                          },
+                          {
+                            label: "In process",
+                            value: stats.inProcess,
+                            tone: "primary",
+                          },
+                          {
+                            label: "Not passed",
+                            value: stats.notPassed,
+                            tone: "danger",
+                          },
+                        ]}
+                      />
+                      <div className="w-full flex-1 space-y-3">
+                        <LegendItem
+                          label="Accepted"
+                          value={stats.accepted}
+                          percent={stats.acceptedPct}
+                          tone="success"
+                        />
+                        <LegendItem
+                          label="In process"
+                          value={stats.inProcess}
+                          percent={stats.inProcessPct}
+                          tone="primary"
+                        />
+                        <LegendItem
+                          label="Rejected / dropped"
+                          value={stats.notPassed}
+                          percent={stats.notPassedPct}
+                          tone="danger"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Footer: decision progress fills the remaining height */}
+                    <div className="space-y-2 border-t border-border pt-4">
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="font-medium text-muted-foreground">
+                          Decision progress
+                        </span>
+                        <span className="tabular-nums text-foreground">
+                          {formatNumber(stats.decided)} of{" "}
+                          {formatNumber(stats.total)} decided (
+                          {formatPercent(stats.decidedPct)})
+                        </span>
+                      </div>
+                      <div
+                        className="h-1.5 w-full overflow-hidden rounded-full bg-muted"
+                        role="progressbar"
+                        aria-label="Decision progress"
+                        aria-valuemin={0}
+                        aria-valuemax={100}
+                        aria-valuenow={Math.round(stats.decidedPct)}
+                      >
+                        <div
+                          className="h-full rounded-full bg-primary transition-[width] duration-700 ease-out"
+                          style={{ width: `${Math.min(100, stats.decidedPct)}%` }}
+                        />
+                      </div>
+                    </div>
+                  </>
                 ) : (
                   <p className="text-sm text-muted-foreground">
                     No applications yet. Open a recruitment batch to start
@@ -400,21 +591,37 @@ export function HrDashboardPage() {
               </div>
             </Panel>
 
-            <Panel>
+            <Panel className="flex flex-col">
               <PanelHeader
                 title="Key Insights"
                 description="Calculated from the figures above."
               />
-              <div className="grid gap-3 px-5 pb-5 sm:grid-cols-2 lg:grid-cols-1">
-                <Insight
-                  label="Pass rate"
-                  value={
-                    stats.accepted + data.rejectedApplications > 0
-                      ? formatPercent(stats.passRate)
-                      : "–"
-                  }
-                  description="Accepted out of accepted or rejected applications."
-                />
+              <div className="flex flex-1 flex-col justify-between gap-4 px-5 pb-5">
+                <div className="flex flex-1 flex-col items-center justify-center gap-3">
+                  <PieChart
+                    className="size-40"
+                    centerValue={
+                      stats.decided > 0 ? formatPercent(stats.passRate) : "–"
+                    }
+                    centerLabel="Pass rate"
+                    slices={[
+                      {
+                        label: "Accepted",
+                        value: stats.accepted,
+                        tone: "success",
+                      },
+                      {
+                        label: "Not passed",
+                        value: stats.notPassed,
+                        tone: "danger",
+                      },
+                    ]}
+                  />
+                  <p className="text-center text-xs text-muted-foreground">
+                    Accepted out of candidates with a final result.
+                  </p>
+                </div>
+
                 <Insight
                   label="Awaiting result"
                   value={formatNumber(stats.inProcess)}
@@ -427,77 +634,173 @@ export function HrDashboardPage() {
           {/* Active tasks */}
           <Panel>
             <PanelHeader
-              title="Open Recruitments"
-              description={
-                activeTasks.length > 0
-                  ? `Showing ${activeTasks.length} of ${batchesData?.totalItems ?? activeTasks.length} open batches with ${formatNumber(totalOpenCandidates)} active applications in the batches shown.`
-                  : "Recruitment batches that are currently open."
-              }
+              title="Active Tasks"
+              description="Open recruitment batches, sorted by the number of candidates waiting for action."
             />
+
             {isBatchesLoading ? (
-              <div className="grid gap-3 px-5 pb-5 md:grid-cols-2">
-                {[0, 1].map((index) => (
-                  <div
-                    key={index}
-                    className="h-24 animate-pulse rounded-xl bg-muted"
-                  />
-                ))}
+              <div className="space-y-3 px-5 pb-5">
+                <div className="grid gap-3 sm:grid-cols-3">
+                  {[0, 1, 2].map((index) => (
+                    <div
+                      key={index}
+                      className="h-16 animate-pulse rounded-xl bg-muted"
+                    />
+                  ))}
+                </div>
+                <div className="grid gap-3 md:grid-cols-2">
+                  {[0, 1].map((index) => (
+                    <div
+                      key={index}
+                      className="h-36 animate-pulse rounded-xl bg-muted"
+                    />
+                  ))}
+                </div>
               </div>
             ) : isBatchesError ? (
               <div className="px-5 py-12 text-center text-sm text-muted-foreground">
                 Failed to load active tasks. Refresh to try again.
               </div>
             ) : activeTasks.length > 0 ? (
-              <ul className="grid gap-3 px-5 pb-5 md:grid-cols-2">
-                {activeTasks.map((task) => {
-                  const load =
-                    (task.openCandidateCount / maxOpenCandidates) * 100
-                  return (
-                    <li key={task.batchId}>
-                      <button
-                        type="button"
-                        onClick={() =>
-                          navigate({
-                            to: "/recruitments/$id",
-                            params: { id: task.batchId },
-                          })
-                        }
-                        className="group flex w-full cursor-pointer flex-col gap-3 rounded-xl border border-border bg-background p-4 text-left transition-colors hover:border-primary/40 hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                      >
-                        <div className="flex items-start justify-between gap-3">
-                          <p className="min-w-0 truncate text-sm font-medium text-foreground">
-                            {task.batchName}
-                          </p>
-                          <StatusBadge tone={task.statusTone}>
-                            {task.statusLabel}
-                          </StatusBadge>
-                        </div>
+              <div className="space-y-4 px-5 pb-5">
+                {/* Summary strip */}
+                <div className="grid gap-3 sm:grid-cols-3">
+                  <SummaryTile
+                    icon={Layers}
+                    label="Open batches"
+                    value={formatNumber(activeTasks.length)}
+                    hint="Currently accepting candidates"
+                  />
+                  <SummaryTile
+                    icon={Hourglass}
+                    label="Open candidates"
+                    value={formatNumber(totalOpenCandidates)}
+                    hint={`≈ ${averageOpenCandidates.toFixed(1)} per batch`}
+                  />
+                  <SummaryTile
+                    icon={TrendingUp}
+                    label="Busiest batch"
+                    value={
+                      busiestTask
+                        ? `${formatNumber(busiestTask.openCandidateCount)} candidates`
+                        : "–"
+                    }
+                    hint={busiestTask ? busiestTask.batchName : "No open candidates"}
+                  />
+                </div>
 
-                        <div className="space-y-1.5">
-                          <div className="flex items-center justify-between text-xs">
-                            <span className="flex items-center gap-1.5 text-muted-foreground">
-                              <Hourglass className="size-3.5" aria-hidden />
-                              {task.openCandidateCount > 0
-                                ? `${formatNumber(task.openCandidateCount)} open candidate${task.openCandidateCount > 1 ? "s" : ""}`
-                                : "No open candidates"}
-                            </span>
-                            <span className="flex items-center gap-0.5 font-medium text-primary opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100">
-                              View batch
-                              <ChevronRight className="size-3.5" aria-hidden />
-                            </span>
+                {/* Batch cards */}
+                <ul className="grid gap-3 md:grid-cols-2">
+                  {activeTasks.map((task) => {
+                    const isBusiest = busiestTask?.batchId === task.batchId
+                    return (
+                      <li key={task.batchId}>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            navigate({
+                              to: "/recruitments/$id",
+                              params: { id: task.batchId },
+                            })
+                          }
+                          className="group flex h-full w-full cursor-pointer flex-col gap-4 rounded-xl border border-border bg-background p-4 text-left transition-colors hover:border-primary/40 hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                        >
+                          {/* Title row */}
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="flex min-w-0 items-center gap-2">
+                              <span className="flex size-6 shrink-0 items-center justify-center rounded-md bg-muted text-xs font-semibold text-muted-foreground tabular-nums">
+                                {task.rank}
+                              </span>
+                              <p className="min-w-0 truncate text-sm font-medium text-foreground">
+                                {task.batchName}
+                              </p>
+                            </div>
+                            <StatusBadge tone={task.statusTone}>
+                              {task.statusLabel}
+                            </StatusBadge>
                           </div>
-                          <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
+
+                          {/* Metrics row */}
+                          <div className="flex items-end justify-between gap-3">
+                            <div>
+                              <p className="text-2xl font-semibold leading-none tracking-tight text-foreground tabular-nums">
+                                {formatNumber(task.openCandidateCount)}
+                              </p>
+                              <p className="mt-1.5 text-xs text-muted-foreground">
+                                {task.openCandidateCount === 0
+                                  ? "No open candidates"
+                                  : task.openCandidateCount === 1
+                                    ? "open candidate"
+                                    : "open candidates"}
+                              </p>
+                            </div>
+
+                            <div className="flex flex-col items-end gap-1.5">
+                              {isBusiest && (
+                                <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/10 px-2 py-0.5 text-[11px] font-medium text-amber-600 dark:text-amber-400">
+                                  <Flame className="size-3" aria-hidden />
+                                  Busiest
+                                </span>
+                              )}
+                              <span
+                                className={`inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[11px] font-medium ${toneStyles[task.workload.tone].chip}`}
+                              >
+                                <span
+                                  className={`size-1.5 rounded-full ${toneStyles[task.workload.tone].dot}`}
+                                  aria-hidden
+                                />
+                                {task.workload.label}
+                              </span>
+                            </div>
+                          </div>
+
+                          {/* Load bar */}
+                          <div className="space-y-1.5">
                             <div
-                              className="h-full rounded-full bg-primary/70 transition-[width] duration-700 ease-out"
-                              style={{ width: `${load}%` }}
-                            />
+                              className="h-1.5 w-full overflow-hidden rounded-full bg-muted"
+                              role="progressbar"
+                              aria-label={`${task.batchName} workload`}
+                              aria-valuemin={0}
+                              aria-valuemax={100}
+                              aria-valuenow={Math.round(task.loadPct)}
+                            >
+                              <div
+                                className={`h-full rounded-full transition-[width] duration-700 ease-out ${toneStyles[task.workload.tone].bar}`}
+                                style={{ width: `${task.loadPct}%` }}
+                              />
+                            </div>
+                            <div className="flex items-center justify-between text-xs text-muted-foreground">
+                              <span>
+                                {formatPercent(task.sharePct)} of all open
+                                candidates
+                              </span>
+                              <span className="tabular-nums">
+                                #{task.rank} of {activeTasks.length}
+                              </span>
+                            </div>
                           </div>
-                        </div>
-                      </button>
-                    </li>
-                  )
-                })}
-              </ul>
+
+                          {/* Footer action */}
+                          <div className="mt-auto flex items-center justify-between border-t border-border pt-3 text-xs">
+                            <span className="text-muted-foreground">
+                              {task.openCandidateCount > 0
+                                ? "Candidates are waiting for review"
+                                : "Nothing to review right now"}
+                            </span>
+                            <span className="flex items-center gap-0.5 font-medium text-primary">
+                              View batch
+                              <ChevronRight
+                                className="size-3.5 transition-transform group-hover:translate-x-0.5"
+                                aria-hidden
+                              />
+                            </span>
+                          </div>
+                        </button>
+                      </li>
+                    )
+                  })}
+                </ul>
+              </div>
             ) : (
               <div className="px-5 py-12 text-center">
                 <p className="text-sm font-medium text-foreground">
