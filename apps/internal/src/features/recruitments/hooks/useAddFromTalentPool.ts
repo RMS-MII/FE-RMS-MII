@@ -1,8 +1,8 @@
-import { useState, useMemo } from "react"
+import { useState, useMemo, useEffect, useRef } from "react"
 import {
-  useGetCandidatesQuery,
-  type CandidateWithBatchesDto,
-} from "@/features/candidates"
+  useLazyGetAvailableTalentCandidatesQuery,
+  type AvailableTalentCandidate,
+} from "../api/recruitments-api"
 import type { Recruitment, CandidateApplicationItem } from "../types"
 import { useRegisterCandidatesMutation } from "../api/applications-api"
 import { getRecruitmentAddRestriction } from "../utils/recruitmentUtils"
@@ -18,9 +18,10 @@ export interface UseAddFromTalentPoolProps {
   existingApplicationCount: number
   onSuccess: (newApplications: CandidateApplicationItem[]) => void
   onCancel?: () => void
+  onBulkSubmittingChange?: (submitting: boolean) => void
 }
 
-function mapTalentPoolCandidate(c: CandidateWithBatchesDto) {
+function mapTalentPoolCandidate(c: AvailableTalentCandidate) {
   return {
     id: c.id,
     fullName: c.fullName,
@@ -35,123 +36,161 @@ function mapTalentPoolCandidate(c: CandidateWithBatchesDto) {
     expectedSalary: c.expectedSalary ?? undefined,
     cv: c.cv || "",
     portfolio: c.portfolio || "",
-    appliedBatches: (c.assignedBatches || []).map((b) => ({
-      batchId: b.batchId,
-      batchCode: b.batchCode,
-      batchName: b.batchName,
-      appliedAt: b.appliedAt,
-      status: String(b.applicationStatus ?? ""),
-    })),
   }
 }
 
 export type TalentPoolCandidate = ReturnType<typeof mapTalentPoolCandidate>
 
-function isRegisteredInBatch(
-  candidate: TalentPoolCandidate,
-  recruitment: Recruitment
-) {
-  return candidate.appliedBatches.some(
-    (batch) =>
-      (batch.batchId &&
-        batch.batchId.toLowerCase() === recruitment.id.toLowerCase()) ||
-      (batch.batchCode &&
-        batch.batchCode.toLowerCase() === recruitment.batchCode.toLowerCase())
-  )
+function toRegistrationPayload(cand: TalentPoolCandidate) {
+  return {
+    fullName: cand.fullName,
+    email: cand.email,
+    phoneNumber: cand.phoneNumber || undefined,
+    gender: cand.gender === "Female" ? 2 : 1,
+    birthDate: cand.birthDate ? cand.birthDate.slice(0, 10) : "2000-01-01",
+    address: cand.address || "Jakarta, Indonesia",
+    education: cand.education || undefined,
+    institution: cand.institution || undefined,
+    gpa: cand.gpa ? Number(cand.gpa) : undefined,
+    cv: cand.cv || undefined,
+    portfolio: cand.portfolio || undefined,
+  }
 }
 
 export function useAddFromTalentPool({
   recruitment,
   onSuccess,
+  onBulkSubmittingChange,
 }: UseAddFromTalentPoolProps) {
   const [talentSearch, setTalentSearch] = useState("")
+  const [debouncedTalentSearch, setDebouncedTalentSearch] = useState("")
+  const [availableTalentCandidates, setAvailableTalentCandidates] = useState<TalentPoolCandidate[]>([])
+  const [loadedPage, setLoadedPage] = useState(0)
+  const [hasMore, setHasMore] = useState(false)
+  const [isFirstPageLoading, setIsFirstPageLoading] = useState(true)
+  const [isLoadingMore, setIsLoadingMore] = useState(false)
+  const [isCandidatesError, setIsCandidatesError] = useState(false)
+  const [reloadKey, setReloadKey] = useState(0)
+  const [selectAllSearch, setSelectAllSearch] = useState<string | null>(null)
+  const [isBulkSubmitting, setIsBulkSubmitting] = useState(false)
+  const [bulkRegisteredCount, setBulkRegisteredCount] = useState(0)
+  const loadingMoreRef = useRef(false)
+  const activeSearchRef = useRef("")
   const [selectedCandidateSnapshots, setSelectedCandidateSnapshots] = useState<
     TalentPoolCandidate[]
   >([])
   const [error, setError] = useState<string | null>(null)
 
-  // Fetch candidates from Talent Pool API
-  const {
-    currentData: apiCandidatesData,
-    isLoading: isLoadingCandidates,
-    isFetching: isFetchingCandidates,
-    isError: isCandidatesError,
-    refetch: refetchCandidates,
-  } = useGetCandidatesQuery({
-    search: talentSearch.trim() || undefined,
-    page: 1,
-    pageSize: 100,
-  })
+  useEffect(() => {
+    const timer = window.setTimeout(
+      () => setDebouncedTalentSearch(talentSearch.trim()),
+      300
+    )
+    return () => window.clearTimeout(timer)
+  }, [talentSearch])
+
+  const [getCandidates] = useLazyGetAvailableTalentCandidatesQuery()
+  const searchKey = `${recruitment.id}:${debouncedTalentSearch}`
+
+  useEffect(() => {
+    let cancelled = false
+    activeSearchRef.current = searchKey
+    loadingMoreRef.current = false
+    setAvailableTalentCandidates([])
+    setLoadedPage(0)
+    setHasMore(false)
+    setIsCandidatesError(false)
+    setIsFirstPageLoading(true)
+    setIsLoadingMore(false)
+
+    void getCandidates({ batchId: recruitment.id, search: debouncedTalentSearch, page: 1 })
+      .unwrap()
+      .then((result) => {
+        if (cancelled) return
+        setAvailableTalentCandidates(result.items.map(mapTalentPoolCandidate))
+        setHasMore(result.hasMore)
+        setLoadedPage(1)
+      })
+      .catch(() => {
+        if (!cancelled) setIsCandidatesError(true)
+      })
+      .finally(() => {
+        if (!cancelled) setIsFirstPageLoading(false)
+      })
+
+    return () => { cancelled = true }
+  }, [recruitment.id, debouncedTalentSearch, reloadKey, searchKey, getCandidates])
+
+  const isLoadingCandidates =
+    isFirstPageLoading || talentSearch.trim() !== debouncedTalentSearch
+
+  const loadMoreCandidates = async () => {
+    if (loadingMoreRef.current || isLoadingCandidates || !hasMore || isCandidatesError) return
+    loadingMoreRef.current = true
+    setIsLoadingMore(true)
+    const requestedSearch = searchKey
+    try {
+      const result = await getCandidates({
+        batchId: recruitment.id,
+        search: debouncedTalentSearch,
+        page: loadedPage + 1,
+      }).unwrap()
+      if (activeSearchRef.current !== requestedSearch) return
+      setAvailableTalentCandidates((previous) => {
+        const existingIds = new Set(previous.map((candidate) => candidate.id))
+        return [...previous, ...result.items.map(mapTalentPoolCandidate).filter((candidate) => !existingIds.has(candidate.id))]
+      })
+      setHasMore(result.hasMore)
+      setLoadedPage((page) => page + 1)
+    } catch {
+      if (activeSearchRef.current === requestedSearch) setIsCandidatesError(true)
+    } finally {
+      loadingMoreRef.current = false
+      if (activeSearchRef.current === requestedSearch) setIsLoadingMore(false)
+    }
+  }
+
+  const refetchCandidates = () => setReloadKey((key) => key + 1)
 
   const [registerCandidatesApi, { isLoading: isApiSubmitting }] =
     useRegisterCandidatesMutation()
 
-  // Candidates list mapped directly from API DTOs
-  const talentPoolList = useMemo(() => {
-    return apiCandidatesData?.items.map(mapTalentPoolCandidate) ?? []
-  }, [apiCandidatesData])
-
-  // Filter candidates who have NOT yet applied to this recruitment batch
-  const availableTalentCandidates = useMemo(() => {
-    return talentPoolList.filter(
-      (candidate) => !isRegisteredInBatch(candidate, recruitment)
-    )
-  }, [talentPoolList, recruitment])
-
   const selectedCandidates = useMemo(() => {
     const latestCandidates = new Map(
-      talentPoolList.map((candidate) => [candidate.id, candidate])
+      availableTalentCandidates.map((candidate) => [candidate.id, candidate])
     )
-    return selectedCandidateSnapshots
-      .map((candidate) => latestCandidates.get(candidate.id) ?? candidate)
-      .filter((candidate) => !isRegisteredInBatch(candidate, recruitment))
-  }, [selectedCandidateSnapshots, talentPoolList, recruitment])
+    return selectedCandidateSnapshots.map(
+      (candidate) => latestCandidates.get(candidate.id) ?? candidate
+    )
+  }, [selectedCandidateSnapshots, availableTalentCandidates])
 
   const selectedCandidateIds = useMemo(
-    () => selectedCandidates.map((candidate) => candidate.id),
-    [selectedCandidates]
+    () => selectAllSearch !== null
+      ? availableTalentCandidates.map((candidate) => candidate.id)
+      : selectedCandidates.map((candidate) => candidate.id),
+    [selectedCandidates, availableTalentCandidates, selectAllSearch]
   )
 
-  const isAllSelected =
-    availableTalentCandidates.length > 0 &&
-    availableTalentCandidates.every((c) => selectedCandidateIds.includes(c.id))
+  const isAllSelected = selectAllSearch !== null
 
   const handleToggleSelectAll = () => {
-    if (
-      isLoadingCandidates ||
-      isFetchingCandidates ||
-      isCandidatesError ||
-      isApiSubmitting
-    )
-      return
-    const visibleIds = new Set(
-      availableTalentCandidates.map((candidate) => candidate.id)
-    )
-    setSelectedCandidateSnapshots((previous) => {
-      const selectedIds = new Set(previous.map((candidate) => candidate.id))
-      if (
-        availableTalentCandidates.every((candidate) =>
-          selectedIds.has(candidate.id)
-        )
-      ) {
-        return previous.filter((candidate) => !visibleIds.has(candidate.id))
-      }
-      return [
-        ...previous,
-        ...availableTalentCandidates.filter(
-          (candidate) => !selectedIds.has(candidate.id)
-        ),
-      ]
-    })
+    if (isLoadingCandidates || isCandidatesError || isApiSubmitting || isBulkSubmitting) return
+    if (selectAllSearch !== null) {
+      setSelectAllSearch(null)
+    } else if (availableTalentCandidates.length > 0) {
+      setSelectedCandidateSnapshots([])
+      setSelectAllSearch(debouncedTalentSearch)
+    }
     setError(null)
   }
 
   const handleAddCandidate = (id: string) => {
     if (
       isLoadingCandidates ||
-      isFetchingCandidates ||
       isCandidatesError ||
-      isApiSubmitting
+      isApiSubmitting ||
+      isBulkSubmitting ||
+      selectAllSearch !== null
     )
       return
     const candidate = availableTalentCandidates.find((item) => item.id === id)
@@ -173,6 +212,7 @@ export function useAddFromTalentPool({
 
   const handleClearSelection = () => {
     setSelectedCandidateSnapshots([])
+    setSelectAllSearch(null)
     setError(null)
   }
 
@@ -184,9 +224,52 @@ export function useAddFromTalentPool({
   const canAddCandidates = !addRestriction
 
   const handleSubmit = async () => {
-    if (isApiSubmitting) return
+    if (isApiSubmitting || isBulkSubmitting) return
     if (addRestriction) {
       setError(addRestriction)
+      return
+    }
+
+    if (selectAllSearch !== null) {
+      setIsBulkSubmitting(true)
+      onBulkSubmittingChange?.(true)
+      setBulkRegisteredCount(0)
+      setError(null)
+      let completed = 0
+      try {
+        while (true) {
+          // Registered candidates disappear from this query, so each batch starts at page 1.
+          const page = await getCandidates({
+            batchId: recruitment.id,
+            search: selectAllSearch,
+            page: 1,
+            pageSize: 100,
+          }).unwrap()
+          if (page.items.length === 0) break
+          const result = await registerCandidatesApi({
+            batchId: recruitment.id,
+            candidates: page.items.map(mapTalentPoolCandidate).map(toRegistrationPayload),
+          }).unwrap()
+          if (result.length !== page.items.length) {
+            throw new Error("The registration response is incomplete. Please refresh the candidate list.")
+          }
+          completed += result.length
+          setBulkRegisteredCount(completed)
+        }
+        if (completed === 0) {
+          setError("No available candidates match this search anymore.")
+          refetchCandidates()
+        } else {
+          onBulkSubmittingChange?.(false)
+          onSuccess([])
+        }
+      } catch (err) {
+        setError(`${completed} candidates added. ${getApiError(err, "Could not add the remaining candidates. You can retry to continue.").message}`)
+        refetchCandidates()
+      } finally {
+        setIsBulkSubmitting(false)
+        onBulkSubmittingChange?.(false)
+      }
       return
     }
 
@@ -203,19 +286,7 @@ export function useAddFromTalentPool({
       : "Stage 1"
 
     try {
-      const candidatePayloads = selectedCandidates.map((cand) => ({
-        fullName: cand.fullName,
-        email: cand.email,
-        phoneNumber: cand.phoneNumber || undefined,
-        gender: cand.gender === "Female" ? 2 : 1,
-        birthDate: cand.birthDate ? cand.birthDate.slice(0, 10) : "2000-01-01",
-        address: cand.address || "Jakarta, Indonesia",
-        education: cand.education || undefined,
-        institution: cand.institution || undefined,
-        gpa: cand.gpa ? Number(cand.gpa) : undefined,
-        cv: cand.cv || undefined,
-        portfolio: cand.portfolio || undefined,
-      }))
+      const candidatePayloads = selectedCandidates.map(toRegistrationPayload)
 
       const result = await registerCandidatesApi({
         batchId: recruitment.id,
@@ -296,7 +367,12 @@ export function useAddFromTalentPool({
     setTalentSearch,
     selectedCandidateIds,
     availableTalentCandidates,
+    hasMore,
+    isLoadingMore,
+    loadMoreCandidates,
     selectedCandidates,
+    selectAllSearch,
+    bulkRegisteredCount,
     isAllSelected,
     handleToggleSelectAll,
     handleAddCandidate,
@@ -304,10 +380,10 @@ export function useAddFromTalentPool({
     handleClearSelection,
     error,
     canAddCandidates,
-    isLoadingCandidates: isLoadingCandidates || isFetchingCandidates,
+    isLoadingCandidates,
     isCandidatesError,
     refetchCandidates,
-    isSubmitting: isApiSubmitting,
+    isSubmitting: isApiSubmitting || isBulkSubmitting,
     handleSubmit,
   }
 }

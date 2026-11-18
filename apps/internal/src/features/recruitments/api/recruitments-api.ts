@@ -1,4 +1,25 @@
 import { baseApi } from "@/shared/api/base-api"
+
+export interface AvailableTalentCandidate {
+  id: string
+  fullName: string
+  gender: number | string
+  email: string
+  phoneNumber: string
+  birthDate: string
+  cv: string | null
+  portfolio: string | null
+  education: string
+  institution: string
+  address: string
+  expectedSalary: number
+  gpa: number
+}
+
+export interface AvailableTalentCandidatesPage {
+  items: AvailableTalentCandidate[]
+  hasMore: boolean
+}
 import type {
   Recruitment,
   RecruitmentBatchSummary,
@@ -72,6 +93,19 @@ export const recruitmentsApi = baseApi.injectEndpoints({
     getBatchStages: builder.query<BatchStageWithInterviewers[], string>({
       query: (id) => `/batches/${id}/stages`,
       providesTags: (_result, _err, id) => [{ type: "Stage", id }],
+    }),
+    getAvailableTalentCandidates: builder.query<
+      AvailableTalentCandidatesPage,
+      { batchId: string; search: string; page: number; pageSize?: number }
+    >({
+      query: ({ batchId, search, page, pageSize = 5 }) => ({
+        url: `/batches/${batchId}/available-talent-candidates`,
+        params: { search: search || undefined, page, pageSize },
+      }),
+      providesTags: (_result, _err, { batchId }) => [
+        { type: "Candidate", id: "TALENT_POOL" },
+        { type: "Candidate", id: `BATCH_${batchId}` },
+      ],
     }),
     createBatch: builder.mutation<Recruitment, CreateBatchRequest>({
       query: (body) => ({
@@ -197,6 +231,8 @@ export const {
   useGetBatchStageFlowQuery,
   useGetBatchDashboardQuery,
   useGetBatchStagesQuery,
+  useGetAvailableTalentCandidatesQuery,
+  useLazyGetAvailableTalentCandidatesQuery,
   useLazyGetBatchesQuery,
   useLazyGetBatchByIdQuery,
   useCreateBatchMutation,

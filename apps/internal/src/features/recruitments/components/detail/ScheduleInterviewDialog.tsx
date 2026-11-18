@@ -49,7 +49,8 @@ export function ScheduleInterviewDialog({
     isRescheduleMode, scheduleRestriction, minScheduleDate,
     candidateId, selectCandidate, candidateSearch, setCandidateSearch, applicationStageId, setApplicationStageId,
     isApplicationsLoading, isApplicationLoading, isApplicationError, applicationError,
-    isCandidatesError, candidatesError,
+    isCandidatesError, candidatesError, refetchCandidates,
+    hasMoreCandidates, isLoadingMoreCandidates, loadMoreCandidates,
     eligibleStages, eligibleStageOptions, selectedCandidate,
     availableInterviewers, isInterviewersLoading, isInterviewersError,
     interviewersError, refetchInterviewers, candidateComboboxOptions,
@@ -154,10 +155,17 @@ export function ScheduleInterviewDialog({
                   onSearchChange={setCandidateSearch}
                   shouldFilter={false}
                   isLoading={isApplicationsLoading}
+                  hasMore={hasMoreCandidates}
+                  isLoadingMore={isLoadingMoreCandidates}
+                  onLoadMore={loadMoreCandidates}
                   errorContent={isCandidatesError ? (
-                    <p role="alert" className="py-4 text-center text-xs text-destructive">
-                      {getApiError(candidatesError).message}
-                    </p>
+                    <div role="alert" className="space-y-2 py-4 text-center text-xs text-destructive">
+                      <p>{getApiError(candidatesError).message}</p>
+                      <button type="button" onClick={refetchCandidates}
+                        className="cursor-pointer font-medium text-foreground underline hover:text-primary">
+                        Retry loading candidates
+                      </button>
+                    </div>
                   ) : undefined}
                   placeholder={
                     selectedCandidate

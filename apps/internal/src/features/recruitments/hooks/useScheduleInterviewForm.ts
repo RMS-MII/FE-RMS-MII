@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, type FormEvent } from "react"
+import { useState, useMemo, useEffect, useRef, type FormEvent } from "react"
 import type { SearchComboboxOption } from "@/shared/components"
 import { addMinutesToTime, isTimeBefore } from "@/shared/lib/timeUtils"
 import { formatWibTime, getWibDateKey, wibToUtcISOString } from "@/shared/lib/utcDateTime"
@@ -7,7 +7,7 @@ import type { Recruitment, InterviewSessionItem, ScheduleInterviewSessionRequest
 import { getRecruitmentAddRestriction } from "../utils/recruitmentUtils"
 import { mapApplicationStageStatus } from "../utils/statusAdapters"
 import { useGetApplicationByIdQuery } from "../api/applications-api"
-import { useGetAvailableInterviewersQuery, useGetInterviewCandidatesQuery, type InterviewCandidateOption } from "../api/interviews-api"
+import { useGetAvailableInterviewersQuery, useLazyGetInterviewCandidatesQuery, type InterviewCandidateOption } from "../api/interviews-api"
 
 export interface ScheduleInterviewFormOptions {
   open: boolean
@@ -40,20 +40,87 @@ export function useScheduleInterviewForm({
   const [candidateSearch, setCandidateSearch] = useState("")
   const [debouncedCandidateSearch, setDebouncedCandidateSearch] = useState("")
   const [selectedCandidateOption, setSelectedCandidateOption] = useState<InterviewCandidateOption | null>(null)
+  const [interviewCandidates, setInterviewCandidates] = useState<InterviewCandidateOption[]>([])
+  const [candidatePage, setCandidatePage] = useState(0)
+  const [hasMoreCandidates, setHasMoreCandidates] = useState(false)
+  const [isCandidatesLoading, setIsCandidatesLoading] = useState(true)
+  const [isLoadingMoreCandidates, setIsLoadingMoreCandidates] = useState(false)
+  const [isCandidatesError, setIsCandidatesError] = useState(false)
+  const [candidatesError, setCandidatesError] = useState<unknown>(null)
+  const [candidateReloadKey, setCandidateReloadKey] = useState(0)
+  const activeCandidateSearchRef = useRef("")
+  const loadingMoreCandidatesRef = useRef(false)
+  const [getInterviewCandidates] = useLazyGetInterviewCandidatesQuery()
   useEffect(() => {
     const timer = window.setTimeout(() => setDebouncedCandidateSearch(candidateSearch.trim()), 300)
     return () => window.clearTimeout(timer)
   }, [candidateSearch])
-  const {
-    currentData: interviewCandidates,
-    isFetching: isCandidatesFetching,
-    isError: isCandidatesError,
-    error: candidatesError,
-  } = useGetInterviewCandidatesQuery(
-    { batchId: recruitment.id, search: debouncedCandidateSearch },
-    { skip: !open || isRescheduleMode, refetchOnMountOrArgChange: true }
-  )
-  const isApplicationsLoading = isCandidatesFetching || candidateSearch.trim() !== debouncedCandidateSearch
+  const candidateSearchKey = `${recruitment.id}:${debouncedCandidateSearch}`
+  useEffect(() => {
+    if (!open || isRescheduleMode) return
+    let cancelled = false
+    activeCandidateSearchRef.current = candidateSearchKey
+    loadingMoreCandidatesRef.current = false
+    setInterviewCandidates([])
+    setCandidatePage(0)
+    setHasMoreCandidates(false)
+    setIsCandidatesError(false)
+    setCandidatesError(null)
+    setIsCandidatesLoading(true)
+    setIsLoadingMoreCandidates(false)
+
+    void getInterviewCandidates({ batchId: recruitment.id, search: debouncedCandidateSearch, page: 1 })
+      .unwrap()
+      .then((result) => {
+        if (cancelled) return
+        setInterviewCandidates(Array.isArray(result.items) ? result.items : [])
+        setHasMoreCandidates(result.hasMore === true)
+        setCandidatePage(1)
+      })
+      .catch((error: unknown) => {
+        if (cancelled) return
+        setIsCandidatesError(true)
+        setCandidatesError(error)
+      })
+      .finally(() => {
+        if (!cancelled) setIsCandidatesLoading(false)
+      })
+
+    return () => { cancelled = true }
+  }, [open, isRescheduleMode, recruitment.id, debouncedCandidateSearch, candidateReloadKey, candidateSearchKey, getInterviewCandidates])
+
+  const isApplicationsLoading = isCandidatesLoading || candidateSearch.trim() !== debouncedCandidateSearch
+  const loadMoreCandidates = async () => {
+    if (!open || isRescheduleMode || loadingMoreCandidatesRef.current || isApplicationsLoading ||
+      !hasMoreCandidates || isCandidatesError) return
+    loadingMoreCandidatesRef.current = true
+    setIsLoadingMoreCandidates(true)
+    const requestedSearch = candidateSearchKey
+    try {
+      const result = await getInterviewCandidates({
+        batchId: recruitment.id,
+        search: debouncedCandidateSearch,
+        page: candidatePage + 1,
+      }).unwrap()
+      if (activeCandidateSearchRef.current !== requestedSearch) return
+      setInterviewCandidates((previous) => {
+        const existingIds = new Set(previous.map((candidate) => candidate.applicationId))
+        return [...previous, ...(Array.isArray(result.items) ? result.items : [])
+          .filter((candidate) => !existingIds.has(candidate.applicationId))]
+      })
+      setHasMoreCandidates(result.hasMore === true)
+      setCandidatePage((page) => page + 1)
+    } catch (error) {
+      if (activeCandidateSearchRef.current === requestedSearch) {
+        setIsCandidatesError(true)
+        setCandidatesError(error)
+      }
+    } finally {
+      loadingMoreCandidatesRef.current = false
+      if (activeCandidateSearchRef.current === requestedSearch) setIsLoadingMoreCandidates(false)
+    }
+  }
+  const refetchCandidates = () => setCandidateReloadKey((key) => key + 1)
   const selectCandidate = (option: SearchComboboxOption<InterviewCandidateOption>) => {
     if (!option.data) return
     setCandidateId(option.id)
@@ -139,6 +206,9 @@ export function useScheduleInterviewForm({
     setSelectedCandidateOption(null)
     setCandidateSearch("")
     setDebouncedCandidateSearch("")
+    setInterviewCandidates([])
+    setHasMoreCandidates(false)
+    setIsCandidatesLoading(true)
     setApplicationStageId("")
     setSelectedInterviewerIds([])
     setLeadEmployeeId("")
@@ -340,7 +410,8 @@ export function useScheduleInterviewForm({
     isRescheduleMode, scheduleRestriction, minScheduleDate,
     candidateId, selectCandidate, candidateSearch, setCandidateSearch, applicationStageId, setApplicationStageId,
     isApplicationsLoading, isApplicationLoading, isApplicationError, applicationError,
-    isCandidatesError, candidatesError,
+    isCandidatesError, candidatesError, refetchCandidates,
+    hasMoreCandidates, isLoadingMoreCandidates, loadMoreCandidates,
     eligibleStages, eligibleStageOptions, selectedCandidate,
     availableInterviewers, isInterviewersLoading, isInterviewersError,
     interviewersError, refetchInterviewers, candidateComboboxOptions,
