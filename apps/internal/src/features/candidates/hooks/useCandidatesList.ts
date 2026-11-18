@@ -3,7 +3,6 @@ import { useNavigate, useSearch } from "@tanstack/react-router"
 import type { Chip, SortDirection } from "@/shared/components"
 import { useGetCandidatesQuery } from "../api/candidates-api"
 import type { Candidate, CandidateSearchParams, CandidateSortKey } from "../types"
-import { sortCandidates } from "../utils"
 import { mapApplicationStatus } from "@/features/recruitments/utils/statusAdapters"
 
 export const genderItems = [
@@ -97,6 +96,10 @@ export function useCandidatesList() {
     refetch,
   } = useGetCandidatesQuery({
     search: search.trim() || undefined,
+    gender: gender === "male" ? 1 : gender === "female" ? 2 : undefined,
+    batchStatus: batchStatus === "applied" || batchStatus === "pool" ? batchStatus : undefined,
+    sortBy: sortKey,
+    order: sortDirection,
     page,
     pageSize,
   }, { refetchOnMountOrArgChange: true })
@@ -137,28 +140,7 @@ export function useCandidatesList() {
     })
   }, [pagedData?.items])
 
-  // Apply secondary client filters if set
-  const filteredCandidates = useMemo(() => {
-    return rawCandidates.filter((c) => {
-      if (gender !== "all") {
-        if (!c.gender || c.gender.toLowerCase() !== gender.toLowerCase()) {
-          return false
-        }
-      }
-      if (batchStatus !== "all") {
-        if (batchStatus === "applied" && c.appliedBatchCount === 0) return false
-        if (batchStatus === "pool" && c.appliedBatchCount > 0) return false
-      }
-      return true
-    })
-  }, [rawCandidates, gender, batchStatus])
-
-  // Client-side sort
-  const sortedCandidates = useMemo(() => {
-    return sortCandidates(filteredCandidates, sortKey, sortDirection)
-  }, [filteredCandidates, sortKey, sortDirection])
-
-  const totalItems = pagedData?.totalItems ?? sortedCandidates.length
+  const totalItems = pagedData?.totalItems ?? rawCandidates.length
 
   const handleSortChange = (key: CandidateSortKey) => {
     if (sortKey === key) {
@@ -235,7 +217,7 @@ export function useCandidatesList() {
     sortDirection,
     page,
     pageSize,
-    candidates: sortedCandidates,
+    candidates: rawCandidates,
     totalItems,
     isLoading,
     isFetching,

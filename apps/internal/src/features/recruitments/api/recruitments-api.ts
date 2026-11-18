@@ -51,6 +51,8 @@ export const recruitmentsApi = baseApi.injectEndpoints({
               search: params.search || undefined,
               status: params.status !== undefined ? params.status : undefined,
               departmentId: params.departmentId || undefined,
+              sortBy: params.sortBy || undefined,
+              order: params.order || undefined,
               page: params.page || 1,
               pageSize: params.pageSize || 10,
             }
