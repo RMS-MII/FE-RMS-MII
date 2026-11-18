@@ -3,8 +3,10 @@
 // =====================================================================
 
 export interface BatchDashboardResponse {
-  totalCandidates: number
-  acceptedCandidates: number
-  notPassedCandidates: number
+  totalApplications: number
+  inProcessApplications: number
+  acceptedApplications: number
+  rejectedApplications: number
+  droppedApplications: number
   employeeCount: number
 }
