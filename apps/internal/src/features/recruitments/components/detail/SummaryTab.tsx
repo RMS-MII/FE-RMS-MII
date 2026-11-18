@@ -3,8 +3,7 @@ import { RichText } from "@workspace/ui/components/rich-text"
 import { Panel } from "@/shared/components"
 import { formatDate, formatNumber } from "@/shared/lib/format"
 import { safeFormatWibDateTime } from "@/shared/lib/utcDateTime"
-import { useGetBatchApplicationsQuery } from "../../api/applications-api"
-import { useGetEmployeesQuery } from "../../api/employees-api"
+import { useGetBatchSummaryQuery } from "../../api/recruitments-api"
 import type { Recruitment } from "../../types"
 
 export interface SummaryTabProps {
@@ -13,26 +12,7 @@ export interface SummaryTabProps {
 
 export function SummaryTab({ recruitment }: SummaryTabProps) {
   const batchId = recruitment.id
-  const totalQuery = useGetBatchApplicationsQuery({ id: batchId, pageSize: 1 })
-  const activeQuery = useGetBatchApplicationsQuery({ id: batchId, status: 1, pageSize: 1 })
-  const rejectedQuery = useGetBatchApplicationsQuery({ id: batchId, status: 2, pageSize: 1 })
-  const droppedQuery = useGetBatchApplicationsQuery({ id: batchId, status: 3, pageSize: 1 })
-  const employeesQuery = useGetEmployeesQuery(
-    { activeOnly: false },
-    { skip: !recruitment.createdBy }
-  )
-
-  const countsLoading = [totalQuery, activeQuery, rejectedQuery, droppedQuery]
-    .some((query) => query.isLoading)
-  const countsError = [totalQuery, activeQuery, rejectedQuery, droppedQuery]
-    .some((query) => query.isError)
-  const { data: total } = totalQuery
-  const { data: active } = activeQuery
-  const { data: rejected } = rejectedQuery
-  const { data: dropped } = droppedQuery
-  const owner = employeesQuery.data?.find(
-    (employee) => employee.id.toLowerCase() === recruitment.createdBy?.toLowerCase()
-  )
+  const { data: summary, isLoading: countsLoading, isError: countsError } = useGetBatchSummaryQuery(batchId)
 
   const rows: [string, React.ReactNode][] = [
     [
@@ -52,18 +32,18 @@ export function SummaryTab({ recruitment }: SummaryTabProps) {
     ],
     [
       "Person in Charge",
-      employeesQuery.isLoading
+      countsLoading
         ? <Skeleton key="owner-loading" className="h-4 w-40" />
-        : owner?.fullName ?? "—",
+        : summary?.ownerName ?? "—",
     ],
     [
       "Candidates",
       countsLoading
         ? <Skeleton key="candidates-loading" className="h-4 w-72 max-w-full" />
-        : countsError || !total || !active || !rejected || !dropped
+        : countsError || !summary
           ? "Unable to load candidate counts"
           : <span key="candidates" className="tabular-nums">
-              {formatNumber(total.totalItems)} total, {formatNumber(active.totalItems)} active, {formatNumber(rejected.totalItems + dropped.totalItems)} out of process
+              {formatNumber(summary.totalCandidates)} total, {formatNumber(summary.activeCandidates)} active, {formatNumber(summary.rejectedCandidates + summary.droppedCandidates)} out of process
             </span>,
     ],
     [

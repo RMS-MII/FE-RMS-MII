@@ -29,6 +29,7 @@ import {
 import { canEditApplicationDeadline } from "../utils/recruitmentUtils"
 import {
   useGetBatchByIdQuery,
+  useGetBatchStageFlowQuery,
   useUpdateBatchStatusMutation,
 } from "../api/recruitments-api"
 import { getRecruitmentStatusMeta } from "../types"
@@ -72,6 +73,13 @@ export function OpenRecruitmentDialog({
     skip: !open,
     refetchOnMountOrArgChange: true,
   })
+  const stagesQuery = useGetBatchStageFlowQuery(recruitment.id, {
+    skip: !open,
+    refetchOnMountOrArgChange: true,
+  })
+  const batchWithStages = batch && stagesQuery.currentData
+    ? { ...batch, batchStages: stagesQuery.currentData }
+    : null
   const [updateStatus, { isLoading: isSubmitting }] =
     useUpdateBatchStatusMutation()
 
@@ -91,16 +99,16 @@ export function OpenRecruitmentDialog({
 
   const statusMeta = batch ? getRecruitmentStatusMeta(batch.status) : null
   const isDraft = statusMeta?.label === "Draft"
-  const editingDeadline = canEditApplicationDeadline(batch ?? recruitment)
+  const editingDeadline = canEditApplicationDeadline(batchWithStages ?? recruitment)
   const enabledStages =
-    batch?.batchStages ?? []
+    batchWithStages?.batchStages ?? []
   const stageCount = enabledStages.length
   const canOpen = Boolean(
-    batch &&
+    batchWithStages &&
     (isDraft || editingDeadline) &&
     stageCount > 0 &&
-    !isFetching &&
-    !isError
+    !isFetching && !stagesQuery.isFetching &&
+    !isError && !stagesQuery.isError
   )
 
   const handleOpenChange = (nextOpen: boolean) => {
@@ -151,6 +159,7 @@ export function OpenRecruitmentDialog({
     } catch (error) {
       setSubmitError(getOpenErrorMessage(error))
       void refetch()
+      void stagesQuery.refetch()
     }
   }
 
@@ -174,7 +183,7 @@ export function OpenRecruitmentDialog({
         </DialogHeader>
 
         <div className="space-y-4 p-6">
-          {isFetching ? (
+          {isFetching || stagesQuery.isFetching ? (
             <div role="status" aria-label="Loading recruitment details" className="space-y-5">
               <div className="space-y-3">
                 {[
@@ -205,11 +214,11 @@ export function OpenRecruitmentDialog({
                 <Skeleton className="h-3 w-64 max-w-full" />
               </div>
             </div>
-          ) : isError || !batch || !statusMeta ? (
+          ) : isError || stagesQuery.isError || !batchWithStages || !statusMeta ? (
             <ErrorState
               title="Unable to load recruitment"
               description="Please reload the batch before opening recruitment."
-              onRetry={() => refetch()}
+              onRetry={() => { void refetch(); void stagesQuery.refetch() }}
               className="px-0 py-3"
             />
           ) : (
@@ -220,19 +229,19 @@ export function OpenRecruitmentDialog({
                     Recruitment
                   </dt>
                   <dd className="text-right font-semibold text-foreground">
-                    {batch.name}
+                    {batchWithStages.name}
                   </dd>
                 </div>
                 <div className="flex items-center justify-between gap-4">
                   <dt className="text-muted-foreground">Batch code</dt>
                   <dd className="font-mono text-xs text-foreground">
-                    {batch.batchCode}
+                    {batchWithStages.batchCode}
                   </dd>
                 </div>
                 <div className="flex items-start justify-between gap-4">
                   <dt className="shrink-0 text-muted-foreground">Period</dt>
                   <dd className="text-right text-foreground">
-                    {formatPeriod(batch.startDate, batch.endDate)}
+                    {formatPeriod(batchWithStages.startDate, batchWithStages.endDate)}
                   </dd>
                 </div>
                 <div className="flex items-center justify-between gap-4">
@@ -277,7 +286,7 @@ export function OpenRecruitmentDialog({
                       onOpenChange(false)
                       void navigate({
                         to: "/recruitments/$id/stages",
-                        params: { id: batch.id },
+                        params: { id: batchWithStages.id },
                       })
                     }}
                   >

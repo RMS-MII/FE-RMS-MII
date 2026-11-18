@@ -47,11 +47,12 @@ export function ScheduleInterviewDialog({
   const formId = useId()
   const {
     isRescheduleMode, scheduleRestriction, minScheduleDate,
-    candidateId, setCandidateId, applicationStageId, setApplicationStageId,
+    candidateId, selectCandidate, candidateSearch, setCandidateSearch, applicationStageId, setApplicationStageId,
     isApplicationsLoading, isApplicationLoading, isApplicationError, applicationError,
+    isCandidatesError, candidatesError,
     eligibleStages, eligibleStageOptions, selectedCandidate,
     availableInterviewers, isInterviewersLoading, isInterviewersError,
-    interviewersError, refetchInterviewers, unscheduledCandidates, candidateComboboxOptions,
+    interviewersError, refetchInterviewers, candidateComboboxOptions,
     sessionName, setSessionName, scheduledDate, setScheduledDate,
     startTime, endTime, mode, setMode,
     meetingUrl, setMeetingUrl, location, setLocation,
@@ -149,23 +150,30 @@ export function ScheduleInterviewDialog({
                 <SearchCombobox
                   id="interview-candidate"
                   options={candidateComboboxOptions}
+                  searchValue={candidateSearch}
+                  onSearchChange={setCandidateSearch}
+                  shouldFilter={false}
+                  isLoading={isApplicationsLoading}
+                  errorContent={isCandidatesError ? (
+                    <p role="alert" className="py-4 text-center text-xs text-destructive">
+                      {getApiError(candidatesError).message}
+                    </p>
+                  ) : undefined}
                   placeholder={
                     selectedCandidate
                       ? `${selectedCandidate.name} (${selectedCandidate.codeApplication})`
-                      : isApplicationsLoading && unscheduledCandidates.length === 0
+                      : isApplicationsLoading && candidateComboboxOptions.length === 0
                         ? "Loading candidates..."
-                        : unscheduledCandidates.length === 0
-                        ? "No unscheduled candidates"
+                        : candidateComboboxOptions.length === 0
+                        ? "Search candidate..."
                         : "Search candidate..."
                   }
                   searchPlaceholder="Search candidate by name, email, or code..."
-                  emptyText="No unscheduled candidates for this stage"
-                  disabled={
-                    isRescheduleMode || unscheduledCandidates.length === 0
-                  }
+                  emptyText="No eligible candidates found"
+                  disabled={isRescheduleMode}
                   selectedIds={candidateId ? [candidateId] : []}
                   onSelect={(opt) => {
-                    setCandidateId(opt.id)
+                    selectCandidate(opt)
                     if (errors.candidateId)
                       setErrors((prev) => ({ ...prev, candidateId: "" }))
                   }}

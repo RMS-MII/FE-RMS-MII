@@ -89,13 +89,14 @@ export function AssignInterviewersDialog({
             id="dialog-interviewers"
             assignments={assignments}
             onChange={setAssignments}
+            allowRemove={false}
           />
           {saveError && (
             <p role="alert" className="text-sm text-destructive">{saveError}</p>
           )}
         </div>
 
-        <DialogFooter className="px-9 pb-9 border-t border-border bg-card gap-2">
+        <DialogFooter className="px-6 border-t border-border bg-card gap-2">
           <CancelButton onClick={() => onOpenChange(false)} />
           <SaveButton onClick={handleSave} isSaved={isSaved} isLoading={isSaving} disabled={isSaved}>
             Save

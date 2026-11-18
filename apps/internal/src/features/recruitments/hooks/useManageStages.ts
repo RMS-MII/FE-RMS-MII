@@ -4,6 +4,7 @@ import { useNavigate } from "@tanstack/react-router"
 import { isRecruitmentClosed } from "../utils/recruitmentUtils"
 import {
   useGetBatchByIdQuery,
+  useGetBatchStagesQuery,
   useUpdateBatchStagesMutation,
 } from "../api/recruitments-api"
 import { useGetStageTypesQuery } from "../api/stage-types-api"
@@ -105,13 +106,22 @@ export interface UseManageStagesProps {
 export function useManageStages({ id }: UseManageStagesProps) {
   const navigate = useNavigate()
 
-  const { data: apiRecruitment, isLoading, isError, refetch } = useGetBatchByIdQuery(id)
+  const batchQuery = useGetBatchByIdQuery(id)
+  const stagesQuery = useGetBatchStagesQuery(id)
+  const isLoading = batchQuery.isLoading || stagesQuery.isLoading
+  const isError = batchQuery.isError || stagesQuery.isError
+  const refetch = () => {
+    void batchQuery.refetch()
+    void stagesQuery.refetch()
+  }
   const [updateBatchStagesApi, { isLoading: isSavingStages }] = useUpdateBatchStagesMutation()
   const { data: stageTypes = [], isLoading: isLoadingStageTypes } = useGetStageTypesQuery({ activeOnly: true })
 
   const recruitment = useMemo(() => {
-    return apiRecruitment ?? null
-  }, [apiRecruitment])
+    return batchQuery.data && stagesQuery.data
+      ? { ...batchQuery.data, batchStages: stagesQuery.data }
+      : null
+  }, [batchQuery.data, stagesQuery.data])
   const batchEndDateTime = toLocalDateTimeInput(recruitment?.endDate ?? recruitment?.closeDate, true)
 
   const [stages, setStages] = useState<EditableStage[]>(() => getInitialEditableStages(recruitment))
