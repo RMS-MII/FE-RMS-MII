@@ -90,4 +90,8 @@ export interface GetCandidatesParams {
   batchId?: string
   page?: number
   pageSize?: number
+  gender?: 1 | 2
+  batchStatus?: "applied" | "pool"
+  sortBy?: CandidateSortKey
+  order?: "asc" | "desc"
 }

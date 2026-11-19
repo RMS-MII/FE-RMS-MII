@@ -19,6 +19,10 @@ export const candidatesApi = baseApi.injectEndpoints({
         if (params?.batchId) {
           queryParams.BatchId = params.batchId
         }
+        if (params?.gender) queryParams.Gender = params.gender
+        if (params?.batchStatus) queryParams.BatchStatus = params.batchStatus
+        if (params?.sortBy) queryParams.SortBy = params.sortBy
+        if (params?.order) queryParams.Order = params.order
         return {
           url: "/candidates",
           method: "GET",

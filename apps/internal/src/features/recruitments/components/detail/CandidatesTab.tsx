@@ -160,10 +160,10 @@ export function CandidatesTab({ recruitment }: CandidatesTabProps) {
                       ? "Selected Stage"
                       : "Current Stage"
                   }
-                  sortKey="stage"
+                  sortKey={parsedStageIndex === null ? "stage" : undefined}
                   currentSortKey={sortKey}
                   currentDirection={sortDirection}
-                  onSort={handleSort}
+                  onSort={parsedStageIndex === null ? handleSort : undefined}
                 />
 
                 <TableSortHeader

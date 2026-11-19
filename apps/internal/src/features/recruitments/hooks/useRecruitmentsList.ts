@@ -24,8 +24,8 @@ export function useRecruitmentsList() {
   // Derived from search params
   const search = searchParams.search ?? ""
   const statusFilter = searchParams.status ?? "all"
-  const sortKey = (searchParams.sortBy as SortKey | undefined) ?? "code"
-  const sortDirection = (searchParams.order as SortDirection | undefined) ?? "asc"
+  const sortKey = (searchParams.sortBy as SortKey | undefined) ?? null
+  const sortDirection = (searchParams.order as SortDirection | undefined) ?? null
   const page = searchParams.page ? Number(searchParams.page) : 1
 
   // Local state for smooth typing in SearchInput
@@ -74,6 +74,8 @@ export function useRecruitmentsList() {
     pageSize: PAGE_SIZE,
     search: search.trim() || undefined,
     status: apiStatusParam,
+    sortBy: sortKey ?? undefined,
+    order: sortDirection ?? undefined,
   })
 
   const recruitments = useMemo(() => pagedData?.items ?? [], [pagedData])
@@ -125,6 +127,7 @@ export function useRecruitmentsList() {
         ...prev,
         sortBy: nextSortKey,
         order: nextOrder,
+        page: undefined,
       }),
       replace: true,
     })

@@ -124,6 +124,8 @@ export function useCandidatesTab({ recruitment }: UseCandidatesTabProps) {
     stageId: effectiveStageId,
     page,
     pageSize,
+    sortBy: stageFilterIndex !== null && sortKey === "stage" ? "appliedAt" : sortKey,
+    order: stageFilterIndex !== null && sortKey === "stage" ? "desc" : sortDirection,
   })
 
   const [isAddOpen, setIsAddOpen] = useState(false)
@@ -208,6 +210,7 @@ export function useCandidatesTab({ recruitment }: UseCandidatesTabProps) {
     updateSearch({
       candidateSort: result.data === "appliedAt" ? undefined : result.data,
       candidateDirection: direction === "desc" ? undefined : direction,
+      candidatePage: undefined,
     })
   }
 

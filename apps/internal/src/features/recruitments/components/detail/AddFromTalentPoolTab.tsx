@@ -66,7 +66,12 @@ export function AddFromTalentPoolTab({
     setTalentSearch,
     selectedCandidateIds,
     availableTalentCandidates,
+    hasMore,
+    isLoadingMore,
+    loadMoreCandidates,
     selectedCandidates,
+    selectAllSearch,
+    bulkRegisteredCount,
     isAllSelected,
     handleToggleSelectAll,
     handleAddCandidate,
@@ -98,12 +103,12 @@ export function AddFromTalentPoolTab({
     [availableTalentCandidates]
   )
 
-  const isSelectionDisabled = !canAddCandidates || isSubmitting
+  const isSelectionDisabled = !canAddCandidates || isSubmitting || selectAllSearch !== null
   const isSelectAllDisabled =
-    isSelectionDisabled ||
+    !canAddCandidates || isSubmitting ||
     isLoadingCandidates ||
     isCandidatesError ||
-    availableTalentCandidates.length === 0
+    (selectAllSearch === null && availableTalentCandidates.length === 0)
 
   return (
     <>
@@ -136,6 +141,9 @@ export function AddFromTalentPoolTab({
             shouldFilter={false}
             selectedIds={selectedCandidateIds}
             onSelect={(option) => handleAddCandidate(option.id)}
+            hasMore={hasMore}
+            isLoadingMore={isLoadingMore}
+            onLoadMore={loadMoreCandidates}
             closeOnSelect={false}
             disabled={isSelectionDisabled}
             isLoading={isLoadingCandidates}
@@ -185,13 +193,14 @@ export function AddFromTalentPoolTab({
                 htmlFor="select-all-talent-candidates"
                 className="cursor-pointer text-xs font-medium"
               >
-                Select All ({availableTalentCandidates.length})
+                Select All Results
               </Label>
             </div>
 
             <span className="font-semibold text-foreground">
-              {selectedCandidateIds.length} candidate
-              {selectedCandidateIds.length !== 1 ? "s" : ""} selected
+              {selectAllSearch !== null
+                ? "All matching candidates selected"
+                : `${selectedCandidateIds.length} candidate${selectedCandidateIds.length !== 1 ? "s" : ""} selected`}
             </span>
           </div>
 
@@ -199,12 +208,14 @@ export function AddFromTalentPoolTab({
         </div>
 
         {/* Selected preview bar */}
-        {selectedCandidates.length > 0 && (
+        {(selectedCandidates.length > 0 || selectAllSearch !== null) && (
           <div className="space-y-2 rounded-2xl border border-border bg-muted/30 p-4">
             <div className="flex items-center justify-between text-xs">
               <span className="flex items-center gap-1.5 font-semibold text-foreground">
                 <CheckCircle2 className="size-4 text-primary" />
-                Selected Candidates ({selectedCandidates.length})
+                {selectAllSearch !== null
+                  ? `All matching candidates${selectAllSearch ? ` for "${selectAllSearch}"` : ""}`
+                  : `Selected Candidates (${selectedCandidates.length})`}
               </span>
               <button
                 type="button"
@@ -215,6 +226,11 @@ export function AddFromTalentPoolTab({
                 Clear all
               </button>
             </div>
+            {selectAllSearch !== null ? (
+              <p className="text-xs text-muted-foreground">
+                Candidates will be added in batches of up to 100. Clear the selection to choose individually.
+              </p>
+            ) : (
             <div className="max-h-52 space-y-1.5 overflow-y-auto pr-1">
               {selectedCandidates.map((c) => (
                 <div
@@ -237,19 +253,20 @@ export function AddFromTalentPoolTab({
                 </div>
               ))}
             </div>
+            )}
           </div>
         )}
       </div>
 
-      <DialogFooter className="flex items-center justify-end gap-2.5 border-t border-border bg-card px-9 pb-9">
+      <DialogFooter className="flex items-center justify-end gap-2.5 border-t border-border bg-card px-6 pb-6">
         <CancelButton onClick={onCancel} disabled={isSubmitting} />
         <SaveButton
           onClick={handleSubmit}
-          disabled={!canAddCandidates || selectedCandidates.length === 0}
+          disabled={!canAddCandidates || (selectAllSearch === null && selectedCandidates.length === 0)}
           isLoading={isSubmitting}
-          loadingText="Adding Candidates..."
+          loadingText={selectAllSearch !== null ? `Added ${bulkRegisteredCount}...` : "Adding Candidates..."}
         >
-          Add Selected ({selectedCandidates.length})
+          {selectAllSearch !== null ? "Add All Matching" : `Add Selected (${selectedCandidates.length})`}
         </SaveButton>
       </DialogFooter>
     </>
