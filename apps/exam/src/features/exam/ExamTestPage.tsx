@@ -4,6 +4,7 @@ import { useCandidateTest, useExamTimer } from "./hooks"
 import { saveExamDraft, type ExamDraft } from "./storage"
 import type {
   CandidateTest,
+  DevelopmentOutcome,
   ExamAnswers,
   FinishTestResult,
   StartTestResult,
@@ -38,7 +39,7 @@ interface ExamRunnerProps {
   receivedAt: number
   onStart: () => Promise<StartTestResult>
   onSaveDraft: (answers: SubmitTestAnswer[]) => Promise<unknown>
-  onComplete: (answers?: SubmitTestAnswer[]) => Promise<FinishTestResult>
+  onComplete: (submission?: SubmitTestAnswer[] | DevelopmentOutcome) => Promise<FinishTestResult>
 }
 
 function answerPayload(test: CandidateTest, answers: ExamAnswers): SubmitTestAnswer[] {
@@ -190,12 +191,12 @@ function ExamRunner({
   const [startError, setStartError] = useState<string | null>(null)
 
   const submitAnswers = useCallback(
-    async (options?: { force?: boolean }) => {
+    async (options?: { force?: boolean; developmentOutcome?: DevelopmentOutcome }) => {
       if (submitting) {
         return
       }
 
-      if (!options?.force) {
+      if (!options?.force && !options?.developmentOutcome) {
         const missing = getMissingRequiredQuestions(test.questions, answers)
 
         if (missing.length > 0) {
@@ -208,7 +209,7 @@ function ExamRunner({
 
       try {
         const finishResponse = await onComplete(
-          options?.force ? undefined : answerPayload(test, answers)
+          options?.developmentOutcome ?? (options?.force ? undefined : answerPayload(test, answers))
         )
 
         setResult(finishResponse)
@@ -445,6 +446,8 @@ function ExamRunner({
         timeUp={timeUp}
         submitting={submitting}
         draftSaveFailed={draftSaveFailed}
+        developmentError={submitDialogOpen ? null : submitError}
+        onDevelopmentSubmit={(developmentOutcome) => void submitAnswers({ developmentOutcome })}
         onRetryDraft={() => void saveDraft(answers)}
         onSelect={handleSelect}
         onIndexChange={handleIndexChange}

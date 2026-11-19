@@ -65,3 +65,4 @@ export interface FinishTestResult {
 }
 
 export type ExamAnswers = Record<string, string[]>
+export type DevelopmentOutcome = "pass" | "fail"

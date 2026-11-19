@@ -24,7 +24,7 @@ import {
 import { Separator } from "@workspace/ui/components/separator"
 import { Spinner } from "@workspace/ui/components/spinner"
 import { cn } from "@workspace/ui/lib/utils"
-import type { CandidateTest, ExamAnswers } from "../types"
+import type { CandidateTest, DevelopmentOutcome, ExamAnswers } from "../types"
 import {
   formatCountdown,
   getAnsweredCount,
@@ -35,6 +35,8 @@ import { QuestionCard } from "./QuestionCard"
 import { QuestionNavigator } from "./QuestionNavigator"
 
 interface ExamSessionProps {
+  developmentError: string | null
+  onDevelopmentSubmit: (outcome: DevelopmentOutcome) => void
   test: CandidateTest
   answers: ExamAnswers
   currentIndex: number
@@ -94,6 +96,8 @@ function TimerChip({
 }
 
 export function ExamSession({
+  developmentError,
+  onDevelopmentSubmit,
   test,
   answers,
   currentIndex,
@@ -215,6 +219,23 @@ export function ExamSession({
 
       <main className="mx-auto grid w-full max-w-6xl gap-6 px-4 py-5 sm:px-6 sm:py-6 lg:grid-cols-[minmax(0,1fr)_20rem] lg:items-start">
         <div className="min-w-0 space-y-4">
+          {import.meta.env.DEV && (
+            <section aria-label="Simulasi development" className="space-y-2 rounded-xl border border-dashed bg-card p-4">
+              <h2 className="text-sm font-semibold">Simulasi development</h2>
+              <p className="text-xs text-muted-foreground">
+                Isi semua soal dan langsung kumpulkan tes. Untuk lamaran standalone, keputusan akhir tetap di HR.
+              </p>
+              <div className="flex flex-wrap gap-2">
+                <Button size="sm" variant="outline" disabled={locked} onClick={() => onDevelopmentSubmit("pass")}>
+                  Simulasikan lulus
+                </Button>
+                <Button size="sm" variant="outline" disabled={locked} onClick={() => onDevelopmentSubmit("fail")}>
+                  Simulasikan tidak lulus
+                </Button>
+              </div>
+              {developmentError && <p role="alert" className="text-sm text-destructive">{developmentError}</p>}
+            </section>
+          )}
           {timeUp ? (
             <Alert variant="destructive">
               <Clock3 className="size-4" />

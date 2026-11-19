@@ -1,5 +1,6 @@
 import type {
   CandidateTest,
+  DevelopmentOutcome,
   FinishTestResult,
   StartTestResult,
   SubmitAnswerResult,
@@ -161,6 +162,13 @@ export function submitCandidateTestAnswer(
     },
     signal,
     false
+  )
+}
+
+export function generateDevelopmentAnswers(candidateId: string, stageId: string, outcome: DevelopmentOutcome) {
+  return request<SubmitAnswerResult>(
+    `/exam/${encodeURIComponent(candidateId)}/stages/${encodeURIComponent(stageId)}/test/development/answers/${outcome}`,
+    { method: "POST" }, undefined, false
   )
 }
 

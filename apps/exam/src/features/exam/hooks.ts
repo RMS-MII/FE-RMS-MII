@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react"
 import {
   ApiError,
   finishCandidateTest,
+  generateDevelopmentAnswers,
   getExamCandidateTest,
   getPortalCandidateTest,
   redirectToCandidateLogin,
@@ -11,6 +12,7 @@ import {
 import { clearExamDraft, loadExamDraft, type ExamDraft } from "./storage"
 import type {
   CandidateTest,
+  DevelopmentOutcome,
   FinishTestResult,
   StartTestResult,
   SubmitTestAnswer,
@@ -162,9 +164,15 @@ export function useCandidateTest(candidateId: string, stageId: string) {
     return write
   }
 
-  const complete = async (answers?: SubmitTestAnswer[]): Promise<FinishTestResult> => {
-    if (answers) await save(answers, false)
-    else await pendingSave.current.catch(() => undefined)
+  const complete = async (submission?: SubmitTestAnswer[] | DevelopmentOutcome): Promise<FinishTestResult> => {
+    if (Array.isArray(submission)) {
+      await save(submission, false)
+    } else {
+      await pendingSave.current.catch(() => undefined)
+      if (import.meta.env.DEV && submission) {
+        await withExamSession(() => generateDevelopmentAnswers(candidateId, stageId, submission))
+      }
+    }
 
     const result = await withExamSession(() =>
       finishCandidateTest(candidateId, stageId)
