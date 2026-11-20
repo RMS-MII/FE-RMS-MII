@@ -1,14 +1,9 @@
-import { useMemo } from "react"
+import { useCallback, useMemo, useState } from "react"
 import { useNavigate } from "@tanstack/react-router"
 import {
   BadgeCheck,
   Briefcase,
-  ChevronRight,
-  Flame,
-  Hourglass,
-  Layers,
   RefreshCw,
-  TrendingUp,
   UserX,
   Users,
   type LucideIcon,
@@ -19,35 +14,22 @@ import {
   PageHeader,
   Panel,
   PanelHeader,
-  StatusBadge,
-  type Tone,
 } from "@/shared/components"
+import { useAppSelector } from "@/app/store"
+import { baseApi } from "@/shared/api/base-api"
 import { useBatchDashboard } from "../hooks"
 import { useGetBatchesQuery } from "../api/recruitments-api"
-import { getRecruitmentStatusMeta } from "../types"
+import { formatCurrentStageText } from "../utils"
 
 /* ---------------------------------- Types --------------------------------- */
 
 type KpiTone = "primary" | "success" | "danger" | "neutral"
 
-interface WorkloadLevel {
-  label: string
-  tone: KpiTone
-}
-
 interface ActiveTask {
   batchId: string
   batchName: string
-  statusLabel: string
-  statusTone: Tone
   openCandidateCount: number
-  /** Share of all open candidates across active batches (0-100) */
-  sharePct: number
-  /** Load relative to the busiest batch (0-100) */
-  loadPct: number
-  /** 1-based position when sorted by open candidates */
-  rank: number
-  workload: WorkloadLevel
+  activeStage: string
 }
 
 /* --------------------------------- Helpers -------------------------------- */
@@ -62,12 +44,13 @@ const toPercent = (part: number, whole: number) =>
 const formatPercent = (value: number) =>
   `${value >= 10 || value === 0 ? Math.round(value) : value.toFixed(1)}%`
 
-const getWorkload = (loadPct: number, count: number): WorkloadLevel => {
-  if (count === 0) return { label: "Idle", tone: "neutral" }
-  if (loadPct >= 75) return { label: "High workload", tone: "danger" }
-  if (loadPct >= 40) return { label: "Medium workload", tone: "primary" }
-  return { label: "Low workload", tone: "success" }
-}
+const updatedTimeFormat = new Intl.DateTimeFormat("en-GB", {
+  hour: "2-digit",
+  minute: "2-digit",
+})
+
+const formatUpdatedTime = (timestamp: number) =>
+  updatedTimeFormat.format(new Date(timestamp))
 
 const toneStyles: Record<
   KpiTone,
@@ -161,6 +144,37 @@ function KpiSkeleton() {
       <div className="mt-4 h-8 w-20 animate-pulse rounded bg-muted" />
       <div className="mt-5 h-1.5 w-full animate-pulse rounded-full bg-muted" />
       <div className="mt-3 h-3 w-36 animate-pulse rounded bg-muted" />
+    </div>
+  )
+}
+
+function DashboardSkeleton() {
+  return (
+    <div className="space-y-4" aria-hidden>
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        {[0, 1, 2, 3].map((index) => (
+          <KpiSkeleton key={index} />
+        ))}
+      </div>
+      <div className="grid gap-4 lg:grid-cols-3">
+        <div className="h-64 animate-pulse rounded-2xl border border-border bg-card lg:col-span-2" />
+        <div className="h-64 animate-pulse rounded-2xl border border-border bg-card" />
+      </div>
+      <div className="rounded-2xl border border-border bg-card p-5">
+        <div className="h-4 w-40 animate-pulse rounded bg-muted" />
+        <div className="mt-4 space-y-2">
+          {[0, 1, 2, 3].map((index) => (
+            <div
+              key={index}
+              className="flex items-center justify-between gap-4"
+            >
+              <div className="h-4 w-1/3 animate-pulse rounded bg-muted" />
+              <div className="h-4 w-16 animate-pulse rounded bg-muted" />
+              <div className="h-4 w-24 animate-pulse rounded bg-muted" />
+            </div>
+          ))}
+        </div>
+      </div>
     </div>
   )
 }
@@ -293,85 +307,44 @@ function PieChart({
   )
 }
 
-interface SummaryTileProps {
-  icon: LucideIcon
-  label: string
-  value: string
-  hint?: string
-}
-
-function SummaryTile({ icon: Icon, label, value, hint }: SummaryTileProps) {
-  return (
-    <div className="flex items-center gap-3 rounded-xl bg-muted/50 p-3.5">
-      <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-background text-muted-foreground shadow-sm">
-        <Icon className="size-4" aria-hidden />
-      </span>
-      <div className="min-w-0">
-        <p className="text-xs font-medium text-muted-foreground">{label}</p>
-        <p className="truncate text-lg font-semibold leading-tight text-foreground tabular-nums">
-          {value}
-        </p>
-        {hint && (
-          <p className="truncate text-xs text-muted-foreground">{hint}</p>
-        )}
-      </div>
-    </div>
-  )
-}
-
 /* ---------------------------------- Page ---------------------------------- */
 
 export function HrDashboardPage() {
   const navigate = useNavigate()
-  const { data, isLoading, isError, refetch } = useBatchDashboard()
+  const { data, isLoading, isError, isFetching, refetch } = useBatchDashboard()
   const {
     data: batchesData,
     isLoading: isBatchesLoading,
     isError: isBatchesError,
+    isFetching: isFetchingBatches,
+    refetch: refetchBatches,
   } = useGetBatchesQuery({ page: 1, pageSize: 10, status: 2 })
 
-  const activeTasks = useMemo<ActiveTask[]>(() => {
-    const base = (batchesData?.items ?? []).map((batch) => {
-      const statusMeta = getRecruitmentStatusMeta(batch.status)
-      return {
-        batchId: batch.id,
-        batchName: batch.name,
-        statusLabel: statusMeta.label,
-        statusTone: statusMeta.tone,
-        openCandidateCount: batch.activeCandidateCount ?? 0,
-      }
-    })
+  const isRefreshing = isFetching || isFetchingBatches
+  const [refreshedAt, setRefreshedAt] = useState<number | null>(null)
 
-    // Busiest batch first
-    base.sort((a, b) => b.openCandidateCount - a.openCandidateCount)
-
-    const total = base.reduce((sum, task) => sum + task.openCandidateCount, 0)
-    const max = Math.max(1, ...base.map((task) => task.openCandidateCount))
-
-    return base.map((task, index) => {
-      const loadPct = (task.openCandidateCount / max) * 100
-      return {
-        ...task,
-        sharePct: toPercent(task.openCandidateCount, total),
-        loadPct,
-        rank: index + 1,
-        workload: getWorkload(loadPct, task.openCandidateCount),
-      }
-    })
-  }, [batchesData])
-
-  const totalOpenCandidates = useMemo(
-    () => activeTasks.reduce((sum, task) => sum + task.openCandidateCount, 0),
-    [activeTasks]
+  // RTK Query keeps the same `data` reference when the response is identical,
+  // so its fulfilled timestamp is used to give visible refresh feedback.
+  const dashboardState = useAppSelector((state) =>
+    baseApi.endpoints.getBatchDashboard.select(undefined)(state)
   )
+  const lastUpdatedAt = refreshedAt ?? dashboardState.fulfilledTimeStamp
 
-  const averageOpenCandidates =
-    activeTasks.length > 0 ? totalOpenCandidates / activeTasks.length : 0
+  const handleRefresh = useCallback(async () => {
+    await Promise.all([refetch(), refetchBatches()])
+    setRefreshedAt(Date.now())
+  }, [refetch, refetchBatches])
 
-  const busiestTask =
-    activeTasks.length > 0 && activeTasks[0].openCandidateCount > 0
-      ? activeTasks[0]
-      : null
+  const activeTasks = useMemo<ActiveTask[]>(() => {
+    const tasks = (batchesData?.items ?? []).map((batch) => ({
+      batchId: batch.id,
+      batchName: batch.name,
+      openCandidateCount: batch.activeCandidateCount ?? 0,
+      activeStage: formatCurrentStageText(batch),
+    }))
+
+    return tasks.sort((a, b) => b.openCandidateCount - a.openCandidateCount)
+  }, [batchesData])
 
   const stats = useMemo(() => {
     if (!data) return null
@@ -410,17 +383,6 @@ export function HrDashboardPage() {
     []
   )
 
-  const lastUpdated = useMemo(
-    () =>
-      data
-        ? new Intl.DateTimeFormat("en-GB", {
-            hour: "2-digit",
-            minute: "2-digit",
-          }).format(new Date())
-        : null,
-    [data]
-  )
-
   return (
     <div className="space-y-6 pb-12">
       <PageHeader
@@ -428,39 +390,42 @@ export function HrDashboardPage() {
         description={`${today}. Recruitment applications, outcomes, and active employee headcount.`}
         actions={
           <div className="flex items-center gap-3">
-            {lastUpdated && (
+            {lastUpdatedAt && (
               <span className="hidden text-xs text-muted-foreground sm:inline">
-                Updated {lastUpdated}
+                Updated {formatUpdatedTime(lastUpdatedAt)}
               </span>
             )}
             <Button
               variant="outline"
               size="sm"
-              onClick={() => void refetch()}
+              onClick={() => void handleRefresh()}
+              disabled={isRefreshing}
+              aria-label="Refresh dashboard"
               className="cursor-pointer gap-2 rounded-full"
             >
-              <RefreshCw className="size-3.5" aria-hidden />
+              <RefreshCw
+                className={`size-3.5 ${isRefreshing ? "animate-spin" : ""}`}
+                aria-hidden
+              />
               Refresh
             </Button>
           </div>
         }
       />
 
-      {isLoading ? (
-        <>
-          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-            {[0, 1, 2, 3].map((index) => (
-              <KpiSkeleton key={index} />
-            ))}
-          </div>
-          <div className="h-56 animate-pulse rounded-2xl border border-border bg-card" />
-        </>
+      {isLoading || isRefreshing ? (
+        <div aria-busy="true">
+          <span className="sr-only">
+            {isLoading ? "Memuat dashboard…" : "Memuat ulang dashboard…"}
+          </span>
+          <DashboardSkeleton />
+        </div>
       ) : isError || !data || !stats ? (
         <Panel>
           <ErrorState
             title="Failed to load dashboard"
             description="Unable to load the dashboard statistics right now. Please try again."
-            onRetry={() => void refetch()}
+            onRetry={() => void handleRefresh()}
           />
         </Panel>
       ) : (
@@ -659,147 +624,51 @@ export function HrDashboardPage() {
               </div>
             ) : isBatchesError ? (
               <div className="px-5 py-12 text-center text-sm text-muted-foreground">
-                Failed to load active tasks. Refresh to try again.
+                Failed to load active tasks.{" "}
+                <button
+                  type="button"
+                  onClick={() => void handleRefresh()}
+                  disabled={isRefreshing}
+                  className="cursor-pointer underline underline-offset-2 hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  Refresh to try again.
+                </button>
               </div>
             ) : activeTasks.length > 0 ? (
               <div className="space-y-4 px-5 pb-5">
-                {/* Summary strip */}
-                <div className="grid gap-3 sm:grid-cols-3">
-                  <SummaryTile
-                    icon={Layers}
-                    label="Open batches"
-                    value={formatNumber(activeTasks.length)}
-                    hint="Currently accepting candidates"
-                  />
-                  <SummaryTile
-                    icon={Hourglass}
-                    label="Open candidates"
-                    value={formatNumber(totalOpenCandidates)}
-                    hint={`≈ ${averageOpenCandidates.toFixed(1)} per batch`}
-                  />
-                  <SummaryTile
-                    icon={TrendingUp}
-                    label="Busiest batch"
-                    value={
-                      busiestTask
-                        ? `${formatNumber(busiestTask.openCandidateCount)} candidates`
-                        : "–"
-                    }
-                    hint={busiestTask ? busiestTask.batchName : "No open candidates"}
-                  />
-                </div>
-
-                {/* Batch cards */}
-                <ul className="grid gap-3 md:grid-cols-2">
-                  {activeTasks.map((task) => {
-                    const isBusiest = busiestTask?.batchId === task.batchId
-                    return (
+                <div className="overflow-hidden rounded-xl border border-border">
+                  <div className="grid grid-cols-[minmax(0,1fr)_auto_auto] gap-4 border-b border-border bg-muted/40 px-4 py-2 text-xs font-medium text-muted-foreground sm:grid-cols-[minmax(0,1fr)_7rem_10rem]">
+                    <span>Batch</span>
+                    <span className="text-right">Candidates</span>
+                    <span>Active Stage</span>
+                  </div>
+                  <ul className="divide-y divide-border">
+                    {activeTasks.map((task) => (
                       <li key={task.batchId}>
                         <button
                           type="button"
                           onClick={() =>
-                            navigate({
+                            void navigate({
                               to: "/recruitments/$id",
                               params: { id: task.batchId },
                             })
                           }
-                          className="group flex h-full w-full cursor-pointer flex-col gap-4 rounded-xl border border-border bg-background p-4 text-left transition-colors hover:border-primary/40 hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                          className="grid w-full cursor-pointer grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-4 px-4 py-3 text-left transition-colors hover:bg-muted/40 focus-visible:bg-muted/40 focus-visible:outline-none sm:grid-cols-[minmax(0,1fr)_7rem_10rem]"
                         >
-                          {/* Title row */}
-                          <div className="flex items-start justify-between gap-3">
-                            <div className="flex min-w-0 items-center gap-2">
-                              <span className="flex size-6 shrink-0 items-center justify-center rounded-md bg-muted text-xs font-semibold text-muted-foreground tabular-nums">
-                                {task.rank}
-                              </span>
-                              <p className="min-w-0 truncate text-sm font-medium text-foreground">
-                                {task.batchName}
-                              </p>
-                            </div>
-                            <StatusBadge tone={task.statusTone}>
-                              {task.statusLabel}
-                            </StatusBadge>
-                          </div>
-
-                          {/* Metrics row */}
-                          <div className="flex items-end justify-between gap-3">
-                            <div>
-                              <p className="text-2xl font-semibold leading-none tracking-tight text-foreground tabular-nums">
-                                {formatNumber(task.openCandidateCount)}
-                              </p>
-                              <p className="mt-1.5 text-xs text-muted-foreground">
-                                {task.openCandidateCount === 0
-                                  ? "No open candidates"
-                                  : task.openCandidateCount === 1
-                                    ? "open candidate"
-                                    : "open candidates"}
-                              </p>
-                            </div>
-
-                            <div className="flex flex-col items-end gap-1.5">
-                              {isBusiest && (
-                                <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/10 px-2 py-0.5 text-[11px] font-medium text-amber-600 dark:text-amber-400">
-                                  <Flame className="size-3" aria-hidden />
-                                  Busiest
-                                </span>
-                              )}
-                              <span
-                                className={`inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[11px] font-medium ${toneStyles[task.workload.tone].chip}`}
-                              >
-                                <span
-                                  className={`size-1.5 rounded-full ${toneStyles[task.workload.tone].dot}`}
-                                  aria-hidden
-                                />
-                                {task.workload.label}
-                              </span>
-                            </div>
-                          </div>
-
-                          {/* Load bar */}
-                          <div className="space-y-1.5">
-                            <div
-                              className="h-1.5 w-full overflow-hidden rounded-full bg-muted"
-                              role="progressbar"
-                              aria-label={`${task.batchName} workload`}
-                              aria-valuemin={0}
-                              aria-valuemax={100}
-                              aria-valuenow={Math.round(task.loadPct)}
-                            >
-                              <div
-                                className={`h-full rounded-full transition-[width] duration-700 ease-out ${toneStyles[task.workload.tone].bar}`}
-                                style={{ width: `${task.loadPct}%` }}
-                              />
-                            </div>
-                            <div className="flex items-center justify-between text-xs text-muted-foreground">
-                              <span>
-                                {formatPercent(task.sharePct)} of all open
-                                candidates
-                              </span>
-                              <span className="tabular-nums">
-                                #{task.rank} of {activeTasks.length}
-                              </span>
-                            </div>
-                          </div>
-
-                          {/* Footer action */}
-                          <div className="mt-auto flex items-center justify-between border-t border-border pt-3 text-xs">
-                            <span className="text-muted-foreground">
-                              {task.openCandidateCount > 0
-                                ? "Candidates are waiting for review"
-                                : "Nothing to review right now"}
-                            </span>
-                            <span className="flex items-center gap-0.5 font-medium text-primary">
-                              View batch
-                              <ChevronRight
-                                className="size-3.5 transition-transform group-hover:translate-x-0.5"
-                                aria-hidden
-                              />
-                            </span>
-                          </div>
+                          <span className="min-w-0 truncate text-sm font-medium text-foreground">
+                            {task.batchName}
+                          </span>
+                          <span className="text-right text-sm font-semibold text-foreground tabular-nums">
+                            {formatNumber(task.openCandidateCount)}
+                          </span>
+                          <span className="truncate text-xs text-muted-foreground">
+                            {task.activeStage}
+                          </span>
                         </button>
                       </li>
-                    )
-                  })}
-                </ul>
+                    ))}
+                  </ul>
+                </div>
               </div>
             ) : (
               <div className="px-5 py-12 text-center">

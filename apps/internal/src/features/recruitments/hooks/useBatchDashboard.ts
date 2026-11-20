@@ -5,8 +5,9 @@ export function useBatchDashboard() {
     data,
     isLoading,
     isError,
+    isFetching,
     refetch,
   } = useGetBatchDashboardQuery()
 
-  return { data, isLoading, isError, refetch }
+  return { data, isLoading, isError, isFetching, refetch }
 }
