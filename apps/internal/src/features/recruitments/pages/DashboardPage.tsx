@@ -16,9 +16,8 @@ import {
   PanelHeader,
 } from "@/shared/components"
 import { useAppSelector } from "@/app/store"
-import { baseApi } from "@/shared/api/base-api"
 import { useBatchDashboard } from "../hooks"
-import { useGetBatchesQuery } from "../api/recruitments-api"
+import { recruitmentsApi, useGetBatchesQuery } from "../api/recruitments-api"
 import { formatCurrentStageText } from "../utils"
 
 /* ---------------------------------- Types --------------------------------- */
@@ -326,7 +325,7 @@ export function HrDashboardPage() {
   // RTK Query keeps the same `data` reference when the response is identical,
   // so its fulfilled timestamp is used to give visible refresh feedback.
   const dashboardState = useAppSelector((state) =>
-    baseApi.endpoints.getBatchDashboard.select(undefined)(state)
+    recruitmentsApi.endpoints.getBatchDashboard.select(undefined)(state)
   )
   const lastUpdatedAt = refreshedAt ?? dashboardState.fulfilledTimeStamp
 

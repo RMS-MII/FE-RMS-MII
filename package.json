@@ -3,12 +3,17 @@
   "version": "0.0.1",
   "private": true,
   "scripts": {
+    "build": "turbo run build",
+    "start": "turbo run start",
     "build:internal": "turbo --filter @rms/internal build",
     "dev:internal": "turbo --filter @rms/internal dev",
+    "start:internal": "turbo --filter @rms/internal start",
     "build:exam": "turbo --filter @rms/exam build",
     "dev:exam": "turbo --filter @rms/exam dev",
+    "start:exam": "turbo --filter @rms/exam start",
     "build:candidate": "turbo --filter @rms/candidate build",
     "dev:candidate": "turbo --filter @rms/candidate dev",
+    "start:candidate": "turbo --filter @rms/candidate start",
     "lint": "turbo lint",
     "format": "turbo format",
     "typecheck": "turbo typecheck"
